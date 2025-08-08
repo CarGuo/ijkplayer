@@ -3119,8 +3119,50 @@ static int read_thread(void *arg)
 
     av_dict_set_intptr(&ffp->format_opts, "video_cache_ptr", (intptr_t)&ffp->stat.video_cache, 0);
     av_dict_set_intptr(&ffp->format_opts, "audio_cache_ptr", (intptr_t)&ffp->stat.audio_cache, 0);
+    
+    int rtsp_retry_count = 0;
+    int max_rtsp_retries = 3;
+    int is_rtsp_stream = av_stristart(is->filename, "rtsp", NULL);
+    
+rtsp_retry:
     err = avformat_open_input(&ic, is->filename, is->iformat, &ffp->format_opts);
     if (err < 0) {
+        // Properly propagate the actual FFmpeg error code
+        last_error = err;
+        
+        // Add retry logic for RTSP streams on specific errors
+        if (is_rtsp_stream && rtsp_retry_count < max_rtsp_retries) {
+            // Check for connection errors that might be transient
+            // Common FFmpeg errors: AVERROR_EOF, network timeouts, connection refused
+            if (err == AVERROR(ETIMEDOUT) || err == AVERROR(ECONNREFUSED) || 
+                err == AVERROR(EAGAIN) || err == AVERROR(EIO) ||
+                (err >= -599 && err <= -400)) { // HTTP 4xx and 5xx errors
+                
+                rtsp_retry_count++;
+                av_log(ffp, AV_LOG_WARNING, "RTSP stream failed (error %d: %s), retrying %d/%d: %s\n", 
+                       err, ffp_get_error_string(err), rtsp_retry_count, max_rtsp_retries, is->filename);
+                
+                // Wait briefly before retry
+                usleep(1000000); // 1 second
+                
+                // Reset context for retry
+                if (ic && !is->ic) {
+                    avformat_close_input(&ic);
+                }
+                ic = avformat_alloc_context();
+                if (!ic) {
+                    av_log(NULL, AV_LOG_FATAL, "Could not allocate context for retry.\n");
+                    ret = AVERROR(ENOMEM);
+                    goto fail;
+                }
+                ic->interrupt_callback.callback = decode_interrupt_cb;
+                ic->interrupt_callback.opaque = is;
+                
+                goto rtsp_retry;
+            }
+        }
+        
+        av_log(ffp, AV_LOG_ERROR, "Failed to open input '%s' with error %d\n", is->filename, err);
         print_error(is->filename, err);
         ret = -1;
         goto fail;
