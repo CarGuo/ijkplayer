@@ -25,7 +25,7 @@ fi
 REQUEST_TARGET=$1
 REQUEST_SUB_CMD=$2
 ACT_ABI_32="armv5 armv7a x86"
-ACT_ABI_64="arm64"
+ACT_ABI_64="arm64 x86_64"
 ACT_ABI_ALL=$ACT_ABI_64
 UNAME_S=$(uname -s)
 
@@ -95,6 +95,9 @@ case "$REQUEST_TARGET" in
     arm64)
         do_ndk_build $REQUEST_TARGET $REQUEST_SUB_CMD;
     ;;
+    x86_64)
+        do_ndk_build $REQUEST_TARGET $REQUEST_SUB_CMD;
+    ;;
     all32)
         for ABI in $ACT_ABI_32
         do
@@ -116,9 +119,9 @@ case "$REQUEST_TARGET" in
     *)
         echo "Usage:"
         echo "  compile-ijk.sh arm64"
+        echo "  compile-ijk.sh x86_64"
         echo "  compile-ijk.sh all|all32"
         echo "  compile-ijk.sh all64"
         echo "  compile-ijk.sh clean"
     ;;
 esac
-
