@@ -60,6 +60,10 @@
 ### 5) ABI 策略
 - 生产发布：仅 `arm64-v8a`。
 - 工程构建兼容：`arm64-v8a + x86_64`。
+
+
+# 官方原文档
+
  Platform | Build Status
  -------- | ------------
  Android | [![Build Status](https://travis-ci.org/Bilibili/ci-ijk-ffmpeg-android.svg?branch=master)](https://travis-ci.org/Bilibili/ci-ijk-ffmpeg-android)
