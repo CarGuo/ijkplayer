@@ -7,7 +7,7 @@
 ### 1) 当前支持环境与系统版本（已验证）
 - 主机系统：macOS 26.2（Build 25C56），Apple Silicon（Darwin arm64）
 - Android NDK：`22.1.7171670`（r22）
-- FFmpeg 基线：`ff4.1.6`（保留 ijkplayer 适配代码）
+- FFmpeg 基线：`n4.3`，并使用本地/远端 tag：`ijk-n4.3-20260301-007`
 - OpenSSL 基线：`OpenSSL_1_1_1w`
 - 目标 ABI：`arm64-v8a`（不再作为生产目标处理 armv5/armv7a/x86/x86_64）
 
@@ -15,11 +15,15 @@
 - 已修复 `compile-openssl.sh arm64` 在 Darwin arm64 + NDK r22 的 `aarch64-linux-android-ar` 崩溃问题  
   方案：注入 `ar/ranlib -> llvm-ar/llvm-ranlib` 兼容 wrapper。
 - 已修复 `compile-ffmpeg.sh arm64` 同类 `ar` 崩溃问题  
-  方案同上，并显式导出 `RANLIB`。
+  方案同上，并显式导出 `RANLIB/NM`。
 - 已为 `arm64-v8a/libijkffmpeg.so` 开启 Stack Canary  
   方案：FFmpeg 编译参数加入 `-fstack-protector-strong`，并验证 `__stack_chk_fail@LIBC`。
 - 已验证 arm64 打包产物满足 16KB page size  
   产物 `libijkffmpeg.so` / `libijksdl.so` / `libijkplayer.so` 的 `PT_LOAD Align` 均为 `0x4000`。
+- 已修复运行时崩溃：`ijkav_register_async_protocol+24`（`SIGSEGV/SEGV_ACCERR`）  
+  根因：`n4.3` 下 async 协议对象不可写，旧 ijk 逻辑 `memcpy` 覆盖触发只读段写入。  
+  方案：保留注册入口但改为兼容 no-op，使用内置 async 协议实现。
+- `init-android.sh` 已固定引用：`IJK_FFMPEG_COMMIT=ijk-n4.3-20260301-007`。
 
 ### 3) 对比官方 ijkplayer 的 git diff 文件范围：
 - `android/compile-ijk.sh`
@@ -45,7 +49,7 @@
   - `ndk_r22_ijkyuv.patch` （`ijkmedia/`下的 sub git）
   - `ndk_r22_16k_commit.patch` (全量)
 
-- 目前基于 FFmpeg 需要为 4.1.6 手动修改的  `FFmpeg/configure` ：  `check_lib openssl openssl/ssl.h OPENSSL_init_ssl -lssl -lcrypto`
+- OpenSSL 探测补丁已固化到初始化流程（自动检查并补齐），无需每次手动改 `configure`。
 
 ### 5) 仅 arm64 生产约束
 - 本地构建、验证、问题处理均以 `arm64-v8a` 为唯一生产目标。
