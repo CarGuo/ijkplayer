@@ -40,7 +40,7 @@
 - `config/module-lite-more.sh`
 
 ### 4) 上述修改相关补丁 patch （对比官方 ijkplayer）
-- 补丁目录：`[GSYVideoPlayer/16kpatch](https://github.com/CarGuo/GSYVideoPlayer/tree/master/16kpatch)`
+- 补丁目录：[GSYVideoPlayer/16kpatch](https://github.com/CarGuo/GSYVideoPlayer/tree/master/16kpatch)
   - `ndk_r22_soundtouch.patch` （`ijkmedia/`下的 sub git）
   - `ndk_r22_ijkyuv.patch` （`ijkmedia/`下的 sub git）
   - `ndk_r22_16k_commit.patch` (全量)
