@@ -17,9 +17,11 @@
 #
 
 # IJK_FFMPEG_UPSTREAM=git://git.videolan.org/ffmpeg.git
-IJK_FFMPEG_UPSTREAM=https://github.com/CarGuo/FFmpeg.git
-IJK_FFMPEG_FORK=https://github.com/CarGuo/FFmpeg.git
-IJK_FFMPEG_COMMIT=ff4.1.6
+# IJK_FFMPEG_UPSTREAM=https://github.com/CarGuo/FFmpeg.git
+# IJK_FFMPEG_FORK=https://github.com/CarGuo/FFmpeg.git
+IJK_FFMPEG_UPSTREAM=/Users/guoshuyu/workspace/android/gsy-ijk/FFmpeg
+IJK_FFMPEG_FORK=/Users/guoshuyu/workspace/android/gsy-ijk/FFmpeg
+IJK_FFMPEG_COMMIT=ijk-n4.3-20260301-005
 IJK_FFMPEG_LOCAL_REPO=extra/ffmpeg
 
 set -e

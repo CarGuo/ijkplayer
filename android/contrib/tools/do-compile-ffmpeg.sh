@@ -228,9 +228,13 @@ EOF
 #! /usr/bin/env bash
 exec "$FF_TOOLCHAIN_PATH/bin/llvm-ranlib" "\$@"
 EOF
-            chmod +x $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-ar $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-ranlib
+            cat > $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-nm <<EOF
+#! /usr/bin/env bash
+exec "$FF_TOOLCHAIN_PATH/bin/llvm-nm" "\$@"
+EOF
+            chmod +x $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-ar $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-ranlib $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-nm
             export PATH=$FF_COMPAT_BIN:$FF_TOOLCHAIN_PATH/bin/:$PATH
-            echo "Using ar/ranlib compatibility wrappers for Darwin arm64 + NDK r22"
+            echo "Using ar/ranlib/nm compatibility wrappers for Darwin arm64 + NDK r22"
         ;;
         *)
             export PATH=$FF_TOOLCHAIN_PATH/bin/:$PATH
@@ -244,6 +248,7 @@ export CC="${FF_CROSS_PREFIX}-gcc"
 export LD=${FF_CROSS_PREFIX}-ld
 export AR=${FF_CROSS_PREFIX}-ar
 export RANLIB=${FF_CROSS_PREFIX}-ranlib
+export NM=${FF_CROSS_PREFIX}-nm
 export STRIP=${FF_CROSS_PREFIX}-strip
 
 FF_CFLAGS="-O3 -Wall -pipe \
