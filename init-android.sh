@@ -19,9 +19,7 @@
 # IJK_FFMPEG_UPSTREAM=git://git.videolan.org/ffmpeg.git
 IJK_FFMPEG_UPSTREAM=https://github.com/CarGuo/FFmpeg.git
 IJK_FFMPEG_FORK=https://github.com/CarGuo/FFmpeg.git
-# Pin to commit that includes OpenSSL probe fallback:
-# check_lib openssl openssl/ssl.h OPENSSL_init_ssl -lssl -lcrypto
-IJK_FFMPEG_COMMIT=6b6b9e593dd4d3aaf75f48d40a13ef03bdef9fdb
+IJK_FFMPEG_COMMIT=ff4.1.6
 IJK_FFMPEG_LOCAL_REPO=extra/ffmpeg
 
 set -e
