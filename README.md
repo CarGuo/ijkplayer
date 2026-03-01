@@ -7,7 +7,7 @@
 ### 1) 当前支持环境与系统版本（已验证）
 - 主机系统：macOS 26.2（Build 25C56），Apple Silicon（Darwin arm64）
 - Android NDK：`22.1.7171670`（r22）
-- FFmpeg 基线：`ff4.1.6`
+- FFmpeg 基线：`CarGuo/FFmpeg@6b6b9e593dd4d3aaf75f48d40a13ef03bdef9fdb`（替代 `ff4.1.6` tag）
 - OpenSSL 基线：`OpenSSL_1_1_1w`
 - 目标 ABI：`arm64-v8a`（不再作为生产目标处理 armv5/armv7a/x86/x86_64）
 
