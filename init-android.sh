@@ -30,6 +30,38 @@ git --version
 echo "== pull ffmpeg base =="
 sh $TOOLS/pull-repo-base.sh $IJK_FFMPEG_UPSTREAM $IJK_FFMPEG_LOCAL_REPO
 
+function ensure_ffmpeg_openssl_probe()
+{
+    local ffmpeg_dir=$1
+    local cfg_file=$ffmpeg_dir/configure
+
+    if [ ! -f "$cfg_file" ]; then
+        echo "!! WARNING: missing configure in $ffmpeg_dir"
+        return 0
+    fi
+
+    if grep -q 'check_lib openssl openssl/ssl.h OPENSSL_init_ssl -lssl -lcrypto' "$cfg_file"; then
+        echo "openssl OPENSSL_init_ssl check already exists: $cfg_file"
+        return 0
+    fi
+
+    echo "patching openssl OPENSSL_init_ssl check: $cfg_file"
+    awk '
+        {
+            print
+            if (!done && $0 ~ /check_pkg_config openssl openssl openssl\/ssl.h OPENSSL_init_ssl \|\|/) {
+                print "                               check_lib openssl openssl/ssl.h OPENSSL_init_ssl -lssl -lcrypto ||"
+                done=1
+            }
+        }
+        END {
+            if (!done) exit 2
+        }
+    ' "$cfg_file" > "$cfg_file.tmp"
+    mv "$cfg_file.tmp" "$cfg_file"
+    chmod +x "$cfg_file"
+}
+
 function pull_fork()
 {
     echo "== pull ffmpeg fork $1 =="
@@ -37,6 +69,7 @@ function pull_fork()
     cd android/contrib/ffmpeg-$1
     git checkout ${IJK_FFMPEG_COMMIT} -B ijkplayer
     cd -
+    ensure_ffmpeg_openssl_probe "android/contrib/ffmpeg-$1"
 }
 
 pull_fork "armv5"
