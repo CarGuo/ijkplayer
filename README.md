@@ -1,5 +1,55 @@
 # ijkplayer
 
+## 【修改说明（仅生产 arm64）】
+ 
+> 适用范围明确为：**仅关注并支持生产 arm64（arm64-v8a）**。
+
+### 1) 当前支持环境与系统版本（已验证）
+- 主机系统：macOS 26.2（Build 25C56），Apple Silicon（Darwin arm64）
+- Android NDK：`22.1.7171670`（r22）
+- FFmpeg 基线：`ff4.1.6`
+- OpenSSL 基线：`OpenSSL_1_1_1w`
+- 目标 ABI：`arm64-v8a`（不再作为生产目标处理 armv5/armv7a/x86/x86_64）
+
+### 修改范围
+- 已修复 `compile-openssl.sh arm64` 在 Darwin arm64 + NDK r22 的 `aarch64-linux-android-ar` 崩溃问题  
+  方案：注入 `ar/ranlib -> llvm-ar/llvm-ranlib` 兼容 wrapper。
+- 已修复 `compile-ffmpeg.sh arm64` 同类 `ar` 崩溃问题  
+  方案同上，并显式导出 `RANLIB`。
+- 已为 `arm64-v8a/libijkffmpeg.so` 开启 Stack Canary  
+  方案：FFmpeg 编译参数加入 `-fstack-protector-strong`，并验证 `__stack_chk_fail@LIBC`。
+- 已验证 arm64 打包产物满足 16KB page size  
+  产物 `libijkffmpeg.so` / `libijksdl.so` / `libijkplayer.so` 的 `PT_LOAD Align` 均为 `0x4000`。
+
+### 3) 对比官方 ijkplayer 的 git diff 文件范围：
+- `android/compile-ijk.sh`
+- `android/contrib/tools/do-compile-ffmpeg.sh`
+- `android/contrib/tools/do-compile-openssl.sh`
+- `android/contrib/tools/do-detect-env.sh`
+- `android/ijkplayer/ijkplayer-arm64/build.gradle`
+- `android/ijkplayer/ijkplayer-arm64/src/main/jni/Application.mk`
+- `config/module-lite.sh`
+- `config/module.sh`
+- `ijkmedia/ijkj4a/Android.mk`
+- `ijkmedia/ijkplayer/Android.mk`
+- `ijkmedia/ijksdl/Android.mk`
+- `ijkprof/android-ndk-profiler-dummy/jni/Android.mk`
+- `init-android-openssl.sh`
+- `init-android.sh`
+- `commit.patch`
+- `config/module-lite-more.sh`
+
+### 4) 上述修改相关补丁 patch （对比官方 ijkplayer）
+- 补丁目录：`[GSYVideoPlayer/16kpatch](https://github.com/CarGuo/GSYVideoPlayer/tree/master/16kpatch)`
+  - `ndk_r22_soundtouch.patch` （`ijkmedia/`下的 sub git）
+  - `ndk_r22_ijkyuv.patch` （`ijkmedia/`下的 sub git）
+  - `ndk_r22_16k_commit.patch` (全量)
+
+- 目前基于 FFmpeg 需要为 4.1.6 手动修改的  `FFmpeg/configure` ：  `check_lib openssl openssl/ssl.h OPENSSL_init_ssl -lssl -lcrypto`
+
+### 5) 仅 arm64 生产约束
+- 本地构建、验证、问题处理均以 `arm64-v8a` 为唯一生产目标。
+
  Platform | Build Status
  -------- | ------------
  Android | [![Build Status](https://travis-ci.org/Bilibili/ci-ijk-ffmpeg-android.svg?branch=master)](https://travis-ci.org/Bilibili/ci-ijk-ffmpeg-android)

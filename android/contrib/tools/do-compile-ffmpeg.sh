@@ -40,7 +40,7 @@ fi
 
 
 FF_BUILD_ROOT=`pwd`
-FF_ANDROID_PLATFORM=android-9
+FF_ANDROID_PLATFORM=android-16
 
 
 FF_BUILD_NAME=
@@ -55,7 +55,8 @@ FF_DEP_LIBSOXR_LIB=
 FF_CFG_FLAGS=
 
 FF_EXTRA_CFLAGS=
-FF_EXTRA_LDFLAGS=
+FF_EXTRA_LDFLAGS="-Wl,-z,max-page-size=16384"
+FF_EXTRA_LDFLAGS="$FF_EXTRA_LDFLAGS -Wl,-Bsymbolic"
 FF_DEP_LIBS=
 
 FF_MODULE_DIRS="compat libavcodec libavfilter libavformat libavutil libswresample libswscale"
@@ -212,16 +213,43 @@ echo ""
 echo "--------------------"
 echo "[*] check ffmpeg env"
 echo "--------------------"
-export PATH=$FF_TOOLCHAIN_PATH/bin/:$PATH
+# NDK r22 ar wrappers may crash on recent macOS (Darwin arm64).
+# Inject compatible wrappers that forward to llvm tools directly.
+if [ "$(uname -s)" = "Darwin" ] && [ "$(uname -m)" = "arm64" ]; then
+    case "$IJK_NDK_REL" in
+        22*)
+            FF_COMPAT_BIN=$FF_TOOLCHAIN_PATH/compat-bin
+            mkdir -p $FF_COMPAT_BIN
+            cat > $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-ar <<EOF
+#! /usr/bin/env bash
+exec "$FF_TOOLCHAIN_PATH/bin/llvm-ar" "\$@"
+EOF
+            cat > $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-ranlib <<EOF
+#! /usr/bin/env bash
+exec "$FF_TOOLCHAIN_PATH/bin/llvm-ranlib" "\$@"
+EOF
+            chmod +x $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-ar $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-ranlib
+            export PATH=$FF_COMPAT_BIN:$FF_TOOLCHAIN_PATH/bin/:$PATH
+            echo "Using ar/ranlib compatibility wrappers for Darwin arm64 + NDK r22"
+        ;;
+        *)
+            export PATH=$FF_TOOLCHAIN_PATH/bin/:$PATH
+        ;;
+    esac
+else
+    export PATH=$FF_TOOLCHAIN_PATH/bin/:$PATH
+fi
 #export CC="ccache ${FF_CROSS_PREFIX}-gcc"
 export CC="${FF_CROSS_PREFIX}-gcc"
 export LD=${FF_CROSS_PREFIX}-ld
 export AR=${FF_CROSS_PREFIX}-ar
+export RANLIB=${FF_CROSS_PREFIX}-ranlib
 export STRIP=${FF_CROSS_PREFIX}-strip
 
 FF_CFLAGS="-O3 -Wall -pipe \
     -std=c99 \
     -ffast-math \
+    -fstack-protector-strong \
     -fstrict-aliasing -Werror=strict-aliasing \
     -Wno-psabi -Wa,--noexecstack \
     -DANDROID -DNDEBUG"

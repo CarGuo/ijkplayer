@@ -46,7 +46,7 @@ FF_CFG_FLAGS=
 FF_PLATFORM_CFG_FLAGS=
 
 FF_EXTRA_CFLAGS=
-FF_EXTRA_LDFLAGS=
+FF_EXTRA_LDFLAGS="-Wl,-z,max-page-size=16384"
 
 
 
@@ -160,11 +160,34 @@ export COMMON_FF_CFG_FLAGS=
 
 FF_CFG_FLAGS="$FF_CFG_FLAGS $COMMON_FF_CFG_FLAGS"
 
+# NDK r22 ar wrappers may crash on recent macOS (Darwin arm64).
+# Inject compatible wrappers that forward to llvm tools directly.
+if [ "$(uname -s)" = "Darwin" ] && [ "$(uname -m)" = "arm64" ]; then
+    case "$IJK_NDK_REL" in
+        22*)
+            FF_COMPAT_BIN=$FF_TOOLCHAIN_PATH/compat-bin
+            mkdir -p $FF_COMPAT_BIN
+            cat > $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-ar <<EOF
+#! /usr/bin/env bash
+exec "$FF_TOOLCHAIN_PATH/bin/llvm-ar" "\$@"
+EOF
+            cat > $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-ranlib <<EOF
+#! /usr/bin/env bash
+exec "$FF_TOOLCHAIN_PATH/bin/llvm-ranlib" "\$@"
+EOF
+            chmod +x $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-ar $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-ranlib
+            export PATH=$FF_COMPAT_BIN:$PATH
+            echo "Using ar/ranlib compatibility wrappers for Darwin arm64 + NDK r22"
+        ;;
+    esac
+fi
+
 #--------------------
 # Standard options:
 FF_CFG_FLAGS="$FF_CFG_FLAGS zlib-dynamic"
 FF_CFG_FLAGS="$FF_CFG_FLAGS no-shared"
 FF_CFG_FLAGS="$FF_CFG_FLAGS --openssldir=$FF_PREFIX"
+FF_CFG_FLAGS="$FF_CFG_FLAGS --prefix=$FF_PREFIX"
 FF_CFG_FLAGS="$FF_CFG_FLAGS --cross-compile-prefix=${FF_CROSS_PREFIX}-"
 FF_CFG_FLAGS="$FF_CFG_FLAGS $FF_PLATFORM_CFG_FLAGS"
 

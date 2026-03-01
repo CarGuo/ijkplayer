@@ -21,6 +21,11 @@ android {
         jniLibs.srcDirs 'src/main/libs'
         jni.srcDirs = [] // This prevents the auto generation of Android.mk
     }
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging true
+        }
+    }
 }
 
 dependencies {

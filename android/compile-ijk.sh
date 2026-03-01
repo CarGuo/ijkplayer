@@ -25,7 +25,7 @@ fi
 REQUEST_TARGET=$1
 REQUEST_SUB_CMD=$2
 ACT_ABI_32="armv5 armv7a x86"
-ACT_ABI_64="armv5 armv7a arm64 x86 x86_64"
+ACT_ABI_64="arm64"
 ACT_ABI_ALL=$ACT_ABI_64
 UNAME_S=$(uname -s)
 
@@ -54,17 +54,17 @@ do_sub_cmd () {
 
     case $SUB_CMD in
         prof)
-            $ANDROID_NDK/ndk-build $FF_MAKEFLAGS
+             arch -x86_64 /bin/bash  $ANDROID_NDK/ndk-build $FF_MAKEFLAGS
         ;;
         clean)
-            $ANDROID_NDK/ndk-build clean
+             arch -x86_64 /bin/bash  $ANDROID_NDK/ndk-build clean
         ;;
         rebuild)
-            $ANDROID_NDK/ndk-build clean
-            $ANDROID_NDK/ndk-build $FF_MAKEFLAGS
+            arch -x86_64 /bin/bash  $ANDROID_NDK/ndk-build clean
+            arch -x86_64 /bin/bash  $ANDROID_NDK/ndk-build $FF_MAKEFLAGS
         ;;
         *)
-            $ANDROID_NDK/ndk-build $FF_MAKEFLAGS
+            arch -x86_64 /bin/bash   $ANDROID_NDK/ndk-build $FF_MAKEFLAGS
         ;;
     esac
 }
@@ -92,7 +92,7 @@ case "$REQUEST_TARGET" in
     "")
         do_ndk_build armv7a;
     ;;
-    armv5|armv7a|arm64|x86|x86_64)
+    arm64)
         do_ndk_build $REQUEST_TARGET $REQUEST_SUB_CMD;
     ;;
     all32)
@@ -115,7 +115,7 @@ case "$REQUEST_TARGET" in
     ;;
     *)
         echo "Usage:"
-        echo "  compile-ijk.sh armv5|armv7a|arm64|x86|x86_64"
+        echo "  compile-ijk.sh arm64"
         echo "  compile-ijk.sh all|all32"
         echo "  compile-ijk.sh all64"
         echo "  compile-ijk.sh clean"

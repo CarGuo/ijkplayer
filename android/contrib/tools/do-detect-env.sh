@@ -68,7 +68,7 @@ case "$IJK_NDK_REL" in
         IJK_NDK_REL=$(grep -o '^Pkg\.Revision.*=[0-9]*.*' $ANDROID_NDK/source.properties 2>/dev/null | sed 's/[[:space:]]*//g' | cut -d "=" -f 2)
         echo "IJK_NDK_REL=$IJK_NDK_REL"
         case "$IJK_NDK_REL" in
-            11*|12*|13*|14*)
+            11*|12*|13*|14*|15*|16*|21*|22*|25*|26*|27*)
                 if test -d ${ANDROID_NDK}/toolchains/arm-linux-androideabi-4.9
                 then
                     echo "NDKr$IJK_NDK_REL detected"
@@ -88,7 +88,7 @@ esac
 
 case "$UNAME_S" in
     Darwin)
-        export IJK_MAKE_FLAG=-j`sysctl -n machdep.cpu.thread_count`
+        export IJK_MAKE_FLAG=-j1
     ;;
     CYGWIN_NT-*)
         IJK_WIN_TEMP="$(cygpath -am /tmp)"
