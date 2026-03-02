@@ -74,7 +74,9 @@ LOCAL_SRC_FILES += android/ijksdl_vout_overlay_android_mediacodec.c
 
 LOCAL_SHARED_LIBRARIES := ijkffmpeg
 LOCAL_STATIC_LIBRARIES := cpufeatures yuv_static ijkj4a
+ifeq ($(filter $(TARGET_ARCH_ABI),arm64-v8a x86_64),$(TARGET_ARCH_ABI))
 LOCAL_LDFLAGS += -Wl,-z,max-page-size=16384
+endif
 
 LOCAL_MODULE := ijksdl
 include $(BUILD_SHARED_LIBRARY)

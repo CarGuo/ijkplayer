@@ -70,7 +70,8 @@ if [ "$FF_ARCH" = "armv7a" ]; then
     FF_CROSS_PREFIX=arm-linux-androideabi
 	FF_TOOLCHAIN_NAME=${FF_CROSS_PREFIX}-${FF_GCC_VER}
 
-    FF_PLATFORM_CFG_FLAGS="android-armv7"
+    # OpenSSL 1.1.1w Configure target uses "android-arm" for 32-bit ARM.
+    FF_PLATFORM_CFG_FLAGS="android-arm"
 
 elif [ "$FF_ARCH" = "armv5" ]; then
     FF_BUILD_NAME=openssl-armv5
@@ -175,6 +176,17 @@ EOF
 #! /usr/bin/env bash
 exec "$FF_TOOLCHAIN_PATH/bin/llvm-ranlib" "\$@"
 EOF
+            if [ "$FF_ARCH" = "armv7a" ]; then
+                cat > $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-gcc <<EOF
+#! /usr/bin/env bash
+exec "$FF_TOOLCHAIN_PATH/bin/armv7a-linux-androideabi16-clang" "\$@"
+EOF
+                cat > $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-g++ <<EOF
+#! /usr/bin/env bash
+exec "$FF_TOOLCHAIN_PATH/bin/armv7a-linux-androideabi16-clang++" "\$@"
+EOF
+                chmod +x $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-gcc $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-g++
+            fi
             chmod +x $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-ar $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-ranlib
             export PATH=$FF_COMPAT_BIN:$PATH
             echo "Using ar/ranlib compatibility wrappers for Darwin arm64 + NDK r22"
@@ -188,7 +200,15 @@ FF_CFG_FLAGS="$FF_CFG_FLAGS zlib-dynamic"
 FF_CFG_FLAGS="$FF_CFG_FLAGS no-shared"
 FF_CFG_FLAGS="$FF_CFG_FLAGS --openssldir=$FF_PREFIX"
 FF_CFG_FLAGS="$FF_CFG_FLAGS --prefix=$FF_PREFIX"
-FF_CFG_FLAGS="$FF_CFG_FLAGS --cross-compile-prefix=${FF_CROSS_PREFIX}-"
+if [ "$FF_ARCH" = "armv7a" ]; then
+    export ANDROID_NDK_HOME=$FF_TOOLCHAIN_PATH
+    export ANDROID_NDK=$FF_TOOLCHAIN_PATH
+    export CC=gcc
+    export CXX=g++
+    FF_CFG_FLAGS="$FF_CFG_FLAGS -D__ANDROID_API__=16"
+else
+    FF_CFG_FLAGS="$FF_CFG_FLAGS --cross-compile-prefix=${FF_CROSS_PREFIX}-"
+fi
 FF_CFG_FLAGS="$FF_CFG_FLAGS $FF_PLATFORM_CFG_FLAGS"
 
 #--------------------

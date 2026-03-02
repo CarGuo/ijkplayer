@@ -79,7 +79,9 @@ LOCAL_SRC_FILES += ijkavutil/ijkstl.cpp
 
 LOCAL_SHARED_LIBRARIES := ijkffmpeg ijksdl
 LOCAL_STATIC_LIBRARIES := android-ndk-profiler ijksoundtouch
+ifeq ($(filter $(TARGET_ARCH_ABI),arm64-v8a x86_64),$(TARGET_ARCH_ABI))
 LOCAL_LDFLAGS += -Wl,-z,max-page-size=16384
+endif
 LOCAL_MODULE := ijkplayer
 
 VERSION_SH  = $(LOCAL_PATH)/version.sh

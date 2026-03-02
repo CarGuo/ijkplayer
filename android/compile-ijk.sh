@@ -95,6 +95,9 @@ case "$REQUEST_TARGET" in
     arm64)
         do_ndk_build $REQUEST_TARGET $REQUEST_SUB_CMD;
     ;;
+    armv7a)
+        do_ndk_build $REQUEST_TARGET $REQUEST_SUB_CMD;
+    ;;
     x86_64)
         do_ndk_build $REQUEST_TARGET $REQUEST_SUB_CMD;
     ;;
@@ -118,6 +121,7 @@ case "$REQUEST_TARGET" in
     ;;
     *)
         echo "Usage:"
+        echo "  compile-ijk.sh armv7a"
         echo "  compile-ijk.sh arm64"
         echo "  compile-ijk.sh x86_64"
         echo "  compile-ijk.sh all|all32"

@@ -23,6 +23,8 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE    := android-ndk-profiler
 LOCAL_SRC_FILES := prof.c
+ifeq ($(filter $(TARGET_ARCH_ABI),arm64-v8a x86_64),$(TARGET_ARCH_ABI))
 LOCAL_LDFLAGS += -Wl,-z,max-page-size=16384
+endif
 
 include $(BUILD_STATIC_LIBRARY)

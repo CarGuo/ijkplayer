@@ -55,8 +55,7 @@ FF_DEP_LIBSOXR_LIB=
 FF_CFG_FLAGS=
 
 FF_EXTRA_CFLAGS=
-FF_EXTRA_LDFLAGS="-Wl,-z,max-page-size=16384"
-FF_EXTRA_LDFLAGS="$FF_EXTRA_LDFLAGS -Wl,-Bsymbolic"
+FF_EXTRA_LDFLAGS="-Wl,-Bsymbolic"
 FF_DEP_LIBS=
 
 FF_MODULE_DIRS="compat libavcodec libavfilter libavformat libavutil libswresample libswscale"
@@ -140,7 +139,7 @@ elif [ "$FF_ARCH" = "x86_64" ]; then
     FF_CFG_FLAGS="$FF_CFG_FLAGS --arch=x86_64 --enable-yasm"
 
     FF_EXTRA_CFLAGS="$FF_EXTRA_CFLAGS"
-    FF_EXTRA_LDFLAGS="$FF_EXTRA_LDFLAGS"
+    FF_EXTRA_LDFLAGS="$FF_EXTRA_LDFLAGS -Wl,-z,max-page-size=16384"
 
     FF_ASSEMBLER_SUB_DIRS="x86"
 
@@ -158,7 +157,7 @@ elif [ "$FF_ARCH" = "arm64" ]; then
     FF_CFG_FLAGS="$FF_CFG_FLAGS --arch=aarch64 --enable-yasm"
 
     FF_EXTRA_CFLAGS="$FF_EXTRA_CFLAGS"
-    FF_EXTRA_LDFLAGS="$FF_EXTRA_LDFLAGS"
+    FF_EXTRA_LDFLAGS="$FF_EXTRA_LDFLAGS -Wl,-z,max-page-size=16384"
 
     FF_ASSEMBLER_SUB_DIRS="aarch64 neon"
 
@@ -232,7 +231,16 @@ EOF
 #! /usr/bin/env bash
 exec "$FF_TOOLCHAIN_PATH/bin/llvm-nm" "\$@"
 EOF
+            if [ "$FF_ARCH" = "armv7a" ]; then
+                cat > $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-gcc <<EOF
+#! /usr/bin/env bash
+exec "$FF_TOOLCHAIN_PATH/bin/armv7a-linux-androideabi16-clang" "\$@"
+EOF
+            fi
             chmod +x $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-ar $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-ranlib $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-nm
+            if [ "$FF_ARCH" = "armv7a" ]; then
+                chmod +x $FF_COMPAT_BIN/${FF_CROSS_PREFIX}-gcc
+            fi
             export PATH=$FF_COMPAT_BIN:$FF_TOOLCHAIN_PATH/bin/:$PATH
             echo "Using ar/ranlib/nm compatibility wrappers for Darwin arm64 + NDK r22"
         ;;
@@ -244,7 +252,11 @@ else
     export PATH=$FF_TOOLCHAIN_PATH/bin/:$PATH
 fi
 #export CC="ccache ${FF_CROSS_PREFIX}-gcc"
-export CC="${FF_CROSS_PREFIX}-gcc"
+if [ "$FF_ARCH" = "armv7a" ]; then
+    export CC="armv7a-linux-androideabi16-clang"
+else
+    export CC="${FF_CROSS_PREFIX}-gcc"
+fi
 export LD=${FF_CROSS_PREFIX}-ld
 export AR=${FF_CROSS_PREFIX}-ar
 export RANLIB=${FF_CROSS_PREFIX}-ranlib

@@ -1,42 +1,44 @@
 # ijkplayer
 
-## 【修改说明（arm64 生产 + x86_64 可构建）】
+## 【修改说明（64位16K + 32位可构建）】
 
-> 当前链路以 **arm64-v8a 生产** 为主，同时已补齐 **x86_64 动态库构建**（便于模拟器/联调场景）。
+> 当前链路以 **arm64-v8a 生产** 为主，保持 **arm64-v8a/x86_64 为 16K page size**；同时补齐 **armeabi-v7a（FFmpeg 4.3，4K page size）** 构建用于 32 位设备兼容。
 
 ### 1) 当前支持环境与系统版本（已验证）
 - 主机系统：macOS 26.2（Build 25C56），Apple Silicon（Darwin arm64）
 - Android NDK：`22.1.7171670`（r22）
 - FFmpeg 基线：`n4.3`，并使用远端 tag：`ijk-n4.3-20260301-007`
 - OpenSSL 基线：`OpenSSL_1_1_1w`
-- 目标 ABI：`arm64-v8a`（生产）+ `x86_64`（可构建）
+- 目标 ABI：`arm64-v8a`（生产，16K）+ `x86_64`（16K）+ `armeabi-v7a`（可构建，4K）
 
 ### 2) 本次关键修复与增强
-- 已修复 `compile-openssl.sh arm64` 在 Darwin arm64 + NDK r22 的 `aarch64-linux-android-ar` 崩溃问题  
-  方案：注入 `ar/ranlib -> llvm-ar/llvm-ranlib` 兼容 wrapper。
-- 已修复 `compile-ffmpeg.sh arm64` 同类 `ar` 崩溃问题  
-  方案同上，并显式导出 `RANLIB/NM`。
-- 已为 `arm64-v8a/libijkffmpeg.so` 开启 Stack Canary  
-  方案：FFmpeg 编译参数加入 `-fstack-protector-strong`，并验证 `__stack_chk_fail@LIBC`。
-- 已验证 arm64 打包产物满足 16KB page size  
-  产物 `libijkffmpeg.so` / `libijksdl.so` / `libijkplayer.so` 的 `PT_LOAD Align` 均为 `0x4000`。
-- 已修复运行时崩溃：`ijkav_register_async_protocol+24`（`SIGSEGV/SEGV_ACCERR`）  
-  根因：`n4.3` 下 async 协议对象不可写，旧 ijk 逻辑 `memcpy` 覆盖触发只读段写入。  
-  方案：保留注册入口但改为兼容 no-op，使用内置 async 协议实现。
-- 已补齐 x86_64 构建链路（NDK r22）  
-  方案：`compile-ijk.sh` 增加 `x86_64` 目标；`ijkplayer-x86_64` 的 `APP_STL` 迁移为 `c++_static`。
-- `init-android.sh` 已固定引用：
+- 已修复 `compile-openssl.sh arm64` 在 Darwin arm64 + NDK r22 的 `aarch64-linux-android-ar` 崩溃问题。
+- 已修复 `compile-ffmpeg.sh arm64` 同类 `ar` 崩溃问题，并显式导出 `RANLIB/NM`。
+- 已为 `arm64-v8a/libijkffmpeg.so` 开启 Stack Canary（`-fstack-protector-strong`）。
+- 已修复运行时崩溃：`ijkav_register_async_protocol+24`（`SIGSEGV/SEGV_ACCERR`），n4.3 下改为兼容 no-op 注册逻辑。
+- 已补齐 `x86_64` 构建链路（NDK r22），并将 `APP_STL` 迁移为 `c++_static`。
+- 已补齐 `armeabi-v7a`（FFmpeg 4.3）在 NDK r22 的构建兼容：
+  - `compile-ijk.sh` 增加 `armv7a` 直接入口；
+  - `ijkplayer-armv7a` 的 `APP_STL` 调整为 `c++_static`；
+  - OpenSSL/FFmpeg 脚本增加 armv7a 在 r22 下的工具链兼容桥接。
+- `init-android.sh` 固定引用：
   - `IJK_FFMPEG_UPSTREAM=https://github.com/CarGuo/FFmpeg.git`
   - `IJK_FFMPEG_FORK=https://github.com/CarGuo/FFmpeg.git`
   - `IJK_FFMPEG_COMMIT=ijk-n4.3-20260301-007`
 
-### 3) 对比官方 ijkplayer 的 git diff 文件范围
+### 3) 16K / 4K ABI 策略（已验证）
+- `arm64-v8a`：16K（`PT_LOAD Align = 0x4000`）
+- `x86_64`：16K（`PT_LOAD Align = 0x4000`）
+- `armeabi-v7a`：4K（`PT_LOAD Align = 0x1000`）
+
+### 4) 对比官方 ijkplayer 的 git diff 文件范围
 - `android/compile-ijk.sh`
 - `android/contrib/tools/do-compile-ffmpeg.sh`
 - `android/contrib/tools/do-compile-openssl.sh`
 - `android/contrib/tools/do-detect-env.sh`
 - `android/ijkplayer/ijkplayer-arm64/build.gradle`
 - `android/ijkplayer/ijkplayer-arm64/src/main/jni/Application.mk`
+- `android/ijkplayer/ijkplayer-armv7a/src/main/jni/Application.mk`
 - `android/ijkplayer/ijkplayer-x86_64/src/main/jni/Application.mk`
 - `config/module-lite.sh`
 - `config/module.sh`
@@ -50,17 +52,12 @@
 - `commit.patch`
 - `README.md`
 
-### 4) 相关补丁（对比官方 ijkplayer）
+### 5) 相关补丁（对比官方 ijkplayer）
 - 补丁目录：[GSYVideoPlayer/16kpatch](https://github.com/CarGuo/GSYVideoPlayer/tree/master/16kpatch)
   - `ndk_r22_16k_commit.patch`（ijkplayer 主仓全量补丁）
   - `ndk_r22_ffmpeg_n4.3_ijk.patch`（FFmpeg: `n4.3 -> ijk-n4.3-20260301-007`）
   - `ndk_r22_soundtouch.patch`（`ijkmedia/ijksoundtouch`）
   - `ndk_r22_ijkyuv.patch`（`ijkmedia/ijkyuv`）
-
-### 5) ABI 策略
-- 生产发布：仅 `arm64-v8a`。
-- 工程构建兼容：`arm64-v8a + x86_64`。
-
 
 # 官方原文档
 

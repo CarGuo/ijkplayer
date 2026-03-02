@@ -41,7 +41,9 @@ LOCAL_SRC_FILES += j4a/class/tv/danmaku/ijk/media/player/IjkMediaPlayer.c
 
 LOCAL_SRC_FILES += j4au/class/android/media/AudioTrack.util.c
 LOCAL_SRC_FILES += j4au/class/java/nio/ByteBuffer.util.c
+ifeq ($(filter $(TARGET_ARCH_ABI),arm64-v8a x86_64),$(TARGET_ARCH_ABI))
 LOCAL_LDFLAGS += -Wl,-z,max-page-size=16384
+endif
 LOCAL_MODULE := ijkj4a
 include $(BUILD_STATIC_LIBRARY)
 
