@@ -7,7 +7,13 @@ checkout() {
  local url=$1 dir=$2 ref=$3 expected=$4
  if [[ ! -d "$dir/.git" ]]; then
   if [[ -e "$dir" ]]; then echo "Refusing to overwrite $dir" >&2; exit 1; fi
-  git clone --depth 1 --branch "$ref" "$url" "$dir"
+  # Resolve the moving discovery ref only for a new directory. Branch README
+  # updates must not change the immutable source used by this build path.
+  git clone --depth 1 --no-checkout --branch "$ref" "$url" "$dir"
+  if ! git -C "$dir" cat-file -e "$expected^{commit}" 2>/dev/null; then
+   git -C "$dir" fetch --depth 1 origin "$expected"
+  fi
+  git -C "$dir" checkout --detach "$expected"
  fi
  [[ $(git -C "$dir" rev-parse HEAD) == "$expected" ]] || {
   echo "Unexpected source revision in $dir; preserving it unchanged" >&2; exit 1;

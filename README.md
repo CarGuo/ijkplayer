@@ -1,6 +1,54 @@
 # ijkplayer
 
-## 【修改说明（64位16K + 32位可构建）】
+## `ffmpeg-5.0` 分支：FFmpeg 5.1.10 Android 迁移候选
+
+本分支的实际版本是 **FFmpeg 5.1.10**，`ffmpeg-5.0` 是迁移系列的分支名。
+请从下面的新入口开始；旧的 `init-android.sh` 仍指向 **FFmpeg 4.3**，
+不能用于构建本分支的 FFmpeg 5 候选。
+
+- [完整构建说明、固定源码版本与验证边界](doc/FFMPEG5.md)
+- [配套 FFmpeg 源码分支](https://github.com/CarGuo/FFmpeg/tree/ffmpeg-5.0)
+- [GSYVideoPlayer 配套分支、九库校验与验证说明](https://github.com/CarGuo/GSYVideoPlayer/blob/ffmpeg-5.0/doc/ffmpeg-5.0.md)
+
+### FFmpeg 5 快速开始
+
+已验证的构建环境为 Linux x86_64 + Android NDK r22b（`22.1.7171670`）。
+另需 Bash、Git、Perl、GNU Make、`sha256sum`，以及用于 x86_64 汇编的 NASM 或 YASM。
+使用新的工作目录，避免与旧 FFmpeg 4 构建产物混用：
+
+```sh
+git clone --branch ffmpeg-5.0 https://github.com/CarGuo/ijkplayer.git ijkplayer-ffmpeg5
+cd ijkplayer-ffmpeg5
+./init-android-ffmpeg5.sh
+export ANDROID_NDK=/absolute/path/to/android-ndk-r22b
+export FFMPEG5_SOURCE="$PWD/extra/ffmpeg5"
+export OPENSSL_SOURCE="$PWD/extra/openssl5"
+(
+  set -e
+  for abi in arm64 armv7a x86_64; do
+    android/contrib/compile-ffmpeg5.sh "$abi"
+    (cd android && ./compile-ijk.sh "$abi")
+  done
+)
+```
+
+新初始化脚本会为全新目录检出固定的 FFmpeg 提交；即使远端分支新增文档提交，
+也不会自动换用其他源码版本。已有目录若版本不符，会保留原目录并报错。
+构建明确使用 `config/module-lite-more.sh`；三个 ABI 分别对应 arm64-v8a、
+armeabi-v7a、x86_64。替换时请保持每个 ABI 的 FFmpeg／player／SDL 三库成套。
+若要复现已测试候选的原始哈希，请使用完整说明中的
+[可选版本标记复现步骤](doc/FFMPEG5.md#optional-reproduction-of-the-tested-candidate)，
+同时保留真实源码提交信息。
+
+这是有明确验证范围的迁移候选：16 KB 模拟环境的部分硬解旋转和专项验证仍有缺口，
+未完成真实 ARM 设备兼容认证。OpenSSL 1.1.1w 及原 TLS 验证限制仍保留；
+不要把构建成功或 4 KB 环境通过等同于全部设备、16 KB 场景或 TLS 安全验收。
+详见[验证结果与限制](doc/FFMPEG5.md#checks-and-limits)。
+
+## 旧 FFmpeg 4.3 链路说明（保留参考，不是 FFmpeg 5 构建入口）
+
+以下为原有修改说明（64 位 16 KB + 32 位可构建），其中环境、标签、命令和验证结论
+属于旧 FFmpeg 4.3 链路。构建 FFmpeg 5 请使用本页上方的新入口。
 
 > 当前链路以 **arm64-v8a 生产** 为主，保持 **arm64-v8a/x86_64 为 16K page size**；同时补齐 **armeabi-v7a（FFmpeg 4.3，4K page size）** 构建用于 32 位设备兼容。
 
@@ -64,7 +112,10 @@
   - `ndk_r22_soundtouch.patch`（`ijkmedia/ijksoundtouch`）
   - `ndk_r22_ijkyuv.patch`（`ijkmedia/ijkyuv`）
 
-# 官方原文档
+# 官方原文档（历史参考）
+
+以下保留上游旧版本文档；其中下载坐标、环境、`init-android.sh` 和
+`compile-ffmpeg.sh` 命令不适用于本分支的 FFmpeg 5 快速构建。
 
  Platform | Build Status
  -------- | ------------
@@ -146,7 +197,7 @@ dependencies {
 - native subtitle render
 - avfilter support
 
-### Before Build
+### Before Build（旧上游流程）
 ```
 # install homebrew, git, yasm
 ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
@@ -199,7 +250,7 @@ sudo dpkg-reconfigure dash
 
 - If you'd like to share your config, pull request is welcome.
 
-### Build Android
+### Build Android（旧上游流程，非 FFmpeg 5）
 ```
 git clone https://github.com/Bilibili/ijkplayer.git ijkplayer-android
 cd ijkplayer-android

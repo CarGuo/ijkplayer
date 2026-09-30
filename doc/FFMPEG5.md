@@ -14,10 +14,12 @@ continues to select the FFmpeg 4.3 fork; use the new initializer explicitly.
 - OpenSSL remains `OpenSSL_1_1_1w`, commit
   `e04bd3433fd84e1861bf258ea37928d9845e6a86`.
 
-The initializer clones the named FFmpeg fork branch, verifies the exact commit,
-and reverse-checks the two patches already included in it. Existing unexpected
-revisions or missing/modified patches cause a failure without resetting or
-patching the checkout. If upgrading an older locally patched upstream checkout,
+For a new directory, the initializer clones the named FFmpeg fork branch, fetches
+the pinned commit if the branch has advanced, and checks out that exact commit
+with a detached HEAD. It then verifies the commit and reverse-checks the two
+patches already included in it. Existing unexpected revisions are rejected
+without fetching, checking out or resetting them; missing/modified patches also
+cause a failure without applying patches. If upgrading an older locally patched upstream checkout,
 preserve it under another name before initializing `extra/ffmpeg5` again.
 [Standalone patches](../patches/ffmpeg5/README.md) remain available for inspection
 and upstream-source reconstruction. These checks verify revisions and patch
@@ -36,10 +38,13 @@ Run from this repository's root in a separate checkout/build tree from FFmpeg 4:
 export ANDROID_NDK=/absolute/path/to/android-ndk-r22b
 export FFMPEG5_SOURCE="$PWD/extra/ffmpeg5"
 export OPENSSL_SOURCE="$PWD/extra/openssl5"
-for abi in arm64 armv7a x86_64; do
-  android/contrib/compile-ffmpeg5.sh "$abi"
-  (cd android && ./compile-ijk.sh "$abi")
-done
+(
+  set -e
+  for abi in arm64 armv7a x86_64; do
+    android/contrib/compile-ffmpeg5.sh "$abi"
+    (cd android && ./compile-ijk.sh "$abi")
+  done
+)
 ```
 
 This explicitly uses `config/module-lite-more.sh`, including the MJPEG parser,
@@ -84,9 +89,12 @@ commit separately:
 mkdir -p android/contrib/build
 printf 'ijk_source=%s\nijk_candidate_version=c92e1e6\n' "$(git rev-parse HEAD)" \
   > android/contrib/build/ijk-candidate-provenance.txt
-for abi in arm64 armv7a x86_64; do
-  (cd android && revision=c92e1e6 ./compile-ijk.sh "$abi")
-done
+(
+  set -e
+  for abi in arm64 armv7a x86_64; do
+    (cd android && revision=c92e1e6 ./compile-ijk.sh "$abi")
+  done
+)
 ```
 
 Keep the full IJK source commit, the per-ABI FFmpeg build manifests and the GSY
