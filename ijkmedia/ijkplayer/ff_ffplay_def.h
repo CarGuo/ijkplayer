@@ -66,6 +66,13 @@
 #include "ff_ffpipenode.h"
 #include "ijkmeta.h"
 
+/* FFmpeg 5 made format descriptors returned by lookup APIs const. */
+#if LIBAVFORMAT_VERSION_MAJOR >= 59
+typedef const AVInputFormat IJK_AVInputFormat;
+#else
+typedef AVInputFormat IJK_AVInputFormat;
+#endif
+
 #define DEFAULT_HIGH_WATER_MARK_IN_BYTES        (256 * 1024)
 
 /*
@@ -275,7 +282,7 @@ typedef struct Decoder {
 typedef struct VideoState {
     SDL_Thread *read_tid;
     SDL_Thread _read_tid;
-    AVInputFormat *iformat;
+    IJK_AVInputFormat *iformat;
     int abort_request;
     int force_refresh;
     int paused;
@@ -422,7 +429,7 @@ typedef struct VideoState {
 
 /* options specified by the user */
 #ifdef FFP_MERGE
-static AVInputFormat *file_iformat;
+static IJK_AVInputFormat *file_iformat;
 static const char *input_filename;
 static const char *window_title;
 static int default_width  = 640;
@@ -568,7 +575,7 @@ typedef struct FFPlayer {
 
     /* ffplay options specified by the user */
 #ifdef FFP_MERGE
-    AVInputFormat *file_iformat;
+    IJK_AVInputFormat *file_iformat;
 #endif
     char *input_filename;
 #ifdef FFP_MERGE

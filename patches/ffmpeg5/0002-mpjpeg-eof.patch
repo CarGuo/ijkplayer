@@ -1,0 +1,358 @@
+diff --git a/libavformat/mpjpegdec.c b/libavformat/mpjpegdec.c
+index d359632..c33ed50 100644
+--- a/libavformat/mpjpegdec.c
++++ b/libavformat/mpjpegdec.c
+@@ -32,6 +32,9 @@ typedef struct MPJPEGDemuxContext {
+     const AVClass *class;
+     char       *boundary;
+     char       *searchstr;
++    char       *final_boundary;
++    int         finished;
++    int64_t     final_boundary_pos;
+     int         searchstr_len;
+     int         strict_mime_boundary;
+ } MPJPEGDemuxContext;
+@@ -101,13 +104,15 @@ static int split_tag_value(char **tag, char **value, char *line)
+ static int parse_multipart_header(AVIOContext *pb,
+                                     int* size,
+                                     const char* expected_boundary,
+-                                    void *log_ctx);
++                                    void *log_ctx,
++                                    const char *final_boundary, int *finished);
+ 
+ static int mpjpeg_read_close(AVFormatContext *s)
+ {
+     MPJPEGDemuxContext *mpjpeg = s->priv_data;
+     av_freep(&mpjpeg->boundary);
+     av_freep(&mpjpeg->searchstr);
++    av_freep(&mpjpeg->final_boundary);
+     return 0;
+ }
+ 
+@@ -122,13 +127,15 @@ static int mpjpeg_read_probe(const AVProbeData *p)
+ 
+     ffio_init_context(&pb, p->buf, p->buf_size, 0, NULL, NULL, NULL, NULL);
+ 
+-    ret = (parse_multipart_header(&pb.pub, &size, "--", NULL) >= 0) ? AVPROBE_SCORE_MAX : 0;
++    ret = (parse_multipart_header(&pb.pub, &size, "--", NULL, NULL, NULL) >= 0)
++          ? AVPROBE_SCORE_MAX : 0;
+ 
+     return ret;
+ }
+ 
+ static int mpjpeg_read_header(AVFormatContext *s)
+ {
++    MPJPEGDemuxContext *mpjpeg = s->priv_data;
+     AVStream *st;
+     char boundary[70 + 2 + 1] = {0};
+     int64_t pos = avio_tell(s->pb);
+@@ -152,6 +159,12 @@ static int mpjpeg_read_header(AVFormatContext *s)
+ 
+     avpriv_set_pts_info(st, 60, 1, 25);
+ 
++    /* Keep the actual delimiter: permissive matching uses only "--", and
++     * a normal boundary token can itself end in hyphens. */
++    mpjpeg->final_boundary = av_asprintf("%s--", boundary);
++    if (!mpjpeg->final_boundary)
++        return AVERROR(ENOMEM);
++
+     avio_seek(s->pb, pos, SEEK_SET);
+ 
+     return 0;
+@@ -171,7 +184,8 @@ static int parse_content_length(const char *value)
+ static int parse_multipart_header(AVIOContext *pb,
+                             int* size,
+                             const char* expected_boundary,
+-                            void *log_ctx)
++                            void *log_ctx,
++                            const char *final_boundary, int *finished)
+ {
+     char line[128];
+     int found_content_type = 0;
+@@ -204,6 +218,12 @@ static int parse_multipart_header(AVIOContext *pb,
+         return AVERROR_INVALIDDATA;
+     }
+ 
++    /* A closing delimiter has no MIME part headers after it. */
++    if (final_boundary && !strcmp(line, final_boundary)) {
++        *finished = 1;
++        return AVERROR_EOF;
++    }
++
+     while (!pb->eof_reached) {
+         char *tag, *value;
+ 
+@@ -296,6 +316,13 @@ static int mpjpeg_read_packet(AVFormatContext *s, AVPacket *pkt)
+     int ret;
+ 
+     MPJPEGDemuxContext *mpjpeg = s->priv_data;
++    if (mpjpeg->finished) {
++        /* A generic byte seek must allow replay on this demuxer instance. */
++        if (avio_tell(s->pb) == mpjpeg->final_boundary_pos)
++            return AVERROR_EOF;
++        mpjpeg->finished = 0;
++    }
++
+     if (mpjpeg->boundary == NULL) {
+         uint8_t* boundary = NULL;
+         if (mpjpeg->strict_mime_boundary) {
+@@ -317,7 +344,10 @@ static int mpjpeg_read_packet(AVFormatContext *s, AVPacket *pkt)
+         mpjpeg->searchstr_len = strlen(mpjpeg->searchstr);
+     }
+ 
+-    ret = parse_multipart_header(s->pb, &size, mpjpeg->boundary, s);
++    ret = parse_multipart_header(s->pb, &size, mpjpeg->boundary, s,
++                                 mpjpeg->final_boundary, &mpjpeg->finished);
++    if (mpjpeg->finished)
++        mpjpeg->final_boundary_pos = avio_tell(s->pb);
+ 
+ 
+     if (ret < 0)
+diff --git a/tests/ijk/mpjpeg-eof.c b/tests/ijk/mpjpeg-eof.c
+new file mode 100644
+index 0000000..fa48512
+--- /dev/null
++++ b/tests/ijk/mpjpeg-eof.c
+@@ -0,0 +1,167 @@
++/* Actual-source regression: include the selected upstream/patched MPJPEG demuxer.
++ * Uses real FFmpeg 5 AVIO/format/packet APIs, not a replacement parser model. */
++#include <errno.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#ifndef MPJPEG_SOURCE
++#define MPJPEG_SOURCE "../../libavformat/mpjpegdec.c"
++#endif
++#include MPJPEG_SOURCE
++
++#define JPEG "\xff\xd8\xff\xd9"
++#define PART(b) "--" b "\r\nContent-Type: image/jpeg\r\nContent-Length: 4\r\n\r\n" JPEG "\r\n"
++#define CLOSE(b) "--" b "--\r\n"
++#define MAX_BOUNDARY "0123456789012345678901234567890123456789012345678901234567890123456789"
++
++typedef struct Memory {
++    const AVClass *av_class;
++    char *mime_type;
++    const unsigned char *data;
++    int length, position, fault_after;
++} Memory;
++
++static const AVOption memory_options[] = {
++    { "mime_type", "test MIME type", offsetof(Memory, mime_type), AV_OPT_TYPE_STRING,
++      { .str = NULL }, 0, 0, AV_OPT_FLAG_DECODING_PARAM },
++    { NULL }
++};
++static const AVClass memory_class = {
++    .class_name = "mpjpeg regression MIME source", .item_name = av_default_item_name,
++    .option = memory_options, .version = LIBAVUTIL_VERSION_INT
++};
++static void *memory_child(void *obj, void *previous)
++{
++    return previous ? NULL : ((AVIOContext *)obj)->opaque;
++}
++static const AVClass io_class = {
++    .class_name = "mpjpeg regression AVIO", .item_name = av_default_item_name,
++    .version = LIBAVUTIL_VERSION_INT, .child_next = memory_child
++};
++static int read_memory(void *opaque, uint8_t *dst, int requested)
++{
++    Memory *m = opaque;
++    int amount;
++    if (m->fault_after >= 0 && m->position >= m->fault_after)
++        return AVERROR(EIO);
++    if (m->position >= m->length)
++        return AVERROR_EOF;
++    amount = FFMIN(requested, m->length - m->position);
++    if (m->fault_after >= 0)
++        amount = FFMIN(amount, m->fault_after - m->position);
++    memcpy(dst, m->data + m->position, amount);
++    m->position += amount;
++    return amount;
++}
++static int64_t seek_memory(void *opaque, int64_t offset, int whence)
++{
++    Memory *m = opaque;
++    int64_t next;
++    if (whence == AVSEEK_SIZE)
++        return m->length;
++    whence &= ~AVSEEK_FORCE;
++    if (whence == SEEK_SET) next = offset;
++    else if (whence == SEEK_CUR) next = m->position + offset;
++    else if (whence == SEEK_END) next = m->length + offset;
++    else return AVERROR(EINVAL);
++    if (next < 0 || next > m->length) return AVERROR(EINVAL);
++    m->position = next;
++    return next;
++}
++
++typedef struct Test {
++    const char *name, *boundary, *body;
++    int strict, good_packets, terminal, fault_after, corrupt_packets, sticky, replay;
++} Test;
++static int run_case(const Test *t)
++{
++    Memory m = { .av_class = &memory_class, .data = (const unsigned char *)t->body,
++                 .length = strlen(t->body), .fault_after = t->fault_after };
++    AVFormatContext *fmt = avformat_alloc_context();
++    AVIOContext *io = avio_alloc_context(av_malloc(256), 256, 0, &m,
++                                        read_memory, NULL, seek_memory);
++    AVDictionary *opts = NULL;
++    AVPacket *pkt = av_packet_alloc();
++    int ret, good = 0, corrupt = 0, terminal = 0, bad = 0;
++    m.mime_type = av_asprintf("multipart/x-mixed-replace; boundary=%s", t->boundary);
++    io->av_class = &io_class;
++    fmt->pb = io;
++    fmt->flags |= AVFMT_FLAG_CUSTOM_IO;
++    av_dict_set(&opts, "strict_mime_boundary", t->strict ? "1" : "0", 0);
++    ret = avformat_open_input(&fmt, NULL, &ff_mpjpeg_demuxer, &opts);
++    av_dict_free(&opts);
++    if (ret < 0) terminal = ret;
++    else for (int n = 0; n < 10; n++) {
++        ret = fmt->iformat->read_packet(fmt, pkt);
++        if (ret < 0) { terminal = ret; break; }
++        if (pkt->size == 4 && !memcmp(pkt->data, JPEG, 4) &&
++            !(pkt->flags & AV_PKT_FLAG_CORRUPT)) good++;
++        else if (pkt->flags & AV_PKT_FLAG_CORRUPT) corrupt++;
++        else bad++;
++        av_packet_unref(pkt);
++    }
++    if (t->sticky && fmt && terminal == AVERROR_EOF) {
++        int before = m.position;
++        for (int i = 0; i < 3; i++)
++            if (fmt->iformat->read_packet(fmt, pkt) != AVERROR_EOF) bad++;
++        if (m.position != before) bad++;
++    }
++    if (t->replay && fmt && terminal == AVERROR_EOF) {
++        int replay_good = 0, replay_end = 0;
++        if (av_seek_frame(fmt, -1, 0, AVSEEK_FLAG_BYTE) < 0) bad++;
++        else for (int n = 0; n < 10; n++) {
++            int got = fmt->iformat->read_packet(fmt, pkt);
++            if (got < 0) { replay_end = got; break; }
++            if (pkt->size == 4 && !memcmp(pkt->data, JPEG, 4) &&
++                !(pkt->flags & AV_PKT_FLAG_CORRUPT)) replay_good++;
++            else bad++;
++            av_packet_unref(pkt);
++        }
++        if (replay_good != t->good_packets || replay_end != AVERROR_EOF) bad++;
++    }
++    ret = good == t->good_packets && corrupt == t->corrupt_packets &&
++          terminal == t->terminal && !bad;
++    printf("%s %s strict=%d good=%d corrupt=%d terminal=%d expected=%d bad=%d\n",
++           ret ? "PASS" : "FAIL", t->name, t->strict, good, corrupt,
++           terminal, t->terminal, bad);
++    av_packet_free(&pkt);
++    avformat_close_input(&fmt);
++    av_freep(&io->buffer);
++    avio_context_free(&io);
++    av_free(m.mime_type);
++    return ret;
++}
++int main(void)
++{
++    const char *fault_body = PART("cam") PART("cam");
++    int fault_position = strstr(fault_body, "\r\n\r\n") - fault_body + 4 + 2;
++    const Test tests[] = {
++        {"exact_final_permissive", "cam", PART("cam") PART("cam") CLOSE("cam"), 0,2,AVERROR_EOF,-1,0,1},
++        {"exact_final_strict", "cam", PART("cam") PART("cam") CLOSE("cam"), 1,2,AVERROR_EOF,-1,0,1},
++        {"final_epilogue_permissive", "cam", PART("cam") CLOSE("cam") "ignored epilogue\r\n", 0,1,AVERROR_EOF,-1,0,1},
++        {"final_epilogue_strict", "cam", PART("cam") CLOSE("cam") "ignored epilogue\r\n", 1,1,AVERROR_EOF,-1,0,1},
++        {"hyphen_token_permissive", "cam--", PART("cam--") PART("cam--") CLOSE("cam--"), 0,2,AVERROR_EOF,-1,0,1},
++        {"hyphen_token_strict", "cam--", PART("cam--") PART("cam--") CLOSE("cam--"), 1,2,AVERROR_EOF,-1,0,1},
++        {"transport_padding", "cam", PART("cam") "--cam-- \t\r\n", 1,1,AVERROR_EOF,-1,0,1},
++        {"permissive_normal_boundary_change", "cam", PART("cam") PART("other") CLOSE("cam"), 0,2,AVERROR_EOF,-1,0,1},
++        {"seek_after_eof_permissive", "cam", PART("cam") PART("cam") CLOSE("cam"), 0,2,AVERROR_EOF,-1,0,1,1},
++        {"seek_after_eof_strict", "cam", PART("cam") PART("cam") CLOSE("cam"), 1,2,AVERROR_EOF,-1,0,1,1},
++        {"max70_boundary_permissive", MAX_BOUNDARY, PART(MAX_BOUNDARY) CLOSE(MAX_BOUNDARY), 0,1,AVERROR_EOF,-1,0,1},
++        {"max70_boundary_strict", MAX_BOUNDARY, PART(MAX_BOUNDARY) CLOSE(MAX_BOUNDARY), 1,1,AVERROR_EOF,-1,0,1},
++        {"max70_initial_padding", MAX_BOUNDARY, "--" MAX_BOUNDARY " \t\r\nContent-Type: image/jpeg\r\nContent-Length: 4\r\n\r\n" JPEG "\r\n--" MAX_BOUNDARY "-- \t\r\n", 1,1,AVERROR_EOF,-1,0,1},
++        {"strict_boundary_change_rejected", "cam", PART("cam") PART("other"), 1,1,AVERROR_INVALIDDATA,-1,0,0},
++        {"missing_content_type", "cam", PART("cam") "--cam\r\nContent-Length: 4\r\n\r\n" JPEG, 0,1,AVERROR_INVALIDDATA,-1,0,0},
++        {"non_jpeg_content_type", "cam", PART("cam") "--cam\r\nContent-Type: image/png\r\nContent-Length: 4\r\n\r\n" JPEG, 1,1,AVERROR_INVALIDDATA,-1,0,0},
++        {"wrong_final_permissive", "cam", PART("cam") CLOSE("other"), 0,1,AVERROR_INVALIDDATA,-1,0,0},
++        {"wrong_final_strict", "cam", PART("cam") CLOSE("other"), 1,1,AVERROR_INVALIDDATA,-1,0,0},
++        {"truncated_header", "cam", PART("cam") "--cam\r\nContent-Type: image/jpeg", 1,1,AVERROR_INVALIDDATA,-1,0,0},
++        {"between_parts_eof", "cam", PART("cam"), 0,1,AVERROR_EOF,-1,0,0},
++        {"short_declared_payload", "cam", "--cam\r\nContent-Type: image/jpeg\r\nContent-Length: 8\r\n\r\n" JPEG, 1,0,AVERROR_EOF,-1,1,0},
++        {"injected_eio_mid_payload", "cam", fault_body, 1,0,AVERROR(EIO),fault_position,1,0},
++    };
++    int passed = 0;
++    av_log_set_level(AV_LOG_ERROR);
++    for (unsigned i = 0; i < sizeof(tests)/sizeof(tests[0]); i++) passed += run_case(&tests[i]);
++    printf("SUMMARY passed=%d total=%zu\n", passed, sizeof(tests)/sizeof(tests[0]));
++    return passed == sizeof(tests)/sizeof(tests[0]) ? 0 : 1;
++}
+diff --git a/tests/ijk/run-mpjpeg-eof.sh b/tests/ijk/run-mpjpeg-eof.sh
+new file mode 100755
+index 0000000..ec46fb4
+--- /dev/null
++++ b/tests/ijk/run-mpjpeg-eof.sh
+@@ -0,0 +1,18 @@
++#!/usr/bin/env bash
++set -euo pipefail
++SOURCE_DIR=$(cd "$(dirname "$0")/../.." && pwd)
++BUILD_DIR=$(cd "${1:?Usage: [MPJPEG_SOURCE=file] [SANITIZE=1] run-mpjpeg-eof.sh FFmpeg-host-build-directory}" && pwd)
++MPJPEG_SOURCE="${MPJPEG_SOURCE:-$SOURCE_DIR/libavformat/mpjpegdec.c}"
++TEST_DIR=$(mktemp -d)
++trap 'rm -rf "$TEST_DIR"' EXIT
++EXTRA_FLAGS=()
++if [[ "${SANITIZE:-0}" == 1 ]]; then
++  EXTRA_FLAGS=(-g -O1 -fsanitize=address,undefined -fno-omit-frame-pointer)
++fi
++"${CC:-cc}" -std=c11 -D_GNU_SOURCE -DHAVE_AV_CONFIG_H -Wall -Wextra -Wno-unused-parameter \
++  -Wno-pointer-sign -Wno-missing-field-initializers -Werror=implicit-function-declaration "${EXTRA_FLAGS[@]}" \
++  -DMPJPEG_SOURCE="\"$MPJPEG_SOURCE\"" -I"$BUILD_DIR" -I"$SOURCE_DIR" -I"$SOURCE_DIR/libavformat" \
++  "$SOURCE_DIR/tests/ijk/mpjpeg-eof.c" \
++  -L"$BUILD_DIR/libavformat" -L"$BUILD_DIR/libavcodec" -L"$BUILD_DIR/libavutil" \
++  -lavformat -lavcodec -lavutil -lm -lz -lpthread -o "$TEST_DIR/mpjpeg-eof"
++"$TEST_DIR/mpjpeg-eof"
+diff --git a/tests/ijk/README-mpjpeg-eof.md b/tests/ijk/README-mpjpeg-eof.md
+new file mode 100644
+index 0000000..de39264
+--- /dev/null
++++ b/tests/ijk/README-mpjpeg-eof.md
+@@ -0,0 +1,45 @@
++# MPJPEG exact final-boundary regression
++
++The upstream n5.1.10 multipart demuxer treats an exact final MIME delimiter as a
++new part, then reports INVALIDDATA because no Content-Type follows. The fix
++retains the actual first delimiter, recognizes only that delimiter plus `--`,
++and returns stable EOF tied to the current AVIO position. A generic byte seek
++away from that position resets terminal state so the same demuxer can replay.
++Ordinary permissive boundary matching is unchanged.
++A boundary token ending in hyphens is not mistaken for a final delimiter.
++
++The test compiles the **actual selected `libavformat/mpjpegdec.c`** and links the
++existing native FFmpeg 5 static archives. It uses real custom AVIO, MIME options,
++format initialization and the demuxer's packet entry point. It does not model or
++reimplement the parser. Four-byte JPEG-marker payloads isolate MIME packet
++integrity; this is not JPEG decoding, HTTP transport, Android or player evidence.
++
++```sh
++# A configured/built native FFmpeg 5 tree is required; no Android rebuild occurs.
++bash tests/ijk/run-mpjpeg-eof.sh /path/to/ffmpeg-host-build
++
++# Reproduce red using pristine n5.1.10 source, without changing the checkout.
++git show 19feb712f5c1821d8a3fa1ad63c5bd2e3b9672eb:libavformat/mpjpegdec.c > /tmp/mpjpeg-upstream.c
++MPJPEG_SOURCE=/tmp/mpjpeg-upstream.c \
++  bash tests/ijk/run-mpjpeg-eof.sh /path/to/ffmpeg-host-build
++
++# Instrument actual changed demuxer + test; existing static archives are not
++# instrumented. LeakSanitizer is unavailable under this environment's ptrace.
++ASAN_OPTIONS=detect_leaks=0 SANITIZE=1 \
++  bash tests/ijk/run-mpjpeg-eof.sh /path/to/ffmpeg-host-build
++```
++
++Observed results: pristine upstream 9/22 (thirteen expected final-delimiter/edge-case failures);
++patched 22/22; patched ASan+UBSan 22/22.
++
++Coverage includes strict/permissive final delimiters, MIME epilogues and stable
++repeated EOF; actual `av_seek_frame(..., AVSEEK_FLAG_BYTE)` replay after EOF;
++maximum70-byte boundary tokens including initial/final padding; hyphen-ending boundary tokens; transport padding; permissive
++ordinary boundary changes; strict wrong-boundary rejection; missing/non-JPEG
++Content-Type; wrong final delimiter; truncated headers; EOF between parts;
++short declared payload marked corrupt; and injected EIO during payload transfer.
++Malformed ordinary headers still fail. Partial payloads remain corrupt and EIO
++is still propagated. No malformed input is relabeled successful finite playback.
++
++The patch does not promise automatic reconnect, timestamps for live multipart,
++or successful finite playback in IJK. Those require the separate Android suite.

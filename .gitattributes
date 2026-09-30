@@ -1,0 +1,2 @@
+# Unified patches contain context-marker spaces on blank lines.
+patches/ffmpeg5/*.patch -whitespace

@@ -236,7 +236,7 @@ ssize_t SDL_AMediaCodecJava_dequeueInputBuffer(SDL_AMediaCodec* acodec, int64_t 
     JNIEnv *env = NULL;
     if (JNI_OK != SDL_JNI_SetupThreadEnv(&env)) {
         ALOGE("%s: SetupThreadEnv failed", __func__);
-        return -1;
+        return AMEDIACODEC__UNKNOWN_ERROR;
     }
 
     SDL_AMediaCodec_Opaque *opaque = (SDL_AMediaCodec_Opaque *)acodec->opaque;
@@ -253,7 +253,7 @@ ssize_t SDL_AMediaCodecJava_dequeueInputBuffer(SDL_AMediaCodec* acodec, int64_t 
     if (J4A_ExceptionCheck__catchAll(env)) {
         ALOGE("%s: dequeueInputBuffer failed", __func__);
         opaque->is_input_buffer_valid = false;
-        return -1;
+        return AMEDIACODEC__UNKNOWN_ERROR;
     }
 
     return idx;

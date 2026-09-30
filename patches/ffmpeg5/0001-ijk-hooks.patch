@@ -1,0 +1,991 @@
+diff --git a/libavcodec/Makefile b/libavcodec/Makefile
+index 457ec58..57f7b75 100644
+--- a/libavcodec/Makefile
++++ b/libavcodec/Makefile
+@@ -1,7 +1,7 @@
+ NAME = avcodec
+ DESC = FFmpeg codec library
+ 
+-HEADERS = ac3_parser.h                                                  \
++HEADERS = packet_internal.h ac3_parser.h                                                  \
+           adts_parser.h                                                 \
+           avcodec.h                                                     \
+           avdct.h                                                       \
+diff --git a/libavformat/Makefile b/libavformat/Makefile
+index 6c6b779..cc1ead9 100644
+--- a/libavformat/Makefile
++++ b/libavformat/Makefile
+@@ -1,12 +1,21 @@
+ NAME = avformat
+ DESC = FFmpeg container format library
+ 
+-HEADERS = avformat.h                                                    \
++IJK_HEADERS += avc.h
++IJK_HEADERS += url.h
++IJK_HEADERS += internal.h
++IJK_HEADERS += avio_internal.h
++IJK_HEADERS += flv.h
++IJK_HEADERS += id3v2.h
++IJK_HEADERS += os_support.h
++IJK_HEADERS += metadata.h
++
++HEADERS = $(IJK_HEADERS) avformat.h                                                    \
+           avio.h                                                        \
+           version.h                                                     \
+           version_major.h                                               \
+ 
+-OBJS = allformats.o         \
++OBJS = ijkutils.o avc.o allformats.o         \
+        avformat.o           \
+        avio.o               \
+        aviobuf.o            \
+diff --git a/libavformat/allformats.c b/libavformat/allformats.c
+index 32698b8..94612d4 100644
+--- a/libavformat/allformats.c
++++ b/libavformat/allformats.c
+@@ -498,6 +498,8 @@ extern const AVInputFormat  ff_xmv_demuxer;
+ extern const AVInputFormat  ff_xvag_demuxer;
+ extern const AVInputFormat  ff_xwma_demuxer;
+ extern const AVInputFormat  ff_yop_demuxer;
++extern AVInputFormat ff_ijklivehook_demuxer;
++extern AVInputFormat ff_ijklas_demuxer;
+ extern const AVInputFormat  ff_yuv4mpegpipe_demuxer;
+ extern const AVOutputFormat ff_yuv4mpegpipe_muxer;
+ /* image demuxers */
+diff --git a/libavformat/concatdec.c b/libavformat/concatdec.c
+index dddbc6d..7a83273 100644
+--- a/libavformat/concatdec.c
++++ b/libavformat/concatdec.c
+@@ -354,6 +354,12 @@ static int open_file(AVFormatContext *avf, unsigned fileno)
+     if (ret < 0)
+         return ret;
+ 
++    ret = av_dict_set_int(&options, "cur_file_no", fileno, 0);
++    if (ret < 0) {
++        av_dict_free(&options);
++        return ret;
++    }
++
+     if ((ret = avformat_open_input(&cat->avf, file->url, NULL, &options)) < 0 ||
+         (ret = avformat_find_stream_info(cat->avf, NULL)) < 0) {
+         av_log(avf, AV_LOG_ERROR, "Impossible to open '%s'\n", file->url);
+diff --git a/libavformat/ijkutils.c b/libavformat/ijkutils.c
+new file mode 100644
+index 0000000..21df4b1
+--- /dev/null
++++ b/libavformat/ijkutils.c
+@@ -0,0 +1,118 @@
++/*
++ * utils.c
++ *
++ * Copyright (c) 2003 Fabrice Bellard
++ * Copyright (c) 2013 Zhang Rui <bbcallen@gmail.com>
++ *
++ * This file is part of ijkPlayer.
++ *
++ * ijkPlayer is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * ijkPlayer is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with ijkPlayer; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
++ */
++
++#include <stdlib.h>
++#include "url.h"
++#include "avformat.h"
++
++
++#define IJK_FF_PROTOCOL(x)                                                                          \
++extern URLProtocol ff_##x##_protocol;                                                               \
++int ijkav_register_##x##_protocol(URLProtocol *protocol, int protocol_size);                        \
++int ijkav_register_##x##_protocol(URLProtocol *protocol, int protocol_size)                         \
++{                                                                                                   \
++    if (!protocol || protocol_size != sizeof(URLProtocol)) {                                                     \
++        av_log(NULL, AV_LOG_ERROR, "ijkav_register_##x##_protocol: ABI mismatch.\n");               \
++        return -1;                                                                                  \
++    }                                                                                               \
++    memcpy(&ff_##x##_protocol, protocol, protocol_size);                                            \
++    return 0;                                                                                       \
++}
++
++#define IJK_DUMMY_PROTOCOL(x)                                       \
++IJK_FF_PROTOCOL(x);                                                 \
++static const AVClass ijk_##x##_context_class = {                    \
++    .class_name = #x,                                               \
++    .item_name  = av_default_item_name,                             \
++    .version    = LIBAVUTIL_VERSION_INT,                            \
++    };                                                              \
++                                                                    \
++URLProtocol ff_##x##_protocol = {                                   \
++    .name                = #x,                                      \
++    .url_open2           = ijkdummy_open,                           \
++    .priv_data_size      = 1,                                       \
++    .priv_data_class     = &ijk_##x##_context_class,                \
++};
++
++static int ijkdummy_open(URLContext *h, const char *arg, int flags, AVDictionary **options)
++{
++    return -1;
++}
++
++int ijkav_register_async_protocol(URLProtocol *protocol, int protocol_size);
++int ijkav_register_async_protocol(URLProtocol *protocol, int protocol_size)
++{
++    if (!protocol || protocol_size != sizeof(URLProtocol)) {
++        av_log(NULL, AV_LOG_ERROR, "ijkav_register_async_protocol: ABI mismatch.\n");
++        return -1;
++    }
++
++    /*
++     * On FFmpeg 4.3 and 5.1 the built-in ff_async_protocol lives in read-only memory.
++     * Legacy ijk flow memcpy() overwrote it at runtime, which crashes with
++     * SEGV_ACCERR on Android 16KB-page binaries.
++     *
++     * Keep the registration call as a compatibility no-op and continue with the
++     * built-in async protocol implementation.
++     */
++    av_log(NULL, AV_LOG_WARNING,
++           "ijkav_register_async_protocol: skip overriding built-in async protocol on FFmpeg 5.1\n");
++    (void)protocol;
++    return 0;
++}
++IJK_DUMMY_PROTOCOL(ijkmediadatasource);
++IJK_DUMMY_PROTOCOL(ijkhttphook);
++IJK_DUMMY_PROTOCOL(ijklongurl);
++IJK_DUMMY_PROTOCOL(ijksegment);
++IJK_DUMMY_PROTOCOL(ijktcphook);
++IJK_DUMMY_PROTOCOL(ijkio);
++
++#define IJK_FF_DEMUXER(x)                                                                          \
++extern AVInputFormat ff_##x##_demuxer;                                                               \
++int ijkav_register_##x##_demuxer(AVInputFormat *demuxer, int demuxer_size);                        \
++int ijkav_register_##x##_demuxer(AVInputFormat *demuxer, int demuxer_size)                         \
++{                                                                                                   \
++    if (!demuxer || demuxer_size != sizeof(AVInputFormat)) {                                                     \
++        av_log(NULL, AV_LOG_ERROR, "ijkav_register_##x##_demuxer: ABI mismatch.\n");               \
++        return -1;                                                                                  \
++    }                                                                                               \
++    memcpy(&ff_##x##_demuxer, demuxer, demuxer_size);                                            \
++    return 0;                                                                                       \
++}
++
++#define IJK_DUMMY_DEMUXER(x)                                        \
++IJK_FF_DEMUXER(x);                                                  \
++static const AVClass ijk_##x##_demuxer_class = {                    \
++    .class_name = #x,                                               \
++    .item_name  = av_default_item_name,                             \
++    .version    = LIBAVUTIL_VERSION_INT,                            \
++    };                                                              \
++                                                                    \
++AVInputFormat ff_##x##_demuxer = {                                  \
++    .name                = #x,                                      \
++    .priv_data_size      = 1,                                       \
++    .priv_class          = &ijk_##x##_demuxer_class,                \
++};
++
++IJK_DUMMY_DEMUXER(ijklivehook);
++IJK_DUMMY_DEMUXER(ijklas);
+diff --git a/libavformat/protocols.c b/libavformat/protocols.c
+index 6ee62a5..af39d74 100644
+--- a/libavformat/protocols.c
++++ b/libavformat/protocols.c
+@@ -39,6 +39,12 @@ extern const URLProtocol ff_http_protocol;
+ extern const URLProtocol ff_httpproxy_protocol;
+ extern const URLProtocol ff_https_protocol;
+ extern const URLProtocol ff_icecast_protocol;
++extern URLProtocol ff_ijkhttphook_protocol;
++extern URLProtocol ff_ijklongurl_protocol;
++extern URLProtocol ff_ijkmediadatasource_protocol;
++extern URLProtocol ff_ijksegment_protocol;
++extern URLProtocol ff_ijktcphook_protocol;
++extern URLProtocol ff_ijkio_protocol;
+ extern const URLProtocol ff_mmsh_protocol;
+ extern const URLProtocol ff_mmst_protocol;
+ extern const URLProtocol ff_md5_protocol;
+diff --git a/libavutil/Makefile b/libavutil/Makefile
+index 9435a0b..fe04ced 100644
+--- a/libavutil/Makefile
++++ b/libavutil/Makefile
+@@ -1,7 +1,7 @@
+ NAME = avutil
+ DESC = FFmpeg utility library
+ 
+-HEADERS = adler32.h                                                     \
++HEADERS = application.h adler32.h                                                     \
+           aes.h                                                         \
+           aes_ctr.h                                                     \
+           attributes.h                                                  \
+@@ -99,7 +99,7 @@ ARCH_HEADERS = bswap.h                                                  \
+ BUILT_HEADERS = avconfig.h                                              \
+                 ffversion.h
+ 
+-OBJS = adler32.o                                                        \
++OBJS = application.o adler32.o                                                        \
+        aes.o                                                            \
+        aes_ctr.o                                                        \
+        audio_fifo.o                                                     \
+diff --git a/libavutil/application.c b/libavutil/application.c
+new file mode 100644
+index 0000000..19ab993
+--- /dev/null
++++ b/libavutil/application.c
+@@ -0,0 +1,217 @@
++/*
++ * copyright (c) 2016 Zhang Rui
++ *
++ * This file is part of FFmpeg.
++ *
++ * FFmpeg is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * FFmpeg is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with FFmpeg; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
++ */
++
++#include "application.h"
++#include "libavformat/network.h"
++#include "libavutil/avstring.h"
++#include "libavutil/error.h"
++#include "libavutil/mem.h"
++
++void av_application_on_io_traffic(AVApplicationContext *h, AVAppIOTraffic *event);
++
++int av_application_alloc(AVApplicationContext **ph, void *opaque)
++{
++    AVApplicationContext *h = NULL;
++
++    h = av_mallocz(sizeof(AVApplicationContext));
++    if (!h)
++        return AVERROR(ENOMEM);
++
++    h->opaque = opaque;
++
++    *ph = h;
++    return 0;
++}
++
++int av_application_open(AVApplicationContext **ph, void *opaque)
++{
++    int ret = av_application_alloc(ph, opaque);
++    if (ret)
++        return ret;
++
++    return 0;
++}
++
++void av_application_close(AVApplicationContext *h)
++{
++    av_free(h);
++}
++
++void av_application_closep(AVApplicationContext **ph)
++{
++    if (!ph || !*ph)
++        return;
++
++    av_application_close(*ph);
++    *ph = NULL;
++}
++
++void av_application_on_http_event(AVApplicationContext *h, int event_type, AVAppHttpEvent *event)
++{
++    if (h && h->func_on_app_event)
++        h->func_on_app_event(h, event_type, (void *)event, sizeof(AVAppHttpEvent));
++}
++
++void av_application_will_http_open(AVApplicationContext *h, void *obj, const char *url)
++{
++    AVAppHttpEvent event = {0};
++
++    if (!h || !obj || !url)
++        return;
++
++    event.obj        = obj;
++    av_strlcpy(event.url, url, sizeof(event.url));
++
++    av_application_on_http_event(h, AVAPP_EVENT_WILL_HTTP_OPEN, &event);
++}
++
++void av_application_did_http_open(AVApplicationContext *h, void *obj, const char *url, int error, int http_code, int64_t filesize)
++{
++    AVAppHttpEvent event = {0};
++
++    if (!h || !obj || !url)
++        return;
++
++    event.obj        = obj;
++    av_strlcpy(event.url, url, sizeof(event.url));
++    event.error     = error;
++    event.http_code = http_code;
++    event.filesize  = filesize;
++
++    av_application_on_http_event(h, AVAPP_EVENT_DID_HTTP_OPEN, &event);
++}
++
++void av_application_will_http_seek(AVApplicationContext *h, void *obj, const char *url, int64_t offset)
++{
++    AVAppHttpEvent event = {0};
++
++    if (!h || !obj || !url)
++        return;
++
++    event.obj        = obj;
++    event.offset     = offset;
++    av_strlcpy(event.url, url, sizeof(event.url));
++
++    av_application_on_http_event(h, AVAPP_EVENT_WILL_HTTP_SEEK, &event);
++}
++
++void av_application_did_http_seek(AVApplicationContext *h, void *obj, const char *url, int64_t offset, int error, int http_code)
++{
++    AVAppHttpEvent event = {0};
++
++    if (!h || !obj || !url)
++        return;
++
++    event.obj        = obj;
++    event.offset     = offset;
++    av_strlcpy(event.url, url, sizeof(event.url));
++    event.error     = error;
++    event.http_code = http_code;
++
++    av_application_on_http_event(h, AVAPP_EVENT_DID_HTTP_SEEK, &event);
++}
++
++void av_application_on_io_traffic(AVApplicationContext *h, AVAppIOTraffic *event)
++{
++    if (h && h->func_on_app_event)
++        h->func_on_app_event(h, AVAPP_EVENT_IO_TRAFFIC, (void *)event, sizeof(AVAppIOTraffic));
++}
++
++int  av_application_on_io_control(AVApplicationContext *h, int event_type, AVAppIOControl *control)
++{
++    if (h && h->func_on_app_event)
++        return h->func_on_app_event(h, event_type, (void *)control, sizeof(AVAppIOControl));
++    return 0;
++}
++
++int av_application_on_tcp_will_open(AVApplicationContext *h)
++{
++    if (h && h->func_on_app_event) {
++        AVAppTcpIOControl control = {0};
++        return h->func_on_app_event(h, AVAPP_CTRL_WILL_TCP_OPEN, (void *)&control, sizeof(AVAppTcpIOControl));
++    }
++    return 0;
++}
++
++// only callback returns error
++int av_application_on_tcp_did_open(AVApplicationContext *h, int error, int fd)
++{
++    struct sockaddr_storage so_stg;
++    int       ret = 0;
++    socklen_t so_len = sizeof(so_stg);
++    int       so_family;
++    AVAppTcpIOControl control = {0};
++    char      *so_ip_name = control.ip;
++
++    if (!h || !h->func_on_app_event || fd <= 0)
++        return 0;
++
++    ret = getpeername(fd, (struct sockaddr *)&so_stg, &so_len);
++    if (ret)
++        return 0;
++    control.error = error;
++    control.fd = fd;
++
++    so_family = ((struct sockaddr*)&so_stg)->sa_family;
++    switch (so_family) {
++        case AF_INET: {
++            struct sockaddr_in* in4 = (struct sockaddr_in*)&so_stg;
++            if (inet_ntop(AF_INET, &(in4->sin_addr), so_ip_name, sizeof(control.ip))) {
++                control.family = AF_INET;
++                control.port = in4->sin_port;
++            }
++            break;
++        }
++        case AF_INET6: {
++            struct sockaddr_in6* in6 = (struct sockaddr_in6*)&so_stg;
++            if (inet_ntop(AF_INET6, &(in6->sin6_addr), so_ip_name, sizeof(control.ip))) {
++                control.family = AF_INET6;
++                control.port = in6->sin6_port;
++            }
++            break;
++        }
++    }
++
++    return h->func_on_app_event(h, AVAPP_CTRL_DID_TCP_OPEN, (void *)&control, sizeof(AVAppTcpIOControl));
++}
++
++void av_application_on_async_statistic(AVApplicationContext *h, AVAppAsyncStatistic *statistic)
++{
++    if (h && h->func_on_app_event)
++        h->func_on_app_event(h, AVAPP_EVENT_ASYNC_STATISTIC, (void *)statistic, sizeof(AVAppAsyncStatistic));
++}
++
++void av_application_on_async_read_speed(AVApplicationContext *h, AVAppAsyncReadSpeed *speed)
++{
++    if (h && h->func_on_app_event)
++        h->func_on_app_event(h, AVAPP_EVENT_ASYNC_READ_SPEED, (void *)speed, sizeof(AVAppAsyncReadSpeed));
++}
++
++void av_application_did_io_tcp_read(AVApplicationContext *h, void *obj, int bytes)
++{
++    AVAppIOTraffic event = {0};
++    if (!h || !obj || bytes <= 0)
++        return;
++
++    event.obj        = obj;
++    event.bytes      = bytes;
++
++    av_application_on_io_traffic(h, &event);
++}
+diff --git a/libavutil/application.h b/libavutil/application.h
+new file mode 100644
+index 0000000..e9a0461
+--- /dev/null
++++ b/libavutil/application.h
+@@ -0,0 +1,123 @@
++/*
++ * copyright (c) 2016 Zhang Rui
++ *
++ * This file is part of FFmpeg.
++ *
++ * FFmpeg is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * FFmpeg is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with FFmpeg; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
++ */
++
++#ifndef AVUTIL_APPLICATION_H
++#define AVUTIL_APPLICATION_H
++
++#include <stddef.h>
++#include <stdint.h>
++#include "libavutil/log.h"
++
++#define AVAPP_EVENT_WILL_HTTP_OPEN  1 //AVAppHttpEvent
++#define AVAPP_EVENT_DID_HTTP_OPEN   2 //AVAppHttpEvent
++#define AVAPP_EVENT_WILL_HTTP_SEEK  3 //AVAppHttpEvent
++#define AVAPP_EVENT_DID_HTTP_SEEK   4 //AVAppHttpEvent
++
++#define AVAPP_EVENT_ASYNC_STATISTIC     0x11000 //AVAppAsyncStatistic
++#define AVAPP_EVENT_ASYNC_READ_SPEED    0x11001 //AVAppAsyncReadSpeed
++#define AVAPP_EVENT_IO_TRAFFIC          0x12204 //AVAppIOTraffic
++
++#define AVAPP_CTRL_WILL_TCP_OPEN   0x20001 //AVAppTcpIOControl
++#define AVAPP_CTRL_DID_TCP_OPEN    0x20002 //AVAppTcpIOControl
++
++#define AVAPP_CTRL_WILL_HTTP_OPEN  0x20003 //AVAppIOControl
++#define AVAPP_CTRL_WILL_LIVE_OPEN  0x20005 //AVAppIOControl
++
++#define AVAPP_CTRL_WILL_CONCAT_SEGMENT_OPEN 0x20007 //AVAppIOControl
++
++typedef struct AVAppIOControl {
++    size_t  size;
++    char    url[4096];      /* in, out */
++    int     segment_index;  /* in, default = 0 */
++    int     retry_counter;  /* in */
++
++    int     is_handled;     /* out, default = false */
++    int     is_url_changed; /* out, default = false */
++} AVAppIOControl;
++
++typedef struct AVAppTcpIOControl {
++    int  error;
++    int  family;
++    char ip[96];
++    int  port;
++    int  fd;
++} AVAppTcpIOControl;
++
++typedef struct AVAppAsyncStatistic {
++    size_t  size;
++    int64_t buf_backwards;
++    int64_t buf_forwards;
++    int64_t buf_capacity;
++} AVAppAsyncStatistic;
++
++typedef struct AVAppAsyncReadSpeed {
++    size_t  size;
++    int     is_full_speed;
++    int64_t io_bytes;
++    int64_t elapsed_milli;
++} AVAppAsyncReadSpeed;
++
++typedef struct AVAppHttpEvent
++{
++    void    *obj;
++    char     url[4096];
++    int64_t  offset;
++    int      error;
++    int      http_code;
++    int64_t  filesize;
++} AVAppHttpEvent;
++
++typedef struct AVAppIOTraffic
++{
++    void   *obj;
++    int     bytes;
++} AVAppIOTraffic;
++
++typedef struct AVApplicationContext AVApplicationContext;
++struct AVApplicationContext {
++    const AVClass *av_class;    /**< information for av_log(). Set by av_application_open(). */
++    void *opaque;               /**< user data. */
++
++    int (*func_on_app_event)(AVApplicationContext *h, int event_type ,void *obj, size_t size);
++};
++
++int  av_application_alloc(AVApplicationContext **ph, void *opaque);
++int  av_application_open(AVApplicationContext **ph, void *opaque);
++void av_application_close(AVApplicationContext *h);
++void av_application_closep(AVApplicationContext **ph);
++
++void av_application_on_http_event(AVApplicationContext *h, int event_type, AVAppHttpEvent *event);
++void av_application_will_http_open(AVApplicationContext *h, void *obj, const char *url);
++void av_application_did_http_open(AVApplicationContext *h, void *obj, const char *url, int error, int http_code, int64_t filesize);
++void av_application_will_http_seek(AVApplicationContext *h, void *obj, const char *url, int64_t offset);
++void av_application_did_http_seek(AVApplicationContext *h, void *obj, const char *url, int64_t offset, int error, int http_code);
++
++void av_application_did_io_tcp_read(AVApplicationContext *h, void *obj, int bytes);
++
++int  av_application_on_io_control(AVApplicationContext *h, int event_type, AVAppIOControl *control);
++
++int av_application_on_tcp_will_open(AVApplicationContext *h);
++int av_application_on_tcp_did_open(AVApplicationContext *h, int error, int fd);
++
++void av_application_on_async_statistic(AVApplicationContext *h, AVAppAsyncStatistic *statistic);
++void av_application_on_async_read_speed(AVApplicationContext *h, AVAppAsyncReadSpeed *speed);
++
++
++#endif /* AVUTIL_APPLICATION_H */
+diff --git a/libavutil/dict.c b/libavutil/dict.c
+index 9d3d96c..5bf80f7 100644
+--- a/libavutil/dict.c
++++ b/libavutil/dict.c
+@@ -19,6 +19,8 @@
+  */
+ 
+ #include <string.h>
++#include <errno.h>
++#include <inttypes.h>
+ 
+ #include "avstring.h"
+ #include "dict.h"
+@@ -153,6 +155,40 @@ int av_dict_set_int(AVDictionary **pm, const char *key, int64_t value,
+     return av_dict_set(pm, key, valuestr, flags);
+ }
+ 
++int av_dict_set_intptr(AVDictionary **pm, const char *key, uintptr_t value, int flags)
++{
++    char valuestr[2 + 2 * sizeof(uintptr_t) + 1];
++    snprintf(valuestr, sizeof(valuestr), "0x%"PRIxPTR, value);
++    flags &= ~AV_DICT_DONT_STRDUP_VAL;
++    return av_dict_set(pm, key, valuestr, flags);
++}
++
++uintptr_t av_dict_get_intptr(const AVDictionary *m, const char *key)
++{
++    AVDictionaryEntry *entry = av_dict_get(m, key, NULL, 0);
++    return entry ? av_dict_strtoptr(entry->value) : 0;
++}
++
++uintptr_t av_dict_strtoptr(char *value)
++{
++    uintmax_t parsed;
++    char *next;
++    if (!value || value[0] != '0' || (value[1] | 0x20) != 'x')
++        return 0;
++    errno = 0;
++    parsed = strtoumax(value, &next, 16);
++    if (errno == ERANGE || next == value || *next || parsed > UINTPTR_MAX)
++        return 0;
++    return (uintptr_t)parsed;
++}
++
++char *av_dict_ptrtostr(uintptr_t value)
++{
++    char valuestr[2 + 2 * sizeof(uintptr_t) + 1];
++    snprintf(valuestr, sizeof(valuestr), "0x%"PRIxPTR, value);
++    return av_strdup(valuestr);
++}
++
+ static int parse_key_value_pair(AVDictionary **pm, const char **buf,
+                                 const char *key_val_sep, const char *pairs_sep,
+                                 int flags)
+diff --git a/libavutil/dict.h b/libavutil/dict.h
+index 0d1afc6..200aa53 100644
+--- a/libavutil/dict.h
++++ b/libavutil/dict.h
+@@ -135,6 +135,12 @@ int av_dict_set(AVDictionary **pm, const char *key, const char *value, int flags
+  */
+ int av_dict_set_int(AVDictionary **pm, const char *key, int64_t value, int flags);
+ 
++/* ijkplayer pointer-valued options. Returned strings are freed with av_free(). */
++int av_dict_set_intptr(AVDictionary **pm, const char *key, uintptr_t value, int flags);
++uintptr_t av_dict_get_intptr(const AVDictionary *m, const char *key);
++uintptr_t av_dict_strtoptr(char *value);
++char *av_dict_ptrtostr(uintptr_t value);
++
+ /**
+  * Parse the key/value pairs list and add the parsed entries to a dictionary.
+  *
+diff --git a/tests/ijk/README.md b/tests/ijk/README.md
+new file mode 100644
+index 0000000..f7b9865
+--- /dev/null
++++ b/tests/ijk/README.md
+@@ -0,0 +1,43 @@
++# ijkplayer fork contract tests
++
++These tests exercise the FFmpeg-facing hooks carried forward from
++CarGuo/FFmpeg `ijk-n4.3-20260301-007` onto upstream FFmpeg `n5.1.10`.
++They are native host tests, not Android MediaCodec or end-to-end player tests.
++
++## Build and run
++
++Use an out-of-tree native FFmpeg build (no x86 assembler required):
++
++```sh
++mkdir -p ../ffmpeg-host && cd ../ffmpeg-host
++../ffmpeg5/configure --disable-doc --disable-x86asm --disable-autodetect \
++  --disable-programs --disable-avdevice --disable-avfilter --disable-postproc \
++  --disable-everything --enable-pic \
++  --enable-protocol=file,async,ijkio,ijkhttphook,ijklongurl,ijkmediadatasource,ijksegment,ijktcphook \
++  --enable-demuxer=ijklivehook,ijklas,concat,wav,mov \
++  --enable-decoder=pcm_s16le,png,h264,aac --enable-encoder=png \
++  --enable-parser=h264,aac --enable-zlib
++make -j4
++../ffmpeg5/tests/ijk/run-contract.sh .
++SANITIZE=1 ../ffmpeg5/tests/ijk/run-contract.sh .
++```
++
++The sanitizer variant instruments the ported protocol/application/dictionary
++source and test harness. Existing upstream FFmpeg static archives are not
++instrumented. On an execution environment using ptrace, LeakSanitizer reports
++that it cannot run; `ASAN_OPTIONS=detect_leaks=0` allows ASan and UBSan to run,
++but is not a leak-check pass.
++
++## Coverage
++
++- Six configurable custom URL protocols, registration/open dispatch and rejection
++  of null or mismatched ABI-size objects
++- Two custom demuxers, registry lookup and input opening
++- Built-in async protocol remains unchanged and can read a file after the
++  compatibility no-op registration
++- Concat segment indices reach custom segment URL callbacks in order (0, 1)
++- Pointer dictionary helpers preserve zero, high-bit, maximum and real addresses
++- Callback control return values, HTTP filesize payloads larger than 32 bits,
++  async buffer statistics, traffic payloads and close/reset behavior
++
++Expected ABI-mismatch diagnostics are from negative tests.
+diff --git a/tests/ijk/contract.c b/tests/ijk/contract.c
+new file mode 100644
+index 0000000..e9cbc8d
+--- /dev/null
++++ b/tests/ijk/contract.c
+@@ -0,0 +1,254 @@
++/* Regression contract for the ijkplayer additions to FFmpeg 5.1. */
++#include <inttypes.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include "libavformat/avformat.h"
++#include "libavformat/url.h"
++#include "libavutil/application.h"
++#include "libavutil/dict.h"
++#include "libavutil/error.h"
++#include "libavutil/mem.h"
++
++#define CHECK(expr) do { if (!(expr)) { \
++    fprintf(stderr, "CHECK failed at %s:%d: %s\n", __FILE__, __LINE__, #expr); \
++    abort(); } } while (0)
++
++#define PROTOCOL_DECL(x) int ijkav_register_##x##_protocol(URLProtocol *, int)
++PROTOCOL_DECL(ijkio);
++PROTOCOL_DECL(ijkhttphook);
++PROTOCOL_DECL(ijktcphook);
++PROTOCOL_DECL(ijklongurl);
++PROTOCOL_DECL(ijkmediadatasource);
++PROTOCOL_DECL(ijksegment);
++PROTOCOL_DECL(async);
++int ijkav_register_ijklivehook_demuxer(AVInputFormat *, int);
++int ijkav_register_ijklas_demuxer(AVInputFormat *, int);
++extern const URLProtocol ff_async_protocol;
++
++static int opens, callback_count, last_event, segment_count;
++static int segment_indices[8];
++static AVAppHttpEvent http_event;
++static AVAppAsyncStatistic async_stat;
++static AVAppIOTraffic traffic;
++
++static int event_callback(AVApplicationContext *h, int type, void *obj, size_t size)
++{
++    CHECK(h->opaque == &callback_count);
++    ++callback_count;
++    last_event = type;
++    if (type == AVAPP_EVENT_DID_HTTP_OPEN) {
++        CHECK(size == sizeof(http_event));
++        http_event = *(AVAppHttpEvent *)obj;
++    } else if (type == AVAPP_EVENT_ASYNC_STATISTIC) {
++        CHECK(size == sizeof(async_stat));
++        async_stat = *(AVAppAsyncStatistic *)obj;
++    } else if (type == AVAPP_EVENT_IO_TRAFFIC) {
++        CHECK(size == sizeof(traffic));
++        traffic = *(AVAppIOTraffic *)obj;
++    }
++    return -987;
++}
++
++static void test_application(void)
++{
++    AVApplicationContext *ctx = NULL;
++    AVAppAsyncStatistic stat = {sizeof(stat), 11, 22, 33};
++    AVAppIOControl control = {0};
++    CHECK(av_application_open(&ctx, &callback_count) == 0 && ctx);
++    ctx->func_on_app_event = event_callback;
++    av_application_did_http_open(ctx, ctx, "https://example.invalid/video", -9, 206, INT64_C(0x100000123));
++    CHECK(last_event == AVAPP_EVENT_DID_HTTP_OPEN && callback_count == 1);
++    CHECK(http_event.obj == ctx && http_event.error == -9 && http_event.http_code == 206);
++    CHECK(http_event.filesize == INT64_C(0x100000123));
++    CHECK(!strcmp(http_event.url, "https://example.invalid/video"));
++    av_application_on_async_statistic(ctx, &stat);
++    CHECK(async_stat.buf_backwards == 11 && async_stat.buf_forwards == 22 && async_stat.buf_capacity == 33);
++    av_application_did_io_tcp_read(ctx, ctx, 19);
++    CHECK(traffic.obj == ctx && traffic.bytes == 19);
++    CHECK(av_application_on_io_control(ctx, AVAPP_CTRL_WILL_CONCAT_SEGMENT_OPEN, &control) == -987);
++    CHECK(av_application_on_tcp_will_open(ctx) == -987);
++    av_application_closep(&ctx);
++    CHECK(!ctx);
++    av_application_closep(&ctx);
++    CHECK(av_application_on_io_control(NULL, 0, &control) == 0);
++    puts("PASS application callback ABI and 64-bit filesize");
++}
++
++static void test_pointers(void)
++{
++    AVDictionary *dict = NULL;
++    uintptr_t values[] = {0, 1, UINTPTR_MAX, UINTPTR_MAX / 2 + 1, (uintptr_t)&dict};
++    size_t i;
++    for (i = 0; i < sizeof(values) / sizeof(values[0]); ++i) {
++        char *text = av_dict_ptrtostr(values[i]);
++        CHECK(text && !strncmp(text, "0x", 2));
++        CHECK(av_dict_strtoptr(text) == values[i]);
++        CHECK(av_dict_set_intptr(&dict, "ptr", values[i], AV_DICT_DONT_STRDUP_VAL) == 0);
++        CHECK(av_dict_get_intptr(dict, "ptr") == values[i]);
++        av_free(text);
++    }
++    CHECK(av_dict_get_intptr(dict, "missing") == 0);
++    CHECK(av_dict_strtoptr(NULL) == 0);
++    CHECK(av_dict_strtoptr("") == 0);
++    CHECK(av_dict_strtoptr("1") == 0);
++    CHECK(av_dict_strtoptr("0x1suffix") == 0);
++    CHECK(av_dict_strtoptr("0x10000000000000000") == 0);
++    CHECK(av_dict_strtoptr("0XAB") == 0xab);
++    av_dict_free(&dict);
++    puts("PASS pointer option roundtrips including high-bit addresses");
++}
++
++static int dummy_open(URLContext *h, const char *url, int flags, AVDictionary **options)
++{
++    (void)h; (void)url; (void)flags; (void)options;
++    ++opens;
++    return 0;
++}
++static int dummy_read(URLContext *h, unsigned char *buf, int size)
++{
++    (void)h; (void)buf; (void)size;
++    return AVERROR_EOF;
++}
++
++static void test_protocol(const char *name, int (*register_protocol)(URLProtocol *, int))
++{
++    URLProtocol protocol = {.name = name, .url_open2 = dummy_open, .url_read = dummy_read};
++    URLContext *ctx = NULL;
++    char url[96];
++    int before = opens;
++    CHECK(register_protocol(&protocol, sizeof(protocol) - 1) < 0);
++    CHECK(register_protocol(NULL, sizeof(protocol)) < 0);
++    CHECK(register_protocol(&protocol, sizeof(protocol)) == 0);
++    snprintf(url, sizeof(url), "%s:test", name);
++    CHECK(ffurl_open_whitelist(&ctx, url, AVIO_FLAG_READ, NULL, NULL, name, NULL, NULL) == 0);
++    CHECK(opens == before + 1);
++    ffurl_closep(&ctx);
++}
++
++static int demux_header(AVFormatContext *ctx) { (void)ctx; return 0; }
++static int demux_packet(AVFormatContext *ctx, AVPacket *pkt) { (void)ctx; (void)pkt; return AVERROR_EOF; }
++static void test_demuxer(const char *name, int (*register_demuxer)(AVInputFormat *, int))
++{
++    AVInputFormat demuxer = {.name = name, .flags = AVFMT_NOFILE,
++        .read_header = demux_header, .read_packet = demux_packet};
++    const AVInputFormat *found;
++    AVFormatContext *ctx = NULL;
++    CHECK(register_demuxer(&demuxer, sizeof(demuxer) - 1) < 0);
++    CHECK(register_demuxer(NULL, sizeof(demuxer)) < 0);
++    CHECK(register_demuxer(&demuxer, sizeof(demuxer)) == 0);
++    found = av_find_input_format(name);
++    CHECK(found && found->read_header == demux_header);
++    CHECK(avformat_open_input(&ctx, "unused", found, NULL) == 0);
++    avformat_close_input(&ctx);
++}
++
++/* One millisecond of 8 kHz mono signed 16-bit PCM. */
++static const unsigned char wav[] = {
++    'R','I','F','F',52,0,0,0,'W','A','V','E',
++    'f','m','t',' ',16,0,0,0,1,0,1,0,0x40,0x1f,0,0,
++    0x80,0x3e,0,0,2,0,16,0,'d','a','t','a',16,0,0,0,
++    0,0,1,0,2,0,3,0,4,0,5,0,6,0,7,0
++};
++typedef struct SegmentData { size_t pos; } SegmentData;
++static int segment_open(URLContext *h, const char *url, int flags, AVDictionary **opts)
++{
++    AVDictionaryEntry *index = av_dict_get(*opts, "cur_file_no", NULL, 0);
++    CHECK(index && segment_count < 8);
++    segment_indices[segment_count++] = atoi(index->value);
++    av_dict_set(opts, "cur_file_no", NULL, 0);
++    h->is_streamed = 0;
++    return 0;
++}
++static int segment_read(URLContext *h, unsigned char *buf, int size)
++{
++    SegmentData *data = h->priv_data;
++    if (data->pos >= sizeof(wav)) return AVERROR_EOF;
++    if ((size_t)size > sizeof(wav) - data->pos) size = (int)(sizeof(wav) - data->pos);
++    memcpy(buf, wav + data->pos, size);
++    data->pos += size;
++    return size;
++}
++static int64_t segment_seek(URLContext *h, int64_t pos, int whence)
++{
++    SegmentData *data = h->priv_data;
++    if (whence == AVSEEK_SIZE) return sizeof(wav);
++    if (whence == SEEK_CUR) pos += data->pos;
++    else if (whence == SEEK_END) pos += sizeof(wav);
++    else if (whence != SEEK_SET) return AVERROR(EINVAL);
++    if (pos < 0 || (uint64_t)pos > sizeof(wav)) return AVERROR(EINVAL);
++    data->pos = pos;
++    return pos;
++}
++
++static void test_concat(const char *path)
++{
++    URLProtocol protocol = {.name = "ijksegment", .url_open2 = segment_open,
++        .url_read = segment_read, .url_seek = segment_seek, .priv_data_size = sizeof(SegmentData)};
++    AVDictionary *options = NULL;
++    AVFormatContext *ctx = NULL;
++    AVPacket *packet = av_packet_alloc();
++    FILE *file = fopen(path, "wb");
++    int ret;
++    CHECK(file && packet);
++    fputs("ffconcat version 1.0\nfile 'ijksegment:0'\nfile 'ijksegment:1'\n", file);
++    fclose(file);
++    CHECK(ijkav_register_ijksegment_protocol(&protocol, sizeof(protocol)) == 0);
++    av_dict_set(&options, "safe", "0", 0);
++    av_dict_set(&options, "protocol_whitelist", "file,ijksegment", 0);
++    CHECK(avformat_open_input(&ctx, path, av_find_input_format("concat"), &options) == 0);
++    while ((ret = av_read_frame(ctx, packet)) >= 0) av_packet_unref(packet);
++    CHECK(ret == AVERROR_EOF);
++    CHECK(segment_count == 2 && segment_indices[0] == 0 && segment_indices[1] == 1);
++    avformat_close_input(&ctx);
++    av_packet_free(&packet);
++    av_dict_free(&options);
++    puts("PASS concat segment index propagation through registered URL protocol");
++}
++
++static void test_async(const char *path)
++{
++    URLProtocol protocol = {.name = "unused", .url_open2 = dummy_open};
++    int (*original_open)(URLContext *, const char *, int, AVDictionary **) = ff_async_protocol.url_open2;
++    AVIOContext *io = NULL;
++    AVDictionary *options = NULL;
++    unsigned char data[4];
++    char url[4096];
++    FILE *file = fopen(path, "wb");
++    CHECK(file && fwrite(wav, 1, sizeof(wav), file) == sizeof(wav));
++    fclose(file);
++    CHECK(ijkav_register_async_protocol(&protocol, sizeof(protocol) - 1) < 0);
++    CHECK(ijkav_register_async_protocol(&protocol, sizeof(protocol)) == 0);
++    CHECK(ff_async_protocol.url_open2 == original_open && !strcmp(ff_async_protocol.name, "async"));
++    snprintf(url, sizeof(url), "async:%s", path);
++    av_dict_set(&options, "protocol_whitelist", "async,file", 0);
++    CHECK(avio_open2(&io, url, AVIO_FLAG_READ, NULL, &options) == 0);
++    CHECK(avio_read(io, data, sizeof(data)) == sizeof(data) && !memcmp(data, "RIFF", 4));
++    avio_closep(&io);
++    av_dict_free(&options);
++    puts("PASS async no-op registration and built-in async file reading");
++}
++
++int main(int argc, char **argv)
++{
++    char path[4096];
++    CHECK(argc == 2);
++    test_application();
++    test_pointers();
++    test_protocol("ijkio", ijkav_register_ijkio_protocol);
++    test_protocol("ijkhttphook", ijkav_register_ijkhttphook_protocol);
++    test_protocol("ijktcphook", ijkav_register_ijktcphook_protocol);
++    test_protocol("ijklongurl", ijkav_register_ijklongurl_protocol);
++    test_protocol("ijkmediadatasource", ijkav_register_ijkmediadatasource_protocol);
++    test_protocol("ijksegment", ijkav_register_ijksegment_protocol);
++    puts("PASS six custom protocol registrations, open dispatch and ABI guards");
++    test_demuxer("ijklivehook", ijkav_register_ijklivehook_demuxer);
++    test_demuxer("ijklas", ijkav_register_ijklas_demuxer);
++    puts("PASS two custom demuxer registrations and open dispatch");
++    snprintf(path, sizeof(path), "%s/segments.ffconcat", argv[1]);
++    test_concat(path);
++    snprintf(path, sizeof(path), "%s/async.wav", argv[1]);
++    test_async(path);
++    puts("All ijk FFmpeg 5.1 contract tests passed.");
++    return 0;
++}
+diff --git a/tests/ijk/run-contract.sh b/tests/ijk/run-contract.sh
+new file mode 100755
+index 0000000..ac9fdd1
+--- /dev/null
++++ b/tests/ijk/run-contract.sh
+@@ -0,0 +1,19 @@
++#!/usr/bin/env bash
++set -euo pipefail
++SOURCE_DIR=$(cd "$(dirname "$0")/../.." && pwd)
++BUILD_DIR=$(cd "${1:?Usage: [SANITIZE=1] run-contract.sh FFmpeg-build-directory}" && pwd)
++TEST_DIR=$(mktemp -d)
++trap 'rm -rf "$TEST_DIR"' EXIT
++EXTRA_FLAGS=()
++EXTRA_SOURCES=()
++if [[ "${SANITIZE:-0}" == 1 ]]; then
++  EXTRA_FLAGS=(-D_GNU_SOURCE -DHAVE_AV_CONFIG_H -g -O1 -fsanitize=address,undefined -fno-omit-frame-pointer)
++  # Instrument the ported code while keeping the existing FFmpeg archive build.
++  EXTRA_SOURCES=("$SOURCE_DIR/libavformat/ijkutils.c" "$SOURCE_DIR/libavutil/application.c" "$SOURCE_DIR/libavutil/dict.c")
++fi
++"${CC:-cc}" -std=c11 -Wall -Wextra -Wno-unused-parameter -Werror=implicit-function-declaration \
++  "${EXTRA_FLAGS[@]}" -I"$BUILD_DIR" -I"$SOURCE_DIR" "$SOURCE_DIR/tests/ijk/contract.c" \
++  "${EXTRA_SOURCES[@]}" \
++  -L"$BUILD_DIR/libavformat" -L"$BUILD_DIR/libavcodec" -L"$BUILD_DIR/libavutil" \
++  -lavformat -lavcodec -lavutil -lm -lz -lpthread -o "$TEST_DIR/contract"
++"$TEST_DIR/contract" "$TEST_DIR"

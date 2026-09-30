@@ -39,31 +39,6 @@
         ijkav_register_##x##_protocol(&ijkimp_ff_##x##_protocol, sizeof(URLProtocol));  \
     }
 
-static struct AVInputFormat *ijkav_find_input_format(const char *iformat_name)
-{
-    AVInputFormat *fmt = NULL;
-    if (!iformat_name)
-        return NULL;
-    while ((fmt = av_iformat_next(fmt))) {
-        if (!fmt->name)
-            continue;
-        if (!strcmp(iformat_name, fmt->name))
-            return fmt;
-    }
-    return NULL;
-}
-
-static void ijkav_register_input_format(AVInputFormat *iformat)
-{
-    if (ijkav_find_input_format(iformat->name)) {
-        av_log(NULL, AV_LOG_WARNING, "skip     demuxer : %s (duplicated)\n", iformat->name);
-    } else {
-        av_log(NULL, AV_LOG_INFO,    "register demuxer : %s\n", iformat->name);
-        av_register_input_format(iformat);
-    }
-}
-
-
 void ijkav_register_all(void)
 {
     static int initialized;
@@ -72,7 +47,9 @@ void ijkav_register_all(void)
         return;
     initialized = 1;
 
+#if LIBAVFORMAT_VERSION_MAJOR < 59
     av_register_all();
+#endif
 
     /* protocols */
     av_log(NULL, AV_LOG_INFO, "===== custom modules begin =====\n");

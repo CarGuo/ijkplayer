@@ -156,8 +156,7 @@ typedef struct PlayList {
 
     // demuxer related
     AVFormatContext* parent;
-    uint8_t* read_buffer;
-    AVIOContext pb;
+    AVIOContext* pb;
     AVFormatContext* ctx;
     AVPacket pkt;
 
@@ -921,7 +920,7 @@ static int open_url(LasContext* c, URLContext** uc, const char* url,
     if (!proto_name)
         return AVERROR_INVALIDDATA;
 
-    ret = ffurl_open_whitelist(uc, url,  AVIO_FLAG_READ, c->interrupt_callback, &tmp, c->ctx->protocol_whitelist, c->ctx->protocol_blacklist, c->ctx);
+    ret = ffurl_open_whitelist(uc, url,  AVIO_FLAG_READ, c->interrupt_callback, &tmp, c->ctx->protocol_whitelist, c->ctx->protocol_blacklist, NULL);
     if (ret >= 0) {
         log_info("ffurl_open_whitelist succeeds");
         // update cookies on http response with setcookies.
@@ -1284,7 +1283,7 @@ static int PlayList_read_data(void* opaque, uint8_t* buf, int buf_size) {
 
 static void PlayList_reset_state(PlayList* p) {
     p->parent = NULL;
-    p->read_buffer = NULL;
+    p->pb = NULL;
     p->cur_switch_index = 0;
     p->cur_rep_index = p->multi_rate_adaption.next_expected_rep_index;
 }
@@ -1369,19 +1368,24 @@ int PlayList_open_rep(PlayList* playlist, FlvTag* tag, AVFormatContext* s) {
         goto fail;
     }
 
-    playlist->read_buffer = av_malloc(INITIAL_BUFFER_SIZE);
-    if (!playlist->read_buffer) {
+    uint8_t *read_buffer = av_malloc(INITIAL_BUFFER_SIZE);
+    if (!read_buffer) {
         ret = AVERROR(ENOMEM);
-        avformat_free_context(playlist->ctx);
-        playlist->ctx = NULL;
         goto fail;
     }
 
-    ffio_init_context(&playlist->pb, playlist->read_buffer, INITIAL_BUFFER_SIZE, 0, playlist,
-                      PlayList_read_data, NULL, NULL);
+    /* ffio_init_context now initializes private FFIOContext storage. Allocate
+     * through the public API rather than embedding an undersized AVIOContext. */
+    playlist->pb = avio_alloc_context(read_buffer, INITIAL_BUFFER_SIZE, 0, playlist,
+                                      PlayList_read_data, NULL, NULL);
+    if (!playlist->pb) {
+        av_free(read_buffer);
+        ret = AVERROR(ENOMEM);
+        goto fail;
+    }
 
-    playlist->ctx->pb = &playlist->pb;
-    playlist->ctx->flags |= s->flags & ~AVFMT_FLAG_CUSTOM_IO;
+    playlist->ctx->pb = playlist->pb;
+    playlist->ctx->flags |= s->flags | AVFMT_FLAG_CUSTOM_IO;
 
     SDL_LockMutex(playlist->rw_mutex);
     playlist->cur_switch_index = tag->switch_index;
@@ -1449,6 +1453,11 @@ int PlayList_open_rep(PlayList* playlist, FlvTag* tag, AVFormatContext* s) {
     return 0;
 
 fail:
+    avformat_close_input(&playlist->ctx);
+    if (playlist->pb) {
+        av_freep(&playlist->pb->buffer);
+        avio_context_free(&playlist->pb);
+    }
     return ret;
 }
 
@@ -1526,7 +1535,10 @@ static void PlayList_abort(PlayList* playlist) {
 void PlayList_close_rep(PlayList* playlist) {
     SDL_LockMutex(playlist->rw_mutex);
     avformat_close_input(&playlist->ctx);
-    av_freep(&playlist->pb.buffer);
+    if (playlist->pb) {
+        av_freep(&playlist->pb->buffer);
+        avio_context_free(&playlist->pb);
+    }
     log_info("close_index:%d finished", playlist->cur_rep_index);
     SDL_UnlockMutex(playlist->rw_mutex);
 }
@@ -1941,7 +1953,7 @@ static int las_read_packet(AVFormatContext* s, AVPacket* pkt) {
         ret = av_read_frame(playlist->ctx, &playlist->pkt);
         if (ret < 0) {
             reset_packet(&playlist->pkt);
-            if (avio_feof(&playlist->pb) || ret == AVERROR_EOF) {
+            if (avio_feof(playlist->pb) || ret == AVERROR_EOF) {
                 // change rep if needed
                 if (playlist->cur_switch_index != playlist->reading_tag.switch_index) {
                     PlayList_close_rep(playlist);

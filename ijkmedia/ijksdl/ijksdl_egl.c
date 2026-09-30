@@ -25,6 +25,9 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
+#ifdef __ANDROID__
+#include <android/native_window.h>
+#endif
 #include "ijksdl/ijksdl_gles2.h"
 #include "ijksdl/ijksdl_log.h"
 #include "ijksdl/ijksdl_vout.h"

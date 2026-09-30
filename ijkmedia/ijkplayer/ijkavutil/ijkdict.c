@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <inttypes.h>
+#include <errno.h>
 
 struct IjkAVDictionary {
     int count;
@@ -154,32 +155,28 @@ int ijk_av_dict_set_int(IjkAVDictionary **pm, const char *key, int64_t value,
 }
 
 int ijk_av_dict_set_intptr(IjkAVDictionary **pm, const char *key, uintptr_t value, int flags) {
-    char valuestr[22];
-    snprintf(valuestr, sizeof(valuestr), "%p", value);
+    char valuestr[2 + 2 * sizeof(uintptr_t) + 1];
+    snprintf(valuestr, sizeof(valuestr), "0x%"PRIxPTR, value);
     flags &= ~IJK_AV_DICT_DONT_STRDUP_VAL;
     return ijk_av_dict_set(pm, key, valuestr, flags);
 }
 
-uintptr_t ijk_av_dict_strtoptr(char * value) {
-    uintptr_t ptr = NULL;
-    char *next = NULL;
-    if(value[0] !='0' || (value[1]|0x20)!='x') {
-        return NULL;
-    }
-    ptr = strtoll(value, &next, 16);
-    if (next == value) {
-        return NULL;
-    }
-    return ptr;
+static uintptr_t ijk_av_dict_strtoptr(const char *value) {
+    uintmax_t parsed;
+    char *next;
+    if (!value || value[0] != '0' || (value[1] | 0x20) != 'x')
+        return 0;
+    errno = 0;
+    parsed = strtoumax(value, &next, 16);
+    if (errno == ERANGE || next == value || *next || parsed > UINTPTR_MAX)
+        return 0;
+    return (uintptr_t)parsed;
 }
 
-uintptr_t ijk_av_dict_get_intptr(const IjkAVDictionary *m, const char* key) {
-    uintptr_t ptr = NULL;
-    IjkAVDictionaryEntry *t = NULL;
-    if ((t = av_dict_get(m, key, NULL, 0))) {
-        return ijk_av_dict_strtoptr(t->value);
-    }
-    return NULL;
+uintptr_t ijk_av_dict_get_intptr(const IjkAVDictionary *m, const char *key) {
+    /* IjkAVDictionary is a distinct type: never call FFmpeg's av_dict_get. */
+    IjkAVDictionaryEntry *entry = ijk_av_dict_get(m, key, NULL, 0);
+    return entry ? ijk_av_dict_strtoptr(entry->value) : 0;
 }
 
 void ijk_av_dict_free(IjkAVDictionary **pm)

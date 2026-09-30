@@ -23,6 +23,11 @@
 #define FFPLAY__CONFIG_H
 
 #include "libffmpeg/config.h"
+#include "libavformat/version.h"
+#if LIBAVFORMAT_VERSION_MAJOR >= 59
+/* FFmpeg 5 split demuxer/protocol feature macros out of config.h. */
+#include "config_components.h"
+#endif
 
 // FIXME: merge filter related code and enable it
 // remove these lines to enable avfilter

@@ -16,9 +16,11 @@
 # limitations under the License.
 #
 
-if [ -z "$ANDROID_NDK" -o -z "$ANDROID_NDK" ]; then
-    echo "You must define ANDROID_NDK, ANDROID_SDK before starting."
-    echo "They must point to your NDK and SDK directories.\n"
+set -e
+
+if [ -z "$ANDROID_NDK" ]; then
+    echo "You must define ANDROID_NDK before starting."
+    echo "It must point to your NDK directory.\n"
     exit 1
 fi
 
@@ -38,6 +40,14 @@ then
     FF_MAKEFLAGS=-j`sysctl -n machdep.cpu.thread_count`
 fi
 
+run_ndk_build () {
+    if [ "$UNAME_S" = "Darwin" ] && [ "$(uname -m)" = "arm64" ]; then
+        arch -x86_64 /bin/bash "$ANDROID_NDK/ndk-build" "$@"
+    else
+        "$ANDROID_NDK/ndk-build" "$@"
+    fi
+}
+
 do_sub_cmd () {
     SUB_CMD=$1
     if [ -L "./android-ndk-prof" ]; then
@@ -54,17 +64,17 @@ do_sub_cmd () {
 
     case $SUB_CMD in
         prof)
-             arch -x86_64 /bin/bash  $ANDROID_NDK/ndk-build $FF_MAKEFLAGS
+             run_ndk_build $FF_MAKEFLAGS
         ;;
         clean)
-             arch -x86_64 /bin/bash  $ANDROID_NDK/ndk-build clean
+             run_ndk_build clean
         ;;
         rebuild)
-            arch -x86_64 /bin/bash  $ANDROID_NDK/ndk-build clean
-            arch -x86_64 /bin/bash  $ANDROID_NDK/ndk-build $FF_MAKEFLAGS
+            run_ndk_build clean
+            run_ndk_build $FF_MAKEFLAGS
         ;;
         *)
-            arch -x86_64 /bin/bash   $ANDROID_NDK/ndk-build $FF_MAKEFLAGS
+            run_ndk_build $FF_MAKEFLAGS
         ;;
     esac
 }

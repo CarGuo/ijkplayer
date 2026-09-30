@@ -27,6 +27,9 @@ ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
 LOCAL_CFLAGS += -mfloat-abi=soft
 endif
 #LOCAL_CFLAGS += -std=c99
+# The player uses NaN as an unavailable-clock sentinel. APP_CFLAGS contains
+# -ffast-math; override it for this module so clock/sync guards survive O3.
+LOCAL_CFLAGS += -fno-fast-math
 LOCAL_LDLIBS += -llog -landroid -latomic
 
 LOCAL_C_INCLUDES += $(LOCAL_PATH)
