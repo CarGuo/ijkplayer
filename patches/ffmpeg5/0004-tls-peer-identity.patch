@@ -1,0 +1,166 @@
+diff --git a/libavformat/os_support.c b/libavformat/os_support.c
+index 15cea7f..1c008d5 100644
+--- a/libavformat/os_support.c
++++ b/libavformat/os_support.c
+@@ -80,7 +80,7 @@ int ff_getaddrinfo(const char *node, const char *service,
+         if (!inet_aton(node, &sin->sin_addr)) {
+             if (hints && (hints->ai_flags & AI_NUMERICHOST)) {
+                 av_free(sin);
+-                return EAI_FAIL;
++                return EAI_NONAME;
+             }
+             h = gethostbyname(node);
+             if (!h) {
+diff --git a/libavformat/tls_openssl.c b/libavformat/tls_openssl.c
+index 8bf766c..3385dc9 100644
+--- a/libavformat/tls_openssl.c
++++ b/libavformat/tls_openssl.c
+@@ -34,6 +34,7 @@
+ #include <openssl/bio.h>
+ #include <openssl/ssl.h>
+ #include <openssl/err.h>
++#include <openssl/x509v3.h>
+ 
+ static int openssl_init;
+ 
+@@ -248,6 +249,73 @@ static BIO_METHOD url_bio_method = {
+ };
+ #endif
+ 
++static int tls_set_peer_name(URLContext *h)
++{
++    TLSContext *p = h->priv_data;
++    TLSShared *c = &p->tls_shared;
++    struct addrinfo hints = { 0 }, *ai = NULL;
++    int ret, numeric;
++
++    if (!c->host || !c->host[0]) {
++        av_log(h, AV_LOG_ERROR, "Missing TLS peer name\n");
++        return AVERROR(EINVAL);
++    }
++
++    /* verifyhost may differ from the TCP destination, including its type. */
++    hints.ai_flags = AI_NUMERICHOST;
++    ret = getaddrinfo(c->host, NULL, &hints, &ai);
++    if (ret && ret != EAI_NONAME) {
++        av_log(h, AV_LOG_ERROR, "Unable to parse TLS peer name: %s\n",
++               gai_strerror(ret));
++        return AVERROR(EIO);
++    }
++    numeric = !ret;
++
++    if (c->verify) {
++#if OPENSSL_VERSION_NUMBER >= 0x10002000L
++        X509_VERIFY_PARAM *param = SSL_get0_param(p->ssl);
++
++        if (numeric) {
++            if (ai->ai_family == AF_INET) {
++                struct sockaddr_in *addr = (struct sockaddr_in *)ai->ai_addr;
++                ret = X509_VERIFY_PARAM_set1_ip(param,
++                          (const unsigned char *)&addr->sin_addr, 4);
++#if HAVE_STRUCT_SOCKADDR_IN6
++            } else if (ai->ai_family == AF_INET6) {
++                struct sockaddr_in6 *addr = (struct sockaddr_in6 *)ai->ai_addr;
++                ret = X509_VERIFY_PARAM_set1_ip(param,
++                          (const unsigned char *)&addr->sin6_addr, 16);
++#endif
++            } else {
++                ret = 0;
++            }
++        } else {
++            X509_VERIFY_PARAM_set_hostflags(param, X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
++            ret = X509_VERIFY_PARAM_set1_host(param, c->host, 0);
++        }
++        if (ai)
++            freeaddrinfo(ai);
++        if (!ret) {
++            av_log(h, AV_LOG_ERROR, "Unable to set TLS peer verification name\n");
++            return AVERROR(EIO);
++        }
++#else
++        if (ai)
++            freeaddrinfo(ai);
++        av_log(h, AV_LOG_ERROR, "TLS peer name verification requires OpenSSL 1.0.2 or newer\n");
++        return AVERROR(ENOSYS);
++#endif
++    } else if (ai) {
++        freeaddrinfo(ai);
++    }
++
++    if (!numeric && !SSL_set_tlsext_host_name(p->ssl, c->host)) {
++        av_log(h, AV_LOG_ERROR, "Unable to set TLS server name\n");
++        return AVERROR(EIO);
++    }
++    return 0;
++}
++
+ static int tls_open(URLContext *h, const char *uri, int flags, AVDictionary **options)
+ {
+     TLSContext *p = h->priv_data;
+@@ -273,8 +341,17 @@ static int tls_open(URLContext *h, const char *uri, int flags, AVDictionary **op
+     }
+     SSL_CTX_set_options(p->ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
+     if (c->ca_file) {
+-        if (!SSL_CTX_load_verify_locations(p->ctx, c->ca_file, NULL))
++        if (!SSL_CTX_load_verify_locations(p->ctx, c->ca_file, NULL)) {
+             av_log(h, AV_LOG_ERROR, "SSL_CTX_load_verify_locations %s\n", ERR_error_string(ERR_get_error(), NULL));
++            if (c->verify) {
++                ret = AVERROR(EIO);
++                goto fail;
++            }
++        }
++    } else if (c->verify && !SSL_CTX_set_default_verify_paths(p->ctx)) {
++        av_log(h, AV_LOG_ERROR, "Unable to load default CA certificates\n");
++        ret = AVERROR(EIO);
++        goto fail;
+     }
+     if (c->cert_file && !SSL_CTX_use_certificate_chain_file(p->ctx, c->cert_file)) {
+         av_log(h, AV_LOG_ERROR, "Unable to load cert file %s: %s\n",
+@@ -288,8 +365,6 @@ static int tls_open(URLContext *h, const char *uri, int flags, AVDictionary **op
+         ret = AVERROR(EIO);
+         goto fail;
+     }
+-    // Note, this doesn't check that the peer certificate actually matches
+-    // the requested hostname.
+     if (c->verify)
+         SSL_CTX_set_verify(p->ctx, SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
+     p->ssl = SSL_new(p->ctx);
+@@ -298,8 +373,14 @@ static int tls_open(URLContext *h, const char *uri, int flags, AVDictionary **op
+         ret = AVERROR(EIO);
+         goto fail;
+     }
++    if (c->verify && !c->listen && (ret = tls_set_peer_name(h)) < 0)
++        goto fail;
+ #if OPENSSL_VERSION_NUMBER >= 0x1010000fL
+     p->url_bio_method = BIO_meth_new(BIO_TYPE_SOURCE_SINK, "urlprotocol bio");
++    if (!p->url_bio_method) {
++        ret = AVERROR(ENOMEM);
++        goto fail;
++    }
+     BIO_meth_set_write(p->url_bio_method, url_bio_bwrite);
+     BIO_meth_set_read(p->url_bio_method, url_bio_bread);
+     BIO_meth_set_puts(p->url_bio_method, url_bio_bputs);
+@@ -307,13 +388,22 @@ static int tls_open(URLContext *h, const char *uri, int flags, AVDictionary **op
+     BIO_meth_set_create(p->url_bio_method, url_bio_create);
+     BIO_meth_set_destroy(p->url_bio_method, url_bio_destroy);
+     bio = BIO_new(p->url_bio_method);
++    if (!bio) {
++        ret = AVERROR(ENOMEM);
++        goto fail;
++    }
+     BIO_set_data(bio, p);
+ #else
+     bio = BIO_new(&url_bio_method);
++    if (!bio) {
++        ret = AVERROR(ENOMEM);
++        goto fail;
++    }
+     bio->ptr = p;
+ #endif
+     SSL_set_bio(p->ssl, bio, bio);
+-    if (!c->listen && !c->numerichost)
++    /* Keep the legacy SNI behavior when verification is explicitly disabled. */
++    if (!c->verify && !c->listen && !c->numerichost)
+         SSL_set_tlsext_host_name(p->ssl, c->host);
+     ret = c->listen ? SSL_accept(p->ssl) : SSL_connect(p->ssl);
+     if (ret == 0) {

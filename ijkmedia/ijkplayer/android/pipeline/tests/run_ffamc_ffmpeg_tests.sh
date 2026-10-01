@@ -24,15 +24,31 @@ done
 "$ffmpeg_bin" -hide_banner -loglevel error -f lavfi -i color=c=red:s=64x48:r=5 \
     -frames:v 3 -c:v libx265 -x265-params 'pools=none:frame-threads=1:log-level=error' \
     -pix_fmt yuv420p -y "$output_dir/hevc.mp4"
-# Set SANITIZE=1 for ASan/UBSan on the test translation units. A fully
-# instrumented FFmpeg build gives stronger coverage of the codec libraries.
+# Equal dimensions and a changed PPS bit expose pixel corruption that callback
+# or size-only tests miss. The final fixture keeps old hvcC across three IRAPs.
+for signhide in 1 0; do
+    "$ffmpeg_bin" -hide_banner -loglevel error -f lavfi -i testsrc2=s=64x48:r=5 \
+        -frames:v 1 -c:v libx265 -preset ultrafast \
+        -x265-params "pools=none:frame-threads=1:log-level=error:signhide=$signhide" \
+        -pix_fmt yuv420p -y "$output_dir/hevc-signhide-$signhide.mp4"
+done
+python3 "$test_dir/make_hevc_parameter_update_fixture.py" \
+    "$output_dir/hevc-signhide-1.mp4" "$output_dir/hevc-signhide-0.mp4" \
+    "$output_dir/hevc-inband-update.mp4"
+# Set SANITIZE=1 for ASan/UBSan on tests and the changed HEVC BSF. A fully
+# instrumented FFmpeg build gives stronger coverage of the remaining libraries.
 sanitize=()
+bsf_objects=()
 if [[ ${SANITIZE:-0} == 1 ]]; then
     sanitize=(-fsanitize=address,undefined -fno-omit-frame-pointer)
+    "$cc_bin" -std=c11 -Wall -Wextra -Werror -Wno-sign-compare -Wno-unused-parameter \
+        "${sanitize[@]}" -DHAVE_AV_CONFIG_H -I"$build_dir" -I"$source_dir" \
+        -c "$source_dir/libavcodec/hevc_mp4toannexb_bsf.c" -o "$output_dir/hevc-bsf-sanitized.o"
+    bsf_objects=("$output_dir/hevc-bsf-sanitized.o")
 fi
-for name in ffamc_ffmpeg ffamc_packet_queue ffamc_input; do
+for name in ffamc_ffmpeg ffamc_packet_queue ffamc_input ffamc_hevc_parameter_update; do
     "$cc_bin" -std=c11 -Wall -Wextra -Werror -Wno-sign-compare "${sanitize[@]}" \
-        -I"$build_dir" -I"$source_dir" "$test_dir/${name}_test.c" \
+        -I"$build_dir" -I"$source_dir" "$test_dir/${name}_test.c" "${bsf_objects[@]}" \
         "$build_dir/libavformat/libavformat.a" "$build_dir/libavcodec/libavcodec.a" \
         "$build_dir/libavutil/libavutil.a" -lm -pthread -lz -o "$output_dir/${name}_test"
 done
@@ -41,3 +57,7 @@ done
 "$output_dir/ffamc_packet_queue_test"
 
 "$output_dir/ffamc_input_test" "$output_dir/h264.mp4" "$output_dir/hevc.mp4"
+
+"$output_dir/ffamc_hevc_parameter_update_test" \
+    "$output_dir/hevc-signhide-1.mp4" "$output_dir/hevc-signhide-0.mp4" \
+    --muxed "$output_dir/hevc-inband-update.mp4"

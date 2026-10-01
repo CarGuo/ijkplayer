@@ -22,7 +22,7 @@ cd ijkplayer-ffmpeg5
 ./init-android-ffmpeg5.sh
 export ANDROID_NDK=/absolute/path/to/android-ndk-r22b
 export FFMPEG5_SOURCE="$PWD/extra/ffmpeg5"
-export OPENSSL_SOURCE="$PWD/extra/openssl5"
+export OPENSSL_SOURCE="$PWD/extra/openssl-3.5.9"
 (
   set -e
   for abi in arm64 armv7a x86_64; do
@@ -32,17 +32,40 @@ export OPENSSL_SOURCE="$PWD/extra/openssl5"
 )
 ```
 
+当前修复源码加入 HEVC 参数集更新缓存、TLS 域名／IP 身份校验，并升级到
+OpenSSL 3.5.9。初始化脚本已固定到已发布的四补丁提交
+[`5d01026835e0fc18be967461df180432e85db0c7`](https://github.com/CarGuo/FFmpeg/commit/5d01026835e0fc18be967461df180432e85db0c7)，
+四补丁反向校验通过；新 pin 的完整全新初始化尚未重跑。
+
+三个 ABI 的新九库已构建完成，独立静态检查 73/73 通过。
+Android 11/API 30、x86_64、4 KB 模拟器上，核心 21/21、TLS 7/7、
+网络语义 4/4、H.264 与普通 HEVC 的同步／异步 MediaCodec 检查通过；
+RTSP／RTMP／MJPEG 八项协议用例的普通与严格中断两轮均为 8/8。
+严格中断验证包含回调及重新创建播放器，不代表自动重连。
+
+三帧 HEVC 参数更新样本的同步检查通过，但首次渲染回调晚于完成回调；
+异步检查因未观察到首次渲染而失败，尚不能确认 Android 画面更新正确。
+扩展编码矩阵也未整体通过。新 16 KB 运行仅完成加载／注册清单，
+核心播放被 Surface 前置条件超时阻塞。新版长期稳定性、真实 ARM 设备及最终
+GSY AAR／APK 尚无完整验收通过结论；旧九库运行记录仍是历史证据，不能套用。
+新二进制发布及完整发布验收仍未完成，详见完整说明。
+
 新初始化脚本会为全新目录检出固定的 FFmpeg 提交；即使远端分支新增文档提交，
 也不会自动换用其他源码版本。已有目录若版本不符，会保留原目录并报错。
+OpenSSL 使用独立的 `extra/openssl-3.5.9` 源码目录及按内容寻址的缓存；
+可用 `OPENSSL_ONLY=1 android/contrib/compile-ffmpeg5.sh arm64` 单独验证依赖构建。
 构建明确使用 `config/module-lite-more.sh`；三个 ABI 分别对应 arm64-v8a、
 armeabi-v7a、x86_64。替换时请保持每个 ABI 的 FFmpeg／player／SDL 三库成套。
-若要复现已测试候选的原始哈希，请使用完整说明中的
-[可选版本标记复现步骤](doc/FFMPEG5.md#optional-reproduction-of-the-tested-candidate)，
-同时保留真实源码提交信息。
+原九库哈希及
+[可选版本标记复现步骤](doc/FFMPEG5.md#optional-reproduction-of-the-tested-candidate)
+属于历史候选；新版 HEVC／TLS／OpenSSL 输入不能仅靠版本标记复现旧哈希。
+请同时保留真实源码提交、依赖及构建清单。
 
-这是有明确验证范围的迁移候选：16 KB 模拟环境的部分硬解旋转和专项验证仍有缺口，
-未完成真实 ARM 设备兼容认证。OpenSSL 1.1.1w 及原 TLS 验证限制仍保留；
-不要把构建成功或 4 KB 环境通过等同于全部设备、16 KB 场景或 TLS 安全验收。
+这是有明确验证范围的迁移候选：新 16 KB 核心播放及参数更新异步渲染仍未验收通过，
+旧候选的硬解旋转缺口也不能由新 4 KB 结果替代；未完成真实 ARM 设备兼容认证。修复后的 `tls_verify=1` 校验证书链及域名／IP，
+Android 需显式提供可信 CA 文件；默认及显式 `tls_verify=0` 仍不认证服务器。
+OpenSSL 3.5 默认拒绝旧 TLS 1.0／1.1 和弱密钥，旧设备兼容要求仍待确认。
+不要把构建成功或旧 4 KB 环境通过等同于全部设备、16 KB 场景或 TLS 安全验收。
 详见[验证结果与限制](doc/FFMPEG5.md#checks-and-limits)。
 
 ## 旧 FFmpeg 4.3 链路说明（保留参考，不是 FFmpeg 5 构建入口）

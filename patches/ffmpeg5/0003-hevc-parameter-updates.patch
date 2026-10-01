@@ -1,0 +1,510 @@
+diff --git a/libavcodec/hevc_mp4toannexb_bsf.c b/libavcodec/hevc_mp4toannexb_bsf.c
+index f9a025a..04207dd 100644
+--- a/libavcodec/hevc_mp4toannexb_bsf.c
++++ b/libavcodec/hevc_mp4toannexb_bsf.c
+@@ -28,69 +28,291 @@
+ #include "bsf_internal.h"
+ #include "bytestream.h"
+ #include "defs.h"
++#include "get_bits.h"
+ #include "hevc.h"
+ 
+ #define MIN_HEVCC_LENGTH 23
+ 
++typedef struct HEVCParameterSet {
++    struct HEVCParameterSet *next;
++    AVBufferRef *nal;
++    int type, layer_id, id;
++} HEVCParameterSet;
++
+ typedef struct HEVCBSFContext {
+     uint8_t  length_size;
++    uint8_t  initial_length_size;
+     int      extradata_parsed;
++    /* par_out remains the initial CSD. Parameter-set changes belong to the
++     * filtered stream, and must not overwrite the demuxer's parameters. */
++    HEVCParameterSet *initial_ps;
++    HEVCParameterSet *ps;
+ } HEVCBSFContext;
+ 
+-static int hevc_extradata_to_annexb(AVBSFContext *ctx)
++static void hevc_ps_free(HEVCParameterSet **pps)
+ {
+-    GetByteContext gb;
+-    int length_size, num_arrays, i, j;
+-    int ret = 0;
+-
+-    uint8_t *new_extradata = NULL;
+-    size_t   new_extradata_size = 0;
+-
+-    bytestream2_init(&gb, ctx->par_in->extradata, ctx->par_in->extradata_size);
++    while (*pps) {
++        HEVCParameterSet *ps = *pps;
++        *pps = ps->next;
++        av_buffer_unref(&ps->nal);
++        av_free(ps);
++    }
++}
+ 
+-    bytestream2_skip(&gb, 21);
+-    length_size = (bytestream2_get_byte(&gb) & 3) + 1;
+-    num_arrays  = bytestream2_get_byte(&gb);
++static int hevc_ps_clone(const HEVCParameterSet *src, HEVCParameterSet **dst)
++{
++    HEVCParameterSet **tail = dst;
++    while (src) {
++        HEVCParameterSet *ps = av_mallocz(sizeof(*ps));
++        if (!ps)
++            goto fail;
++        *tail = ps;
++        ps->type     = src->type;
++        ps->layer_id = src->layer_id;
++        ps->id       = src->id;
++        ps->nal      = av_buffer_ref(src->nal);
++        if (!ps->nal)
++            goto fail;
++        tail = &ps->next;
++        src = src->next;
++    }
++    return 0;
++fail:
++    hevc_ps_free(dst);
++    return AVERROR(ENOMEM);
++}
+ 
+-    for (i = 0; i < num_arrays; i++) {
+-        int type = bytestream2_get_byte(&gb) & 0x3f;
+-        int cnt  = bytestream2_get_be16(&gb);
++/* Read only the identifier, not the complete parameter set. Even with all
++ * six sublayer profiles present, the SPS identifier fits in 128 RBSP bytes. */
++static int hevc_ps_id(const uint8_t *nal, int size, int type, int layer_id)
++{
++    uint8_t rbsp[128 + AV_INPUT_BUFFER_PADDING_SIZE] = { 0 };
++    GetBitContext gb;
++    int i, n = 0, zeros = 0, max_id, id;
++
++    for (i = 2; i < size && n < 128; i++) {
++        if (i >= 4 && nal[i] == 3 && !nal[i - 1] && !nal[i - 2])
++            continue;
++        rbsp[n++] = nal[i];
++    }
++    if (!n)
++        return AVERROR_INVALIDDATA;
++    init_get_bits8(&gb, rbsp, n);
++    if (type == HEVC_NAL_VPS)
++        return get_bits(&gb, 4);
++    if (type == HEVC_NAL_SPS) {
++        int sublayers, profile[7], level[7];
++        skip_bits(&gb, 4); // sps_video_parameter_set_id
++        sublayers = get_bits(&gb, 3);
++        /* In a multilayer SPS, 7 signals sps_ext_or_max_sub_layers_minus1.
++         * Such SPSs omit temporal nesting and profile_tier_level. */
++        if (!layer_id || sublayers != 7) {
++            if (sublayers > 6 || get_bits_left(&gb) < 97)
++                return AVERROR_INVALIDDATA;
++            skip_bits_long(&gb, 97); // temporal nesting + general PTL
++            if (sublayers) {
++                if (get_bits_left(&gb) < 16)
++                    return AVERROR_INVALIDDATA;
++                for (i = 0; i < sublayers; i++) {
++                    profile[i] = get_bits1(&gb);
++                    level[i]   = get_bits1(&gb);
++                }
++                skip_bits(&gb, 2 * (8 - sublayers));
++                for (i = 0; i < sublayers; i++) {
++                    int bits = 88 * profile[i] + 8 * level[i];
++                    if (get_bits_left(&gb) < bits)
++                        return AVERROR_INVALIDDATA;
++                    skip_bits_long(&gb, bits);
++                }
++            }
++        }
++    }
++    if (get_bits_left(&gb) <= 0)
++        return AVERROR_INVALIDDATA;
++    max_id = type == HEVC_NAL_SPS ? HEVC_MAX_SPS_COUNT : HEVC_MAX_PPS_COUNT;
++    while (get_bits_left(&gb) > 0 && !get_bits1(&gb)) {
++        if (++zeros > 6)
++            return AVERROR_INVALIDDATA;
++    }
++    if (get_bits_left(&gb) < zeros)
++        return AVERROR_INVALIDDATA;
++    id = (1 << zeros) - 1;
++    if (zeros)
++        id += get_bits(&gb, zeros);
++    return id < max_id ? id : AVERROR_INVALIDDATA;
++}
+ 
+-        if (!(type == HEVC_NAL_VPS || type == HEVC_NAL_SPS || type == HEVC_NAL_PPS ||
+-              type == HEVC_NAL_SEI_PREFIX || type == HEVC_NAL_SEI_SUFFIX)) {
+-            av_log(ctx, AV_LOG_ERROR, "Invalid NAL unit type in extradata: %d\n",
+-                   type);
+-            ret = AVERROR_INVALIDDATA;
+-            goto fail;
++static int hevc_ps_update(HEVCParameterSet **head, const uint8_t *nal,
++                          int size, int type)
++{
++    HEVCParameterSet **slot = head, *ps;
++    AVBufferRef *buf;
++    int layer_id, id;
++
++    if (size < 2 || (nal[0] & 0x80) || !(nal[1] & 7) ||
++        ((nal[0] >> 1) & 0x3f) != type || size > INT_MAX - 4)
++        return AVERROR_INVALIDDATA;
++    layer_id = ((nal[0] & 1) << 5) | (nal[1] >> 3);
++    id = hevc_ps_id(nal, size, type, layer_id);
++    if (id < 0)
++        return id;
++
++    /* VPS before SPS before PPS, preserving all IDs and layers. The optional
++     * final node contains all original SEI NALs in their original order. */
++    while (*slot && ((*slot)->type < type ||
++           ((*slot)->type == type && ((*slot)->layer_id < layer_id ||
++            ((*slot)->layer_id == layer_id &&
++             (*slot)->id < id)))))
++        slot = &(*slot)->next;
++    ps = *slot;
++    if (ps && ps->type == type && ps->layer_id == layer_id && ps->id == id &&
++        ps->nal->size == size + 4 && !memcmp(ps->nal->data + 4, nal, size))
++        return 0;
++    buf = av_buffer_alloc(size + 4);
++    if (!buf)
++        return AVERROR(ENOMEM);
++    AV_WB32(buf->data, 1);
++    memcpy(buf->data + 4, nal, size);
++    if (!ps || ps->type != type || ps->layer_id != layer_id || ps->id != id) {
++        ps = av_mallocz(sizeof(*ps));
++        if (!ps) {
++            av_buffer_unref(&buf);
++            return AVERROR(ENOMEM);
+         }
++        ps->type     = type;
++        ps->layer_id = layer_id;
++        ps->id       = id;
++        ps->next     = *slot;
++        *slot        = ps;
++    }
++    av_buffer_unref(&ps->nal);
++    ps->nal = buf;
++    return 0;
++}
+ 
+-        for (j = 0; j < cnt; j++) {
+-            int nalu_len = bytestream2_get_be16(&gb);
++static int hevc_ps_size(const HEVCParameterSet *ps)
++{
++    int size = 0;
++    for (; ps; ps = ps->next) {
++        if (ps->nal->size > INT_MAX - size)
++            return AVERROR_INVALIDDATA;
++        size += ps->nal->size;
++    }
++    return size;
++}
++
++static void hevc_ps_copy(uint8_t *dst, const HEVCParameterSet *ps)
++{
++    for (; ps; ps = ps->next) {
++        memcpy(dst, ps->nal->data, ps->nal->size);
++        dst += ps->nal->size;
++    }
++}
+ 
+-            if (4 + AV_INPUT_BUFFER_PADDING_SIZE + nalu_len > SIZE_MAX - new_extradata_size) {
++static int hevc_extradata_to_annexb(AVBSFContext *ctx, const uint8_t *extradata,
++                                    int extradata_size, HEVCParameterSet **ps,
++                                    uint8_t **out_extradata, int *out_size)
++{
++    HEVCParameterSet *sei = NULL;
++    uint8_t *new_extradata = NULL, *dst = NULL, *sei_dst = NULL;
++    int new_extradata_size = 0, sei_size = 0;
++    int length_size = 0, ret = 0, pass, i, j;
++
++    /* Size and validate first, then allocate once. Many small SEI NALs must
++     * not create unbounded cache nodes or require repeated full-buffer copies. */
++    for (pass = 0; pass < 2; pass++) {
++        GetByteContext gb;
++        int num_arrays;
++        bytestream2_init(&gb, extradata, extradata_size);
++        bytestream2_skip(&gb, 21);
++        length_size = (bytestream2_get_byte(&gb) & 3) + 1;
++        num_arrays  = bytestream2_get_byte(&gb);
++
++        for (i = 0; i < num_arrays; i++) {
++            int type, cnt;
++            if (bytestream2_get_bytes_left(&gb) < 3) {
+                 ret = AVERROR_INVALIDDATA;
+                 goto fail;
+             }
+-            ret = av_reallocp(&new_extradata, new_extradata_size + nalu_len + 4 + AV_INPUT_BUFFER_PADDING_SIZE);
+-            if (ret < 0)
++            type = bytestream2_get_byte(&gb) & 0x3f;
++            cnt  = bytestream2_get_be16(&gb);
++            if (!(type == HEVC_NAL_VPS || type == HEVC_NAL_SPS || type == HEVC_NAL_PPS ||
++                  type == HEVC_NAL_SEI_PREFIX || type == HEVC_NAL_SEI_SUFFIX)) {
++                av_log(ctx, AV_LOG_ERROR, "Invalid NAL unit type in extradata: %d\n", type);
++                ret = AVERROR_INVALIDDATA;
+                 goto fail;
+-
+-            AV_WB32(new_extradata + new_extradata_size, 1); // add the startcode
+-            bytestream2_get_buffer(&gb, new_extradata + new_extradata_size + 4, nalu_len);
+-            new_extradata_size += 4 + nalu_len;
+-            memset(new_extradata + new_extradata_size, 0, AV_INPUT_BUFFER_PADDING_SIZE);
++            }
++            for (j = 0; j < cnt; j++) {
++                int nalu_len;
++                if (bytestream2_get_bytes_left(&gb) < 2) {
++                    ret = AVERROR_INVALIDDATA;
++                    goto fail;
++                }
++                nalu_len = bytestream2_get_be16(&gb);
++                if (nalu_len < 2 || nalu_len > bytestream2_get_bytes_left(&gb) ||
++                    (gb.buffer[0] & 0x80) || !(gb.buffer[1] & 7) ||
++                    ((gb.buffer[0] >> 1) & 0x3f) != type) {
++                    ret = AVERROR_INVALIDDATA;
++                    goto fail;
++                }
++                if (!pass) {
++                    if (nalu_len + 4 + AV_INPUT_BUFFER_PADDING_SIZE > INT_MAX - new_extradata_size) {
++                        ret = AVERROR_INVALIDDATA;
++                        goto fail;
++                    }
++                    new_extradata_size += nalu_len + 4;
++                    if (type > HEVC_NAL_PPS)
++                        sei_size += nalu_len + 4;
++                } else {
++                    if (type <= HEVC_NAL_PPS) {
++                        ret = hevc_ps_update(ps, gb.buffer, nalu_len, type);
++                        if (ret < 0)
++                            goto fail;
++                    } else {
++                        AV_WB32(sei_dst, 1);
++                        memcpy(sei_dst + 4, gb.buffer, nalu_len);
++                        sei_dst += nalu_len + 4;
++                    }
++                    AV_WB32(dst, 1);
++                    memcpy(dst + 4, gb.buffer, nalu_len);
++                    dst += nalu_len + 4;
++                }
++                bytestream2_skip(&gb, nalu_len);
++            }
++        }
++        if (!pass) {
++            new_extradata = av_mallocz(new_extradata_size + AV_INPUT_BUFFER_PADDING_SIZE);
++            if (!new_extradata) {
++                ret = AVERROR(ENOMEM);
++                goto fail;
++            }
++            dst = new_extradata;
++            if (sei_size) {
++                sei = av_mallocz(sizeof(*sei));
++                if (!sei || !(sei->nal = av_buffer_alloc(sei_size))) {
++                    ret = AVERROR(ENOMEM);
++                    goto fail;
++                }
++                sei->type = HEVC_NAL_SEI_PREFIX;
++                sei->id = -1;
++                sei_dst = sei->nal->data;
++            }
+         }
+     }
+-
+-    av_freep(&ctx->par_out->extradata);
+-    ctx->par_out->extradata      = new_extradata;
+-    ctx->par_out->extradata_size = new_extradata_size;
+-
++    if (sei) {
++        HEVCParameterSet **tail = ps;
++        while (*tail)
++            tail = &(*tail)->next;
++        *tail = sei;
++    }
++    *out_extradata = new_extradata;
++    *out_size      = new_extradata_size;
+     if (!new_extradata_size)
+         av_log(ctx, AV_LOG_WARNING, "No parameter sets in the extradata\n");
+-
+     return length_size;
+ fail:
++    hevc_ps_free(&sei);
++    hevc_ps_free(ps);
+     av_freep(&new_extradata);
+     return ret;
+ }
+@@ -106,10 +328,18 @@ static int hevc_mp4toannexb_init(AVBSFContext *ctx)
+         av_log(ctx, AV_LOG_VERBOSE,
+                "The input looks like it is Annex B already\n");
+     } else {
+-        ret = hevc_extradata_to_annexb(ctx);
++        uint8_t *extradata = NULL;
++        int extradata_size = 0;
++        ret = hevc_extradata_to_annexb(ctx, ctx->par_in->extradata,
++                                     ctx->par_in->extradata_size, &s->initial_ps,
++                                     &extradata, &extradata_size);
+         if (ret < 0)
+             return ret;
+-        s->length_size      = ret;
++        av_freep(&ctx->par_out->extradata);
++        ctx->par_out->extradata      = extradata;
++        ctx->par_out->extradata_size = extradata_size;
++        s->ps = s->initial_ps;
++        s->initial_length_size = s->length_size = ret;
+         s->extradata_parsed = 1;
+     }
+ 
+@@ -121,6 +351,13 @@ static int hevc_mp4toannexb_filter(AVBSFContext *ctx, AVPacket *out)
+     HEVCBSFContext *s = ctx->priv_data;
+     AVPacket *in;
+     GetByteContext gb;
++    HEVCParameterSet *updated_ps = NULL;
++    uint8_t *updated_extradata = NULL;
++    int updated_extradata_size = 0;
++    const uint8_t *extradata;
++    size_t extradata_size;
++    int ps_changed = 0, side_changed = 0;
++    int length_size = s->length_size;
+ 
+     int got_irap = 0;
+     int i, ret = 0;
+@@ -129,7 +366,22 @@ static int hevc_mp4toannexb_filter(AVBSFContext *ctx, AVPacket *out)
+     if (ret < 0)
+         return ret;
+ 
+-    if (!s->extradata_parsed) {
++    extradata = av_packet_get_side_data(in, AV_PKT_DATA_NEW_EXTRADATA, &extradata_size);
++    if (extradata && extradata_size >= MIN_HEVCC_LENGTH &&
++        (extradata[0] == 1 || (!extradata[0] && (extradata[1] || extradata[2] > 1)))) {
++        if (extradata_size > INT_MAX) {
++            ret = AVERROR_INVALIDDATA;
++            goto fail;
++        }
++        ret = hevc_extradata_to_annexb(ctx, extradata, extradata_size, &updated_ps,
++                                     &updated_extradata, &updated_extradata_size);
++        if (ret < 0)
++            goto fail;
++        length_size = ret;
++        ps_changed = side_changed = 1;
++    }
++
++    if (!s->extradata_parsed && !side_changed) {
+         av_packet_move_ref(out, in);
+         av_packet_free(&in);
+         return 0;
+@@ -141,12 +393,13 @@ static int hevc_mp4toannexb_filter(AVBSFContext *ctx, AVPacket *out)
+         uint32_t nalu_size = 0;
+         int      nalu_type;
+         int is_irap, add_extradata, extra_size, prev_size;
++        const HEVCParameterSet *ps;
+ 
+-        if (bytestream2_get_bytes_left(&gb) < s->length_size) {
++        if (bytestream2_get_bytes_left(&gb) < length_size) {
+             ret = AVERROR_INVALIDDATA;
+             goto fail;
+         }
+-        for (i = 0; i < s->length_size; i++)
++        for (i = 0; i < length_size; i++)
+             nalu_size = (nalu_size << 8) | bytestream2_get_byte(&gb);
+ 
+         if (nalu_size < 2 || nalu_size > bytestream2_get_bytes_left(&gb)) {
+@@ -156,10 +409,30 @@ static int hevc_mp4toannexb_filter(AVBSFContext *ctx, AVPacket *out)
+ 
+         nalu_type = (bytestream2_peek_byte(&gb) >> 1) & 0x3f;
+ 
+-        /* prepend extradata to IRAP frames */
++        if (nalu_type >= HEVC_NAL_VPS && nalu_type <= HEVC_NAL_PPS) {
++            /* Commit only after the whole packet succeeds. A malformed NAL
++             * later in the packet must not change the next packet's CSD. */
++            if (!ps_changed) {
++                ret = hevc_ps_clone(s->ps, &updated_ps);
++                if (ret < 0)
++                    goto fail;
++                ps_changed = 1;
++            }
++            ret = hevc_ps_update(&updated_ps, gb.buffer, nalu_size, nalu_type);
++            if (ret < 0)
++                goto fail;
++        }
++        ps = ps_changed ? updated_ps : s->ps;
++
++        /* Prepend the currently valid parameter sets, not the initial hvcC.
++         * In-band updates can precede this IRAP or arrive in earlier packets. */
+         is_irap       = nalu_type >= 16 && nalu_type <= 23;
+         add_extradata = is_irap && !got_irap;
+-        extra_size    = add_extradata * ctx->par_out->extradata_size;
++        extra_size    = add_extradata ? hevc_ps_size(ps) : 0;
++        if (extra_size < 0) {
++            ret = extra_size;
++            goto fail;
++        }
+         got_irap     |= is_irap;
+ 
+         if (FFMIN(INT_MAX, SIZE_MAX) < 4ULL + nalu_size + extra_size) {
+@@ -174,7 +447,7 @@ static int hevc_mp4toannexb_filter(AVBSFContext *ctx, AVPacket *out)
+             goto fail;
+ 
+         if (extra_size)
+-            memcpy(out->data + prev_size, ctx->par_out->extradata, extra_size);
++            hevc_ps_copy(out->data + prev_size, ps);
+         AV_WB32(out->data + prev_size + extra_size, 1);
+         bytestream2_get_buffer(&gb, out->data + prev_size + 4 + extra_size, nalu_size);
+     }
+@@ -182,8 +455,27 @@ static int hevc_mp4toannexb_filter(AVBSFContext *ctx, AVPacket *out)
+     ret = av_packet_copy_props(out, in);
+     if (ret < 0)
+         goto fail;
++    if (side_changed) {
++        /* Downstream sees Annex B consistently, while the caller retains its
++         * original hvcC side data for software fallback. */
++        ret = av_packet_add_side_data(out, AV_PKT_DATA_NEW_EXTRADATA,
++                                      updated_extradata, updated_extradata_size);
++        if (ret < 0)
++            goto fail;
++        updated_extradata = NULL;
++        s->length_size = length_size;
++        s->extradata_parsed = 1;
++    }
++    if (ps_changed) {
++        if (s->ps != s->initial_ps)
++            hevc_ps_free(&s->ps);
++        s->ps = updated_ps;
++        updated_ps = NULL;
++    }
+ 
+ fail:
++    av_freep(&updated_extradata);
++    hevc_ps_free(&updated_ps);
+     if (ret < 0)
+         av_packet_unref(out);
+     av_packet_free(&in);
+@@ -191,6 +483,24 @@ fail:
+     return ret;
+ }
+ 
++static void hevc_mp4toannexb_flush(AVBSFContext *ctx)
++{
++    HEVCBSFContext *s = ctx->priv_data;
++    if (s->ps != s->initial_ps)
++        hevc_ps_free(&s->ps);
++    s->ps = s->initial_ps;
++    s->length_size = s->initial_length_size;
++    s->extradata_parsed = !!s->initial_length_size;
++}
++
++static void hevc_mp4toannexb_close(AVBSFContext *ctx)
++{
++    HEVCBSFContext *s = ctx->priv_data;
++    hevc_mp4toannexb_flush(ctx);
++    hevc_ps_free(&s->initial_ps);
++    s->ps = NULL;
++}
++
+ static const enum AVCodecID codec_ids[] = {
+     AV_CODEC_ID_HEVC, AV_CODEC_ID_NONE,
+ };
+@@ -201,4 +511,6 @@ const FFBitStreamFilter ff_hevc_mp4toannexb_bsf = {
+     .priv_data_size = sizeof(HEVCBSFContext),
+     .init           = hevc_mp4toannexb_init,
+     .filter         = hevc_mp4toannexb_filter,
++    .flush          = hevc_mp4toannexb_flush,
++    .close          = hevc_mp4toannexb_close,
+ };
