@@ -1,0 +1,6 @@
+Elf file type is DYN (Shared object file)
+Program Headers:
+  Type           Offset   VirtAddr           PhysAddr           FileSiz  MemSiz   Flg Align
+  LOAD           0x000000 0x0000000000000000 0x0000000000000000 0x003000 0x003000 R E 0x4000
+  LOAD           0x004000 0x0000000000008000 0x0000000000008000 0x004000 0x004000 RW  0x4000
+  GNU_RELRO      0x004000 0x0000000000008000 0x0000000000008000 0x002000 0x004000 R   0x1

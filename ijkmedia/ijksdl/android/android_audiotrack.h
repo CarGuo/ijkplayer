@@ -106,7 +106,13 @@ void SDL_Android_AudioTrack_stop(JNIEnv *env, SDL_Android_AudioTrack *atrack);
 void SDL_Android_AudioTrack_release(JNIEnv *env, SDL_Android_AudioTrack *atrack);
 int SDL_Android_AudioTrack_write(JNIEnv *env, SDL_Android_AudioTrack *atrack, uint8_t *data, int size_in_byte);
 
+int SDL_Android_AudioTrack_get_playback_head(JNIEnv *env, SDL_Android_AudioTrack *atrack, uint32_t *head);
+int SDL_Android_AudioTrack_pause_checked(JNIEnv *env, SDL_Android_AudioTrack *atrack);
+int SDL_Android_AudioTrack_flush_checked(JNIEnv *env, SDL_Android_AudioTrack *atrack);
+
 int  SDL_Android_AudioTrack_getAudioSessionId(JNIEnv *env, SDL_Android_AudioTrack *atrack);
 void SDL_Android_AudioTrack_setSpeed(JNIEnv *env, SDL_Android_AudioTrack *atrack, float speed);
+int SDL_Android_AudioTrack_set_rate_checked(JNIEnv *env, SDL_Android_AudioTrack *atrack,
+    float speed, int preserve_pitch, float *actual_speed, float *actual_pitch);
 
 #endif

@@ -86,6 +86,7 @@ typedef struct SDL_Vout_Opaque {
     SDL_AMediaCodec *acodec;
     int              null_native_window_warned; // reduce log for null window
     int              next_buffer_id;
+    bool             buffer_release_failed; // sticky until explicit buffer invalidation
 
     ISDL_Array       overlay_manager;
     ISDL_Array       overlay_pool;
@@ -237,12 +238,48 @@ static void SDL_VoutAndroid_invalidateAllBuffers_l(SDL_Vout *vout)
 {
     AMCTRACE("%s\n", __func__);
     SDL_Vout_Opaque *opaque = vout->opaque;
+    // Invalidating a view does not prove failed codec indices were returned.
 
     SDL_AMediaCodecBufferProxy **begin = (SDL_AMediaCodecBufferProxy **)ISDL_Array__begin(&opaque->overlay_manager);
     SDL_AMediaCodecBufferProxy **end   = (SDL_AMediaCodecBufferProxy **)ISDL_Array__end(&opaque->overlay_manager);
     for (; begin < end; ++begin) {
         SDL_AMediaCodecBufferProxy_invalidate(*begin);
     }
+}
+
+/* EOS guarantees no further output acquisition for this codec generation.
+ * Count only unreleased real indices; rendered overlays may remain in ffplay's
+ * keep-last queue after their index was returned. Caller never holds this lock
+ * across a wait, stop, or reconfigure. */
+int SDL_VoutAndroid_countOwnedBuffers(SDL_Vout *vout, int acodec_serial)
+{
+    int count = 0;
+    SDL_LockMutex(vout->mutex);
+    SDL_Vout_Opaque *opaque = vout->opaque;
+    if (opaque->buffer_release_failed ||
+        !SDL_AMediaCodec_isSameSerial(opaque->acodec, acodec_serial)) {
+        count = -1;
+    } else {
+        SDL_AMediaCodecBufferProxy **begin = (SDL_AMediaCodecBufferProxy **)ISDL_Array__begin(&opaque->overlay_manager);
+        SDL_AMediaCodecBufferProxy **end = (SDL_AMediaCodecBufferProxy **)ISDL_Array__end(&opaque->overlay_manager);
+        for (; begin < end; ++begin) {
+            SDL_AMediaCodecBufferProxy *proxy = *begin;
+            if (proxy->acodec_serial == acodec_serial && proxy->buffer_index >= 0 &&
+                !(proxy->buffer_info.flags & AMEDIACODEC__BUFFER_FLAG_FAKE_FRAME))
+                ++count;
+        }
+    }
+    SDL_UnlockMutex(vout->mutex);
+    return count;
+}
+
+void SDL_VoutAndroid_resetBufferReleaseError(SDL_Vout *vout, int acodec_serial)
+{
+    SDL_LockMutex(vout->mutex);
+    SDL_Vout_Opaque *opaque = vout->opaque;
+    if (SDL_AMediaCodec_isSameSerial(opaque->acodec, acodec_serial))
+        opaque->buffer_release_failed = false; // caller confirmed codec flush
+    SDL_UnlockMutex(vout->mutex);
 }
 
 void SDL_VoutAndroid_invalidateAllBuffers(SDL_Vout *vout)
@@ -293,6 +330,7 @@ static void SDL_VoutAndroid_setAMediaCodec_l(SDL_Vout *vout, SDL_AMediaCodec *ac
         return;
 
     SDL_VoutAndroid_invalidateAllBuffers_l(vout);
+    opaque->buffer_release_failed = false; // explicit codec replacement/detach
 
     SDL_AMediaCodec_decreaseReferenceP(&opaque->acodec);
     opaque->acodec = acodec;
@@ -396,6 +434,9 @@ static int SDL_VoutAndroid_releaseBufferProxy_l(SDL_Vout *vout, SDL_AMediaCodecB
 
     sdl_amedia_status_t amc_ret = SDL_AMediaCodec_releaseOutputBuffer(opaque->acodec, proxy->buffer_index, render);    
     if (amc_ret != SDL_AMEDIA_OK) {
+        // The proxy will be pooled/reset, so retain failure at the vout codec
+        // generation level. A zero proxy count must not hide failed returns.
+        opaque->buffer_release_failed = true;
         ALOGW("%s: [%d] !!!!!!!! proxy %d: vout: %d idx: %d render: %s, fake: %s",
             __func__,
             proxy->buffer_id,

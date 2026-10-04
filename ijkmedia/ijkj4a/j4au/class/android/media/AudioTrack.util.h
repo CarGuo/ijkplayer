@@ -24,6 +24,9 @@
 #include "j4a/j4a_base.h"
 #include "j4a/class/android/media/AudioTrack.h"
 
+/* API23+ only; returns actual read-back values, never requested echoes. */
+int J4AC_android_media_AudioTrack__setParamsChecked(JNIEnv *env, jobject thiz,
+    jfloat speed, int preserve_pitch, jfloat *actual_speed, jfloat *actual_pitch);
 void J4AC_android_media_AudioTrack__setSpeed(JNIEnv *env, jobject thiz, jfloat speed);
 void J4AC_android_media_AudioTrack__setSpeed__catchAll(JNIEnv *env, jobject thiz, jfloat speed);
 

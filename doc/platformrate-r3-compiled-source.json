@@ -1,0 +1,4785 @@
+{
+  "scope": "Project-owned files from effective compiled source, before documentation and initializer publication edits",
+  "effectiveFullInputCount": 1015,
+  "recoveredTrackedCount": 791,
+  "newProjectHeaderCount": 2,
+  "excludedGeneratedInputCount": 222,
+  "symlinkHashConvention": "sha256 of UTF-8 symlink: prefix plus raw relative target; Git blob uses raw target only",
+  "files": [
+    {
+      "path": ".gitattributes",
+      "kind": "file",
+      "bytes": 100,
+      "sha256": "a3a58605230a55523a72c47d08d6c8a836cd0c98a0825539d045f078ac72b85b"
+    },
+    {
+      "path": ".gitignore",
+      "kind": "file",
+      "bytes": 492,
+      "sha256": "a63057fff715930e4b5c39a4db402f5f7206b8efcb2a53ab47c9ea2d5968043b"
+    },
+    {
+      "path": ".travis.yml",
+      "kind": "file",
+      "bytes": 238,
+      "sha256": "204487df1d0c45b3c3429fdcdc870c048f5d8cf8ee3023b0224e3a45da4a3154"
+    },
+    {
+      "path": "COPYING.GPLv2",
+      "kind": "file",
+      "bytes": 18092,
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643"
+    },
+    {
+      "path": "COPYING.GPLv3",
+      "kind": "file",
+      "bytes": 35147,
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+    },
+    {
+      "path": "COPYING.LGPLv2.1",
+      "kind": "file",
+      "bytes": 26526,
+      "sha256": "b634ab5640e258563c536e658cad87080553df6f34f62269a21d554844e58bfe"
+    },
+    {
+      "path": "COPYING.LGPLv2.1.txt",
+      "kind": "symlink",
+      "target": "COPYING.LGPLv2.1",
+      "sha256": "da80093cde88afb32a1d12c4649fb74fbc4972dc99b3a764d15cab40c4de527e",
+      "bytes": 16
+    },
+    {
+      "path": "COPYING.LGPLv3",
+      "kind": "file",
+      "bytes": 7651,
+      "sha256": "da7eabb7bafdf7d3ae5e9f223aa5bdc1eece45ac569dc21b3b037520b4464768"
+    },
+    {
+      "path": "MODULE_LICENSE_APACHE2",
+      "kind": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "NEWS.md",
+      "kind": "file",
+      "bytes": 8825,
+      "sha256": "7dfda89e8e8877fc4383baf0cb6f98837bbd7a856799fbb970f52368083c03ad"
+    },
+    {
+      "path": "NOTICE",
+      "kind": "file",
+      "bytes": 10695,
+      "sha256": "38751245389e1e23f73e6f5384b5cbe7fa972cc4410c5adc9c04b082a0b9561a"
+    },
+    {
+      "path": "README.md",
+      "kind": "file",
+      "bytes": 16769,
+      "sha256": "10542cfb62895ad17521b3305dd4140df7cd8c33c380c1aad235a2c22fa26bd8"
+    },
+    {
+      "path": "android/.gitignore",
+      "kind": "file",
+      "bytes": 1410,
+      "sha256": "5b9acda9a7b9fe6062c423c3d7abcca5f18933bfb15dc6e58eb85c7b29e0094e"
+    },
+    {
+      "path": "android/android-ndk-prof",
+      "kind": "symlink",
+      "target": "../../../../../../ijkprof/android-ndk-profiler-dummy/jni",
+      "sha256": "5606093c2df827ba944a9329862d9db7d421291a31f5f94febe21c862a05471d",
+      "bytes": 56
+    },
+    {
+      "path": "android/build-on-travis.sh",
+      "kind": "file",
+      "bytes": 2782,
+      "sha256": "a8481cccfb7e10ea3f5201ea7bd6fd38904debe47a30aa6b4f8d6ec5c8f303fd"
+    },
+    {
+      "path": "android/compile-ijk.sh",
+      "kind": "file",
+      "bytes": 3503,
+      "sha256": "244f9128ec68a24b4166f7293025735b6f4c844f3ac147e52ef08901b7fc73ee"
+    },
+    {
+      "path": "android/contrib/.gitignore",
+      "kind": "file",
+      "bytes": 35,
+      "sha256": "fd3e595044e9e07a7e6049510a5ea6cd429883fd8a8514e1937afa6f423f85bf"
+    },
+    {
+      "path": "android/contrib/compile-ffmpeg.sh",
+      "kind": "file",
+      "bytes": 2733,
+      "sha256": "cfa308ae80e5bc7caf847d79896e2ea737ad549600807ce65b8146ef00e951e1"
+    },
+    {
+      "path": "android/contrib/compile-ffmpeg5.sh",
+      "kind": "file",
+      "bytes": 11362,
+      "sha256": "c9fe306f94f199512cf231a200e94e5d8ff572eeb1822f5d3e4aa3e62ab169d2"
+    },
+    {
+      "path": "android/contrib/compile-libsoxr.sh",
+      "kind": "file",
+      "bytes": 2622,
+      "sha256": "dd3d39f2ac7b1d69e5be97fee6bd4902f6993c7e60a59bd265ba0a2987b3c6b6"
+    },
+    {
+      "path": "android/contrib/compile-openssl.sh",
+      "kind": "file",
+      "bytes": 2622,
+      "sha256": "510bb012dccdeb4522cc635e7750ece7c57c9b74718f82b946ac17a4d3c861ac"
+    },
+    {
+      "path": "android/contrib/setup-as-commiter.sh",
+      "kind": "file",
+      "bytes": 1230,
+      "sha256": "4eb09c8cd3bc90066932d11ac582818e2acae2fb34acacfa0d53e99b16f4cc87"
+    },
+    {
+      "path": "android/contrib/sync-mirrors.sh",
+      "kind": "file",
+      "bytes": 949,
+      "sha256": "ddd1e049a8622eea0e9686da28c81ee6fa0f5661b940d468b7b85ed4abdec0a0"
+    },
+    {
+      "path": "android/contrib/tools/do-compile-ffmpeg.sh",
+      "kind": "file",
+      "bytes": 12994,
+      "sha256": "3dca38ebb35f1fd682ed287b9bd848f39d6d2356e220e56fed2e8749d6fc7515"
+    },
+    {
+      "path": "android/contrib/tools/do-compile-libsoxr.sh",
+      "kind": "file",
+      "bytes": 3217,
+      "sha256": "b67e538040395b815febe96a267b830b256388c7661332266200f4704422ca9d"
+    },
+    {
+      "path": "android/contrib/tools/do-compile-openssl.sh",
+      "kind": "file",
+      "bytes": 6644,
+      "sha256": "f2f7637497accf9751ef7b6644424b291e64a05ef10fe40c99b6440f998f5e23"
+    },
+    {
+      "path": "android/contrib/tools/do-detect-env.sh",
+      "kind": "file",
+      "bytes": 3022,
+      "sha256": "08dc4f208cfbc0ca348b7490f26be4596fe36e490f6a99e116e2f4b1b4fe6193"
+    },
+    {
+      "path": "android/ijk-addr2line.sh",
+      "kind": "file",
+      "bytes": 92,
+      "sha256": "58c78c23e50003a753cd14217d2e40c71576e6a034ad331c35e28b9adc36cd9b"
+    },
+    {
+      "path": "android/ijk-ndk-stack.sh",
+      "kind": "file",
+      "bytes": 97,
+      "sha256": "fbded75d8dd5afc066177f2b6587cf22652334f213b9b34a5eb2c2fc236d6371"
+    },
+    {
+      "path": "android/ijkplayer/.gitignore",
+      "kind": "file",
+      "bytes": 108,
+      "sha256": "48f87f248ffffd3565f318d17eb7baad3115aa32ef023e7d5a1c8e0797a3d3e0"
+    },
+    {
+      "path": "android/ijkplayer/build.gradle",
+      "kind": "file",
+      "bytes": 772,
+      "sha256": "f6ddd3997382afaa2e94642df73a68991aa8cedd2fc9c67a5cb1d41c5370daf5"
+    },
+    {
+      "path": "android/ijkplayer/gradle/wrapper/gradle-wrapper.jar",
+      "kind": "file",
+      "bytes": 49896,
+      "sha256": "e2b82129ab64751fd40437007bd2f7f2afb3c6e41a9198e628650b22d5824a14"
+    },
+    {
+      "path": "android/ijkplayer/gradle/wrapper/gradle-wrapper.properties",
+      "kind": "file",
+      "bytes": 233,
+      "sha256": "b0195cd993a8a56ff79161427c01115bb3a2de5784ba7697d4874869e72b9263"
+    },
+    {
+      "path": "android/ijkplayer/gradle.properties",
+      "kind": "file",
+      "bytes": 1481,
+      "sha256": "7579d7aeef961d423b4d728181b75cc21040ada2527124cafe3531b0ca89e1bf"
+    },
+    {
+      "path": "android/ijkplayer/gradlew",
+      "kind": "file",
+      "bytes": 5080,
+      "sha256": "874d75d37bf38c810a8314e0b2f78a3c77fce9437963ae33cec8543d92662b61"
+    },
+    {
+      "path": "android/ijkplayer/gradlew.bat",
+      "kind": "file",
+      "bytes": 2404,
+      "sha256": "c13c6e91b9a517783976de213d46398c661ea9e17651376d7301e839eaedcc62"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-arm64/.gitignore",
+      "kind": "file",
+      "bytes": 7,
+      "sha256": "5b46eb48d96e8571e8c93e4ef4f6ffbe6807b6d7350664a36a064e1167a32718"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-arm64/build.gradle",
+      "kind": "file",
+      "bytes": 990,
+      "sha256": "96c97de1fa925bdee9bb1a9d8776a68d43009b2ff8829e6746472262e7915862"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-arm64/gradle.properties",
+      "kind": "file",
+      "bytes": 74,
+      "sha256": "c9eb557ab784d030b8cda6286ed52e4ea61284e09f13653e83f2e07ba77a208f"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-arm64/proguard-rules.pro",
+      "kind": "file",
+      "bytes": 646,
+      "sha256": "5111344e0889016abf792d55bd3a5343d545ebb15e2f2a1599064a3600ff61ab"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-arm64/src/androidTest/java/tv/danmaku/ijk/media/player_arm64/ApplicationTest.java",
+      "kind": "file",
+      "bytes": 364,
+      "sha256": "d6515e3833eb04fc1cbe7128b0da39ff7929705b5cd12b3dd909ac55234fb790"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-arm64/src/main/.classpath",
+      "kind": "file",
+      "bytes": 508,
+      "sha256": "cbe13e5c607836ff0af965b0b26b5d6878f88ebfa774e77af60d36953fcfdb14"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-arm64/src/main/.project",
+      "kind": "file",
+      "bytes": 818,
+      "sha256": "3f5dbaa643400a0f1cc5ca4b4d479a83f55c28b42866ccdd4947451f45eed667"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-arm64/src/main/.settings/org.eclipse.jdt.core.prefs",
+      "kind": "file",
+      "bytes": 173,
+      "sha256": "a99468f1a7c7157b09beec1088a48e7d6c16d4fcf0b65e2ec05624e05a6bf20f"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-arm64/src/main/AndroidManifest.xml",
+      "kind": "file",
+      "bytes": 184,
+      "sha256": "048956e0d2100cb8a20b521a4f832170a7583aa87c92b482ad1ad422144a0cc0"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-arm64/src/main/java/tv/danmaku/ijk/media/player_arm64/Pragma.java",
+      "kind": "file",
+      "bytes": 720,
+      "sha256": "04c0f86d4f0db049430a979b01913bd9b92d1762d3c9e90990d38ea5f8f8ff37"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-arm64/src/main/jni/Android.mk",
+      "kind": "symlink",
+      "target": "../../../../ijkplayer-armv7a/src/main/jni/Android.mk",
+      "sha256": "4b2d4a5c876d819ac7fb7496d59ec2809b7f900be948042623ea8534b2834358",
+      "bytes": 52
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-arm64/src/main/jni/Application.mk",
+      "kind": "file",
+      "bytes": 1175,
+      "sha256": "f75c19db15d45dc56aceb41705252865fc73df311843726bc99a6f9faa151aef"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-arm64/src/main/jni/ffmpeg",
+      "kind": "symlink",
+      "target": "../../../../ijkplayer-armv7a/src/main/jni/ffmpeg",
+      "sha256": "aa076ba61c535e87b9c9ea0d2b3558a7cef24e229febca3c488f27b06d36b17f",
+      "bytes": 48
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-arm64/src/main/jni/ijkmedia",
+      "kind": "symlink",
+      "target": "../../../../../../ijkmedia",
+      "sha256": "dfb8984d0430174126bd93a41579cf26d51749a95bf69fa2b26043b54c5364d2",
+      "bytes": 26
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-arm64/src/main/project.properties",
+      "kind": "file",
+      "bytes": 584,
+      "sha256": "ff52a94a6767aac75ff0c357dd23154267ff337173bd421ece775994f7c31bbc"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-arm64/src/main/res/values/strings.xml",
+      "kind": "file",
+      "bytes": 188,
+      "sha256": "9615d7107b268a4626f03606a10a5bf29cbd6a0feb3dbcf75df712dd79df2245"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv5/.gitignore",
+      "kind": "file",
+      "bytes": 7,
+      "sha256": "5b46eb48d96e8571e8c93e4ef4f6ffbe6807b6d7350664a36a064e1167a32718"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv5/build.gradle",
+      "kind": "file",
+      "bytes": 896,
+      "sha256": "1faf80c3a7d2e60e1a2deea8ad5fa28b91bebfcf7c313497cc1060ed5bf047a8"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv5/gradle.properties",
+      "kind": "file",
+      "bytes": 74,
+      "sha256": "46eece9fddc70ac20000eefeba43d06a5c3433de703caa5fda94c34594488be5"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv5/proguard-rules.pro",
+      "kind": "file",
+      "bytes": 647,
+      "sha256": "93594f43c1b7480556f7f7c5a53d094abbf5a75e3dc5b5f6241f2b60269e6246"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv5/src/androidTest/java/tv/danmaku/ijk/media/player_armv5/ApplicationTest.java",
+      "kind": "file",
+      "bytes": 364,
+      "sha256": "5352da64ba469d35eae3fc6c1dc293f3e6717fa0256d9ec8538353193cbe0df7"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv5/src/main/.classpath",
+      "kind": "file",
+      "bytes": 508,
+      "sha256": "cbe13e5c607836ff0af965b0b26b5d6878f88ebfa774e77af60d36953fcfdb14"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv5/src/main/.project",
+      "kind": "file",
+      "bytes": 818,
+      "sha256": "1890f032b701a8a59aa2a95683c7dc3eca4b0a4745e53e75f64af2d6b079efa7"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv5/src/main/.settings/org.eclipse.jdt.core.prefs",
+      "kind": "file",
+      "bytes": 173,
+      "sha256": "a99468f1a7c7157b09beec1088a48e7d6c16d4fcf0b65e2ec05624e05a6bf20f"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv5/src/main/AndroidManifest.xml",
+      "kind": "file",
+      "bytes": 183,
+      "sha256": "81a00d7603be384a9fa0ef8f526942db7155f15a7b2392ba96cdeb3d34479a8d"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv5/src/main/java/tv/danmaku/ijk/media/player_armv5/Pragma.java",
+      "kind": "file",
+      "bytes": 720,
+      "sha256": "266789ba5f9117d6cd0e67d854cdf99d672d14eb29883b27abb1c5799e53b8ea"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv5/src/main/jni/Android.mk",
+      "kind": "symlink",
+      "target": "../../../../ijkplayer-armv7a/src/main/jni/Android.mk",
+      "sha256": "4b2d4a5c876d819ac7fb7496d59ec2809b7f900be948042623ea8534b2834358",
+      "bytes": 52
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv5/src/main/jni/Application.mk",
+      "kind": "file",
+      "bytes": 1141,
+      "sha256": "ba4c71c0efeb658cb0ced2791b5259d5d518b629d6b3d53783394b00b20ccb7e"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv5/src/main/jni/ffmpeg",
+      "kind": "symlink",
+      "target": "../../../../ijkplayer-armv7a/src/main/jni/ffmpeg",
+      "sha256": "aa076ba61c535e87b9c9ea0d2b3558a7cef24e229febca3c488f27b06d36b17f",
+      "bytes": 48
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv5/src/main/jni/ijkmedia",
+      "kind": "symlink",
+      "target": "../../../../../../ijkmedia",
+      "sha256": "dfb8984d0430174126bd93a41579cf26d51749a95bf69fa2b26043b54c5364d2",
+      "bytes": 26
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv5/src/main/project.properties",
+      "kind": "file",
+      "bytes": 584,
+      "sha256": "ff52a94a6767aac75ff0c357dd23154267ff337173bd421ece775994f7c31bbc"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv5/src/main/res/values/strings.xml",
+      "kind": "file",
+      "bytes": 188,
+      "sha256": "9615d7107b268a4626f03606a10a5bf29cbd6a0feb3dbcf75df712dd79df2245"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv7a/.gitignore",
+      "kind": "file",
+      "bytes": 7,
+      "sha256": "5b46eb48d96e8571e8c93e4ef4f6ffbe6807b6d7350664a36a064e1167a32718"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv7a/build.gradle",
+      "kind": "file",
+      "bytes": 896,
+      "sha256": "1faf80c3a7d2e60e1a2deea8ad5fa28b91bebfcf7c313497cc1060ed5bf047a8"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv7a/gradle.properties",
+      "kind": "file",
+      "bytes": 76,
+      "sha256": "c3ab1e2f6a59ef3ab7c91d3ef44641ec6c2b1edc73186868b151959a7f11382e"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv7a/proguard-rules.pro",
+      "kind": "file",
+      "bytes": 647,
+      "sha256": "93594f43c1b7480556f7f7c5a53d094abbf5a75e3dc5b5f6241f2b60269e6246"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv7a/src/androidTest/java/tv/danmaku/ijk/media/player_armv7a/ApplicationTest.java",
+      "kind": "file",
+      "bytes": 365,
+      "sha256": "78f68ef7b27d9c3f07dd383cdd6f6c4bde9caba1593d5e3cc1727c9e9b4e32a1"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv7a/src/main/.classpath",
+      "kind": "file",
+      "bytes": 508,
+      "sha256": "cbe13e5c607836ff0af965b0b26b5d6878f88ebfa774e77af60d36953fcfdb14"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv7a/src/main/.project",
+      "kind": "file",
+      "bytes": 819,
+      "sha256": "157e68f5ef878770888f5b9b685f9cced0b0137bdafbf8c08060b0a0ce3edcb2"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv7a/src/main/.settings/org.eclipse.jdt.core.prefs",
+      "kind": "file",
+      "bytes": 173,
+      "sha256": "a99468f1a7c7157b09beec1088a48e7d6c16d4fcf0b65e2ec05624e05a6bf20f"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv7a/src/main/AndroidManifest.xml",
+      "kind": "file",
+      "bytes": 184,
+      "sha256": "3452717e4daeb9373d64ac6612844ec66aa60ed55abd02de1006c4d0aee7270b"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv7a/src/main/java/tv/danmaku/ijk/media/player_armv7a/Pragma.java",
+      "kind": "file",
+      "bytes": 721,
+      "sha256": "89ae78611715dd6e235038c0b1228d14e354fb9debde8091a03e1371c510775e"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv7a/src/main/jni/Android.mk",
+      "kind": "file",
+      "bytes": 2157,
+      "sha256": "837404e174ad75e6f20103031b7cbcf81c9183ba62c3d51b3eab051ef4d3d0a4"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv7a/src/main/jni/Application.mk",
+      "kind": "file",
+      "bytes": 1204,
+      "sha256": "450ed17ad12210ac346b2dd06deb5d1d1fd896759697b53616185d28afff4e01"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv7a/src/main/jni/ffmpeg/Android.mk",
+      "kind": "file",
+      "bytes": 176,
+      "sha256": "aa9d3148abcfd55cef6eed3b50f8287467ea4446076cf28c35c9b53a9fd03a4f"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv7a/src/main/jni/ijkmedia",
+      "kind": "symlink",
+      "target": "../../../../../../ijkmedia",
+      "sha256": "dfb8984d0430174126bd93a41579cf26d51749a95bf69fa2b26043b54c5364d2",
+      "bytes": 26
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv7a/src/main/project.properties",
+      "kind": "file",
+      "bytes": 584,
+      "sha256": "ff52a94a6767aac75ff0c357dd23154267ff337173bd421ece775994f7c31bbc"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-armv7a/src/main/res/values/strings.xml",
+      "kind": "file",
+      "bytes": 188,
+      "sha256": "9615d7107b268a4626f03606a10a5bf29cbd6a0feb3dbcf75df712dd79df2245"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/.gitignore",
+      "kind": "file",
+      "bytes": 7,
+      "sha256": "5b46eb48d96e8571e8c93e4ef4f6ffbe6807b6d7350664a36a064e1167a32718"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/build.gradle",
+      "kind": "file",
+      "bytes": 2582,
+      "sha256": "a79ad671e5d31a2bc83eca12d994e724b80fc3d4a861af11b44005a232ecc592"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/proguard-rules.pro",
+      "kind": "file",
+      "bytes": 647,
+      "sha256": "93594f43c1b7480556f7f7c5a53d094abbf5a75e3dc5b5f6241f2b60269e6246"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/androidTest/java/tv/danmaku/ijk/media/example/ApplicationTest.java",
+      "kind": "file",
+      "bytes": 359,
+      "sha256": "96313f65460762162f6e5131c4da606b34aaa18da55636bdc1add497d78a3e7f"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/.classpath",
+      "kind": "file",
+      "bytes": 1101,
+      "sha256": "41ee1f399a91a2371c8f7c135f11573d4d0783aa1ccdeda68937a6b0cb595122"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/.project",
+      "kind": "file",
+      "bytes": 819,
+      "sha256": "7b6f7d3535b3220cb4eeef9f7c86848e48a4b1d51d7415879c435c744400fe63"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/.settings/org.eclipse.jdt.core.prefs",
+      "kind": "file",
+      "bytes": 173,
+      "sha256": "a99468f1a7c7157b09beec1088a48e7d6c16d4fcf0b65e2ec05624e05a6bf20f"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/AndroidManifest.xml",
+      "kind": "file",
+      "bytes": 3646,
+      "sha256": "5162297983e71ed877e50787a40d6c96016cda60bb77b9a4388be7ea58a73467"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/activities/FileExplorerActivity.java",
+      "kind": "file",
+      "bytes": 3079,
+      "sha256": "3ce312690f82b709bfe16010293a77bdef1a9b7127edabe8edc8a515d7b818f1"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/activities/RecentMediaActivity.java",
+      "kind": "file",
+      "bytes": 2117,
+      "sha256": "403e68b8bb55ca6f71b40971e2bd25e795c1f9ba85a3a7c1de4c41a570cb3ddf"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/activities/SampleMediaActivity.java",
+      "kind": "file",
+      "bytes": 2118,
+      "sha256": "75f2a5f4fd78714e1ae68e060db8ac57c5d214b2b3d7003d008d0f14587bfbb7"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/activities/SettingsActivity.java",
+      "kind": "file",
+      "bytes": 1907,
+      "sha256": "c6901261a7269b8a2c6303301ebfa67e6fefc19c78337319c3b957dce6395dcb"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/activities/VideoActivity.java",
+      "kind": "file",
+      "bytes": 9187,
+      "sha256": "bebd7c43e238a3d4289267c054adc5611908173f4c53e167dd5cdb60c679b257"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/application/AppActivity.java",
+      "kind": "file",
+      "bytes": 3759,
+      "sha256": "739f19ed454f04342d02ea787a7d53312754f6880ca53a57b85606d9720df628"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/application/Settings.java",
+      "kind": "file",
+      "bytes": 4243,
+      "sha256": "83e971e7a0ba2347d0e7a2fa6d94cb50a1b853dd91c7023e38bea36603480bc6"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/content/PathCursor.java",
+      "kind": "file",
+      "bytes": 4937,
+      "sha256": "9f7162188067d454d53e627cd3bb934fcb0e9ebaed011bbeaeee7863631b01e6"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/content/PathCursorLoader.java",
+      "kind": "file",
+      "bytes": 1564,
+      "sha256": "8a0ed88f1163fefe251095848e01d00421accb02b3db36f30ab8eba007730281"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/content/RecentMediaStorage.java",
+      "kind": "file",
+      "bytes": 4708,
+      "sha256": "804307a46b1ccd6ef9e0660b10d6198a88731c81ff3a1f91adb8f73e45a7ea12"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/eventbus/FileExplorerEvents.java",
+      "kind": "file",
+      "bytes": 1197,
+      "sha256": "5bc1b8c7c02b0dc1bb201ee10ba9ac8adf37b1ec856a19b7d83d69aa235837aa"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/fragments/FileListFragment.java",
+      "kind": "file",
+      "bytes": 7256,
+      "sha256": "f6ea2893ba78fea251b87777a809efeb68fcc981b366d9938d9b47b131e8d372"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/fragments/RecentMediaListFragment.java",
+      "kind": "file",
+      "bytes": 5115,
+      "sha256": "6851726073f9b8786cab736fbf291d937837f37c4aeb9b1a7115e71f9fde9cfc"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/fragments/SampleMediaListFragment.java",
+      "kind": "file",
+      "bytes": 9951,
+      "sha256": "9b63230edf703af766493705509ce945211cd4f03e38f66fa3aae1572e7a85a9"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/fragments/SettingsFragment.java",
+      "kind": "file",
+      "bytes": 1161,
+      "sha256": "b0052247391b271a950055a0b4c265bf4a830fd35eb85f5f1c853ee39ae715c9"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/fragments/TracksFragment.java",
+      "kind": "file",
+      "bytes": 6599,
+      "sha256": "38c81f3d419236ef196b464f7e049e7c3154cbbc86aae1df0d769ca88d33d38c"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/services/MediaPlayerService.java",
+      "kind": "file",
+      "bytes": 1881,
+      "sha256": "81b743a7c2367e68566e73008410b46cb32a0eb5a5a638496ee38087d3622761"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/widget/media/AndroidMediaController.java",
+      "kind": "file",
+      "bytes": 2434,
+      "sha256": "4ca72d64794da4e19ea76bdf3189bcfcb3e7b0c77fa0b4fc1ce2fa485f6fc798"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/widget/media/FileMediaDataSource.java",
+      "kind": "file",
+      "bytes": 1716,
+      "sha256": "b93569d2edd92d4db44486945990cdf1645da6d5d76256a4b43cfe7251eaecd0"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/widget/media/IMediaController.java",
+      "kind": "file",
+      "bytes": 1121,
+      "sha256": "bab045e4e5bd2ae51c3a1fa0f4459d1b91ca0e3d6f2c6bf7cf302fb807b7c511"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/widget/media/IRenderView.java",
+      "kind": "file",
+      "bytes": 2489,
+      "sha256": "2a63cabee25bbcb86bc4e6e5a19857483fadcded8c45b6d428c53347e4d2b8b8"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/widget/media/IjkVideoView.java",
+      "kind": "file",
+      "bytes": 50685,
+      "sha256": "5d5e224fca711e3b3ed6c93ed5fb0e65993c585d593142dcafc951fd7b6fd817"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/widget/media/InfoHudViewHolder.java",
+      "kind": "file",
+      "bytes": 6608,
+      "sha256": "6e340095083b9fa83e92d456326ff1a8dcb44b15e0b5024223260e80ca0f7759"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/widget/media/MeasureHelper.java",
+      "kind": "file",
+      "bytes": 10647,
+      "sha256": "0afd6f63b460e30f1e5a8c2ed07fd7c2c84440b0234019540271598db65c17a6"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/widget/media/MediaPlayerCompat.java",
+      "kind": "file",
+      "bytes": 2897,
+      "sha256": "3843197de9b7312d7c5ae523454315663dcc7024de11536fb8d00e7deeade555"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/widget/media/SurfaceRenderView.java",
+      "kind": "file",
+      "bytes": 9717,
+      "sha256": "f615a227f16c8f15754fe28d3ddbaa76f1741d7b16cb39a5c8aff2bd49dd33e3"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/widget/media/TableLayoutBinder.java",
+      "kind": "file",
+      "bytes": 4260,
+      "sha256": "1c9f579c56edf235c3f052f9a4c43b814c654bd7900a995bad0f383bec706cc5"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/widget/media/TextureRenderView.java",
+      "kind": "file",
+      "bytes": 13475,
+      "sha256": "8d5454c690e1c2c422a9545d5c1d7e2548579475a46cf74114f4f238299ad0af"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/java/tv/danmaku/ijk/media/example/widget/preference/IjkListPreference.java",
+      "kind": "file",
+      "bytes": 3613,
+      "sha256": "d5e5f55a276ca29e378d92f309a9a5064a1e98029a4472c7d2a03b1a0363f4e5"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/project.properties",
+      "kind": "file",
+      "bytes": 914,
+      "sha256": "791a84cdc3f790ad331fc7603844aee3adc69e8226ef866da91f7520670388b2"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-hdpi/ic_action_dark_aspect_ratio.png",
+      "kind": "file",
+      "bytes": 449,
+      "sha256": "28b63accabf46f1c87f08e57a60f76fe6d29e54b997ddcc0e3e6a9c310a609ca"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-hdpi/ic_action_dark_filter.png",
+      "kind": "file",
+      "bytes": 767,
+      "sha256": "a36c8aeda7f954631db3daa534ab84410fc638449c739193a09d02bb5e310f74"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-hdpi/ic_action_dark_settings.png",
+      "kind": "file",
+      "bytes": 888,
+      "sha256": "fd04b0e794ccb0dc59ae89df4e85e47432caa4503b5d2184d561930730401927"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-hdpi/ic_theme_description.png",
+      "kind": "file",
+      "bytes": 1125,
+      "sha256": "6de037625b6ca3a348f0e514b630375e62b3674ebc368e3755c7e3e7c104b23b"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-hdpi/ic_theme_folder.png",
+      "kind": "file",
+      "bytes": 995,
+      "sha256": "2dc965b4690582df486f738b72682f06a2ae9c2f446c359f6d43d87795d75a38"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-hdpi/ic_theme_play_arrow.png",
+      "kind": "file",
+      "bytes": 1081,
+      "sha256": "1c899cebcf1f3176daeb2a4eab9473e5daa825ea05ecf12173aa2de5486609e0"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-mdpi/ic_action_dark_aspect_ratio.png",
+      "kind": "file",
+      "bytes": 281,
+      "sha256": "5be128a47030db3e29865a88f5f2e4630e5219cd6d20e2f899bb565283aeb8b7"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-mdpi/ic_action_dark_filter.png",
+      "kind": "file",
+      "bytes": 490,
+      "sha256": "86d76fb6fda7d1eb48e3142228647b7c9b56182d5652d6873cfc4dc47bd170e8"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-mdpi/ic_action_dark_settings.png",
+      "kind": "file",
+      "bytes": 563,
+      "sha256": "36d11e7f612bdac7b3953d389022a219842679595edafe3c57eda2faa17c86b3"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-mdpi/ic_theme_description.png",
+      "kind": "file",
+      "bytes": 715,
+      "sha256": "d6626c3abfb672b577b44087ecdd5af3d7e32a41cbdcd7516bf654265ebeaa73"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-mdpi/ic_theme_folder.png",
+      "kind": "file",
+      "bytes": 571,
+      "sha256": "8717d1e90392b737f12f83401be4018a1e82152bff70fd22773f1ca8629c3968"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-mdpi/ic_theme_play_arrow.png",
+      "kind": "file",
+      "bytes": 625,
+      "sha256": "de81816596921c7acb5e6aa9b0d6c8db656a7fdbaa06bd6345cb55f6aabcee38"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-xhdpi/ic_action_dark_aspect_ratio.png",
+      "kind": "file",
+      "bytes": 525,
+      "sha256": "5619e99925029d6c93f72dc02faa6e57db07e22fa1e83d49115e012390a0537f"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-xhdpi/ic_action_dark_filter.png",
+      "kind": "file",
+      "bytes": 929,
+      "sha256": "3aaf7391c43ed8937f1679c80cf4df3f0c84ad000d529e9af117d253aa8e68bc"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-xhdpi/ic_action_dark_settings.png",
+      "kind": "file",
+      "bytes": 1205,
+      "sha256": "017a0e41e7f8c5815feb10ae3834141bd4d824af034a63e9deb6c14cda301698"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-xhdpi/ic_theme_description.png",
+      "kind": "file",
+      "bytes": 1536,
+      "sha256": "f47069d28e70807b40085f5e4d71849583bc4831c13c101f6996877f423cc617"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-xhdpi/ic_theme_folder.png",
+      "kind": "file",
+      "bytes": 1388,
+      "sha256": "841cc778eaa4e601120172a46fe362bf8c6c561b1eb3a6530a53171254c734ee"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-xhdpi/ic_theme_play_arrow.png",
+      "kind": "file",
+      "bytes": 1392,
+      "sha256": "a44de0adbd3cc5e60298945539137df27a133bd01c87726182837a3b71e773d3"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-xxhdpi/ic_action_dark_aspect_ratio.png",
+      "kind": "file",
+      "bytes": 942,
+      "sha256": "f71f15aa3883fd2007f609e37e106fa19cd22497ace7bb41fcbf1d5ffe28abbe"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-xxhdpi/ic_action_dark_filter.png",
+      "kind": "file",
+      "bytes": 1539,
+      "sha256": "d19c9e91fb9682be48b38f273e5444eb15f88f373a5ca29cc85b700fe62eb772"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-xxhdpi/ic_action_dark_settings.png",
+      "kind": "file",
+      "bytes": 2001,
+      "sha256": "ef93cbc4868bcdf24f93474d348fe5f122eb1042a3642f38babb54a1b7659d15"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-xxhdpi/ic_theme_description.png",
+      "kind": "file",
+      "bytes": 2734,
+      "sha256": "127564c221456536c35750b657c86fb0b157d179f591e81d6c4ffca9250da4bb"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-xxhdpi/ic_theme_folder.png",
+      "kind": "file",
+      "bytes": 2322,
+      "sha256": "2f246822cc9c7eb760c2370fcaf4f1abbcc2ef2b9f13b3e2cd2322a83bf799d5"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-xxhdpi/ic_theme_play_arrow.png",
+      "kind": "file",
+      "bytes": 2683,
+      "sha256": "8b5a79c6abe984866ab9d9142f33a991bafe59c7f633115e25f68246109a8556"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-xxxhdpi/ic_action_dark_aspect_ratio.png",
+      "kind": "file",
+      "bytes": 1352,
+      "sha256": "ab65b5281ff70d9a4ffa999c15d1b8f03a097cecb2e063137c8e75d024af373d"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-xxxhdpi/ic_action_dark_filter.png",
+      "kind": "file",
+      "bytes": 2128,
+      "sha256": "be66ee112e92177029339f14ea78223d6a8b241570e37b76ed29ab6b831a8f06"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-xxxhdpi/ic_action_dark_settings.png",
+      "kind": "file",
+      "bytes": 3136,
+      "sha256": "8fa04a58379ab1c25f2798887c4a69990c391be6e3b59966a406c7d1fb348f11"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-xxxhdpi/ic_theme_description.png",
+      "kind": "file",
+      "bytes": 3781,
+      "sha256": "9798227d27a266ec89bebe5c889982e93212d282e93059cbd36dbe51acc64628"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-xxxhdpi/ic_theme_folder.png",
+      "kind": "file",
+      "bytes": 3491,
+      "sha256": "6838595c30e12b167c763d54d99e2224de321b6a1be3e5310ba727765600a3d8"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/drawable-xxxhdpi/ic_theme_play_arrow.png",
+      "kind": "file",
+      "bytes": 3827,
+      "sha256": "5ee5b437268453855e16a4804e71cf51e1461c4a50f366a6b2020c0a74337168"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/layout/activity_app.xml",
+      "kind": "file",
+      "bytes": 500,
+      "sha256": "c38813b0d0d466efd2a10a5665a015be9db390e707be2ef1556d594dc74513ea"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/layout/activity_player.xml",
+      "kind": "file",
+      "bytes": 2364,
+      "sha256": "8df09703132b685006fa2b5e49aed255d70908b48acb473687da7987fb3813e0"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/layout/fragment_file_list.xml",
+      "kind": "file",
+      "bytes": 928,
+      "sha256": "de061371f084c02433d80f7dfd0d227d3df068575cc89bba506dcd5364432234"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/layout/fragment_file_list_item.xml",
+      "kind": "file",
+      "bytes": 736,
+      "sha256": "1d8d1baddc657bd4af4550097ab26ddfdb9cddf204a29a2ed8135732999268c0"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/layout/fragment_track_list.xml",
+      "kind": "file",
+      "bytes": 613,
+      "sha256": "615ff1461a144059a99de18e8faafd2cd5de6b0a56e1f9f8571f4d92226290cf"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/layout/table_media_info.xml",
+      "kind": "file",
+      "bytes": 399,
+      "sha256": "be8f53f6b724d6bfe6b7da0d7aa7433f5a1836b1f9b87814daf5a3df7e806494"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/layout/table_media_info_row1.xml",
+      "kind": "file",
+      "bytes": 636,
+      "sha256": "38de2bf69884bc3d8d1514b6cf7edf34cd31d039e2559551f01f21098453ff7c"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/layout/table_media_info_row2.xml",
+      "kind": "file",
+      "bytes": 743,
+      "sha256": "d4ebfcdb7738061b23848d1a408382e24257bc8d2548446b0768b7be96d5c74b"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/layout/table_media_info_section.xml",
+      "kind": "file",
+      "bytes": 451,
+      "sha256": "ab8dcd7fa9c3f2df66a951f78e59718fde536406fe1374909ede9f576bd9ea5d"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/layout/widget_toolbar.xml",
+      "kind": "file",
+      "bytes": 619,
+      "sha256": "a6c3302d14661b4a2820593f6dd04d2c91888f8befdc082a351414e0a7b3ded2"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/menu/menu_app.xml",
+      "kind": "file",
+      "bytes": 631,
+      "sha256": "c2ace7b51da6ffad48cd23a5b42c9e1f4062117a2e83bc9b04fc81a73c48e257"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/menu/menu_player.xml",
+      "kind": "file",
+      "bytes": 930,
+      "sha256": "4325f5a795ef669fb6c949166f9a6002c0c9c28cad8ce6324c790b212f95e4e7"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/mipmap-hdpi/ic_launcher.png",
+      "kind": "file",
+      "bytes": 3418,
+      "sha256": "820e323f5506dc1dda3fad164e5fa0acd56a8266e4ea441db94e60fd9972d28a"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/mipmap-mdpi/ic_launcher.png",
+      "kind": "file",
+      "bytes": 2206,
+      "sha256": "90f5bc4bf1364152b1943933b6910bafc913e7a813de5c1b0ba4723e33e58975"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/mipmap-xhdpi/ic_launcher.png",
+      "kind": "file",
+      "bytes": 4842,
+      "sha256": "552f9a01050827cc24c9bf50569fe8b0a121fb93297106e224986e7a4e9cc747"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/mipmap-xxhdpi/ic_launcher.png",
+      "kind": "file",
+      "bytes": 7718,
+      "sha256": "c6e7620e6c5d9bf8020f7216117d8cb799f7936f232e28732443b1fe79521d6c"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/values/attrs.xml",
+      "kind": "file",
+      "bytes": 231,
+      "sha256": "a5526f9b3b573f7d6badeabdda3f1a73a36050133f5968040f48717da7b89477"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/values/colors.xml",
+      "kind": "file",
+      "bytes": 737,
+      "sha256": "a2cbc08f448e3e54b773aaae3b369734800b72a641afbfcbfa47e905bd5271e9"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/values/dimens.xml",
+      "kind": "file",
+      "bytes": 372,
+      "sha256": "0c3ddaab300e8f3b338821dc768b84f525aa1776b686bc22c16a1cd82da235f2"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/values/ids.xml",
+      "kind": "file",
+      "bytes": 104,
+      "sha256": "710c42bc0ef1f95295439584bf454dfa61b58bc449503675457dc21aafd9ba18"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/values/strings.xml",
+      "kind": "file",
+      "bytes": 3495,
+      "sha256": "5bea42f3de0eab234ea551fbe0dff9361c81c9ee9bb06435c861d519cc4f719d"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/values/strings_pref.xml",
+      "kind": "file",
+      "bytes": 4764,
+      "sha256": "92ea052ef65c6bdeb79637cd59045c49a47d015c62c74816113274421b2c5553"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/values/styles.xml",
+      "kind": "file",
+      "bytes": 760,
+      "sha256": "86e1b971949df10ea9aac5558577b32d18e598c2f22cbd8c1e733e8838b1df71"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/values/themes.xml",
+      "kind": "file",
+      "bytes": 221,
+      "sha256": "916d5df556046eb4a0cc10265a1ae3d31cd2abab11d268daaa58d512ea1b383d"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/values-v11/styles.xml",
+      "kind": "file",
+      "bytes": 25,
+      "sha256": "6eab7a07f02b4e4562de0b7d1cb86bee53af8b1bf510a13be16e3840c7ee0b0f"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/values-v14/styles.xml",
+      "kind": "file",
+      "bytes": 25,
+      "sha256": "6eab7a07f02b4e4562de0b7d1cb86bee53af8b1bf510a13be16e3840c7ee0b0f"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/values-w820dp/dimens.xml",
+      "kind": "file",
+      "bytes": 358,
+      "sha256": "84726c95be47d72108ff64829270ade6c367476f945e40b9f1930d8e90241b7d"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-example/src/main/res/xml/settings.xml",
+      "kind": "file",
+      "bytes": 4823,
+      "sha256": "d705b9eec5e18ef3dd661f351339d6527f2db9ff1332fe8ba7b9d47766adda09"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-exo/.gitignore",
+      "kind": "file",
+      "bytes": 7,
+      "sha256": "5b46eb48d96e8571e8c93e4ef4f6ffbe6807b6d7350664a36a064e1167a32718"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-exo/build.gradle",
+      "kind": "file",
+      "bytes": 1171,
+      "sha256": "f8b3fab07b22a403fb352663c4fd2dda18b205515bc2e6623c20134e98a9394e"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-exo/gradle.properties",
+      "kind": "file",
+      "bytes": 70,
+      "sha256": "a5239ad64624f3cf8f8c3f9c1e4c470491e98b1a35825977905f09355ed8b55f"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-exo/proguard-rules.pro",
+      "kind": "file",
+      "bytes": 647,
+      "sha256": "93594f43c1b7480556f7f7c5a53d094abbf5a75e3dc5b5f6241f2b60269e6246"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-exo/src/androidTest/java/tv/danmaku/ijk/media/exo/ApplicationTest.java",
+      "kind": "file",
+      "bytes": 355,
+      "sha256": "b557dc443aabef133f3d86713723fdb09342f18a2d3970cfcfe97f666ba069c4"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-exo/src/main/AndroidManifest.xml",
+      "kind": "file",
+      "bytes": 256,
+      "sha256": "ea017ce88acaef66cbeca3d96013e05b6576e6fc05ad677cf8b7304508f8bb68"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-exo/src/main/java/tv/danmaku/ijk/media/exo/IjkExoMediaPlayer.java",
+      "kind": "file",
+      "bytes": 11737,
+      "sha256": "2a85969f733b86d526bbc79ea192df4735603bba4c8c54441e0572b22740f6eb"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-exo/src/main/java/tv/danmaku/ijk/media/exo/demo/EventLogger.java",
+      "kind": "file",
+      "bytes": 7040,
+      "sha256": "02da9697b783d3f262ddc84c20783654c13e558f3e663b8b7dea65056cf67f9d"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-exo/src/main/java/tv/danmaku/ijk/media/exo/demo/SmoothStreamingTestMediaDrmCallback.java",
+      "kind": "file",
+      "bytes": 2589,
+      "sha256": "a74a727e5053082c530f75bec4a08a498daf1bffae8257ea4b50bc80c20088a4"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-exo/src/main/java/tv/danmaku/ijk/media/exo/demo/player/DashRendererBuilder.java",
+      "kind": "file",
+      "bytes": 11282,
+      "sha256": "9aae13b55c2c1010fe791230d919925c4a2eb9e954b1e31ce2c51cd1296579d2"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-exo/src/main/java/tv/danmaku/ijk/media/exo/demo/player/DemoPlayer.java",
+      "kind": "file",
+      "bytes": 19794,
+      "sha256": "bf4a919339c9e4625de2913368ab41ad251de15cd4114e47fe517a999ad869fc"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-exo/src/main/java/tv/danmaku/ijk/media/exo/demo/player/ExtractorRendererBuilder.java",
+      "kind": "file",
+      "bytes": 3767,
+      "sha256": "7c248116bf43f5f56f84cc8e3886ff9a2677149fceddd7cb028cfda2f9f60f04"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-exo/src/main/java/tv/danmaku/ijk/media/exo/demo/player/HlsRendererBuilder.java",
+      "kind": "file",
+      "bytes": 8550,
+      "sha256": "81de73ba52014ef501ebadcf1d102628fb8b67e425c1ef77b880f3a14cb9e27c"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-exo/src/main/java/tv/danmaku/ijk/media/exo/demo/player/SmoothStreamingRendererBuilder.java",
+      "kind": "file",
+      "bytes": 8834,
+      "sha256": "9239f7e31b602702693a58f798e1bf892e59fcbc5f1929a470b9a2c7c7914188"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-exo/src/main/res/values/strings.xml",
+      "kind": "file",
+      "bytes": 76,
+      "sha256": "b7b51f77f573450d398e9a8fa8598a2a33c048e947cb249faee49312a0ef67bb"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/.gitignore",
+      "kind": "file",
+      "bytes": 7,
+      "sha256": "5b46eb48d96e8571e8c93e4ef4f6ffbe6807b6d7350664a36a064e1167a32718"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/build.gradle",
+      "kind": "file",
+      "bytes": 803,
+      "sha256": "7389f729258b026b97f471d80cce57978fa9244ef388be6a016f07753f0dacb6"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/gradle.properties",
+      "kind": "file",
+      "bytes": 72,
+      "sha256": "588eb2023548279b44c20d02a47f47b010fe138f00321720f19658657db8f3a8"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/proguard-rules.pro",
+      "kind": "file",
+      "bytes": 647,
+      "sha256": "93594f43c1b7480556f7f7c5a53d094abbf5a75e3dc5b5f6241f2b60269e6246"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/androidTest/java/tv/danmaku/ijk/media/player/ApplicationTest.java",
+      "kind": "file",
+      "bytes": 358,
+      "sha256": "ecd725e5cc22432589b91d9b9ebb53288fe0ca17b85b79c76d05b259cec542fa"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/.classpath",
+      "kind": "file",
+      "bytes": 508,
+      "sha256": "b20724ee3da4dc00cde7dd2975457386ced288c14eedb97e2f1b71fc7759edb5"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/.project",
+      "kind": "file",
+      "bytes": 817,
+      "sha256": "cde264bcaeb661080f2ca8cb5af5943a4c79d6340da61a36354a56f9528d67c8"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/.settings/org.eclipse.jdt.core.prefs",
+      "kind": "file",
+      "bytes": 173,
+      "sha256": "a99468f1a7c7157b09beec1088a48e7d6c16d4fcf0b65e2ec05624e05a6bf20f"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/AndroidManifest.xml",
+      "kind": "file",
+      "bytes": 177,
+      "sha256": "0ff4f107ca0397e4df1fc7155394e3492ab0ecdf6334c4461ac9dff453f6f4f7"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/AbstractMediaPlayer.java",
+      "kind": "file",
+      "bytes": 4281,
+      "sha256": "f88e7abb6926a751c57fe2223a4fa8652366df804328ddc26389076082b3d5ad"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/AndroidMediaPlayer.java",
+      "kind": "file",
+      "bytes": 12777,
+      "sha256": "44c39fa2524950495271465abdbbfe7c151ea5c5578c43bd9a8b55b9d16b70d1"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/IMediaPlayer.java",
+      "kind": "file",
+      "bytes": 6205,
+      "sha256": "cab1ec1ab1a9f260e982eb88094b1018c8413b7a4ff002e3b3c39e75204e5b4c"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/ISurfaceTextureHolder.java",
+      "kind": "file",
+      "bytes": 946,
+      "sha256": "ad30eb7cf99fcad7595c18bc58c51a8b643de8b338bcb0a0ea555f8be2cde671"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/ISurfaceTextureHost.java",
+      "kind": "file",
+      "bytes": 834,
+      "sha256": "e23de8a2c0ef1c16e116dde95de23c9db389a5b90b2370be1c993bf64e4f529b"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/IjkLibLoader.java",
+      "kind": "file",
+      "bytes": 830,
+      "sha256": "08770373a21f28cb9f095eb2aba776bf8b22b47f0f062ce18c1a8a995a5fc277"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/IjkMediaCodecInfo.java",
+      "kind": "file",
+      "bytes": 10808,
+      "sha256": "8835d094ce2c74e0c3fb5a52b88af1a7c57753abe726a18b2cef87192b9766c9"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/IjkMediaMeta.java",
+      "kind": "file",
+      "bytes": 16642,
+      "sha256": "23d61738e236546805ef85ec6d164159144134111416de6720b875d7097fe9fb"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/IjkMediaPlayer.java",
+      "kind": "file",
+      "bytes": 47974,
+      "sha256": "cf4e8ed152bedce080c15c0183f088a69aa703fe881163de158d2b990821f516"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/IjkTimedText.java",
+      "kind": "file",
+      "bytes": 1078,
+      "sha256": "6516219a225219fec086bd2a398fd310864e980963b0b2ce95088369da56e3bf"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/MediaInfo.java",
+      "kind": "file",
+      "bytes": 936,
+      "sha256": "30acbee5530fdfb9479a6988028854cf67c8a2b34532550de4b7a8dabb2930b8"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/MediaPlayerProxy.java",
+      "kind": "file",
+      "bytes": 10492,
+      "sha256": "9d321fe6a5b55a2a98f55c7e7f8f54a120417d91f7dd8d70afc45ad8adf86e7b"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/TextureMediaPlayer.java",
+      "kind": "file",
+      "bytes": 2847,
+      "sha256": "0e16d0447dd3f374b7f665e78648260f48645446fa5d3bda6bcfc7b96bde1920"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/annotations/AccessedByNative.java",
+      "kind": "file",
+      "bytes": 1091,
+      "sha256": "4ceba273642ec4b86b3f2724d7e8e966ac723c1cb29b8165d1c56c391c93d5dc"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/annotations/CalledByNative.java",
+      "kind": "file",
+      "bytes": 1202,
+      "sha256": "f6ec1a7d3fc3defbe64ba61f7fb7119eac92e92f1958c7764c02330bcf33305d"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/exceptions/IjkMediaException.java",
+      "kind": "file",
+      "bytes": 834,
+      "sha256": "a1f9f0854dbaab12148a9b32fc5b55e83273d59a345526ab9b45acccc396260d"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/ffmpeg/FFmpegApi.java",
+      "kind": "file",
+      "bytes": 133,
+      "sha256": "034324dd6c0c33c1853fcfa85b580d597dd54688b50bd42ce357c12f76556f42"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/misc/AndroidMediaFormat.java",
+      "kind": "file",
+      "bytes": 1841,
+      "sha256": "8263b7370626f8ecd2c9aff7bd2fe02db95bf866428c108332943e5c7fd08f33"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/misc/AndroidTrackInfo.java",
+      "kind": "file",
+      "bytes": 3164,
+      "sha256": "3e7ce261807ad68b8195756a7a41a773ab2d578c0d3a1a93bce370c1a094ae0d"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/misc/IAndroidIO.java",
+      "kind": "file",
+      "bytes": 1005,
+      "sha256": "2b1ee0bf9a9939be30d938094904e6da4bef9ab5ed53c740fa9d4e1d731dee35"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/misc/IMediaDataSource.java",
+      "kind": "file",
+      "bytes": 964,
+      "sha256": "666cf312d7cc0ca076876f1c3ffc2cb82b242693e3df9f04e3568685e9b34014"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/misc/IMediaFormat.java",
+      "kind": "file",
+      "bytes": 932,
+      "sha256": "028603c7b4e229ef8ee27b14cd915a8002700d05e27bee72c39360523f9287f4"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/misc/ITrackInfo.java",
+      "kind": "file",
+      "bytes": 1066,
+      "sha256": "abee118bcb4c88c85672bbd9ca3e3cf1f1d9da1ca373ed434975fe001a7c59f8"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/misc/IjkMediaFormat.java",
+      "kind": "file",
+      "bytes": 10341,
+      "sha256": "0bee423bb02d528b79d0f5a3dddcecfb322cffea46e33ca3e340d8678245ecfd"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/misc/IjkTrackInfo.java",
+      "kind": "file",
+      "bytes": 3096,
+      "sha256": "fa9c63ff97aa36f9ba7f15c89b7a6ee5b5a8f0c2c9afa765979fb11197dc2f8d"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/pragma/DebugLog.java",
+      "kind": "file",
+      "bytes": 3912,
+      "sha256": "84fbe990616b047859b4cb5e217dc258212b16b03f8d73e835c9c5fa45193830"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/java/tv/danmaku/ijk/media/player/pragma/Pragma.java",
+      "kind": "file",
+      "bytes": 813,
+      "sha256": "691c008984da2bdcac2d015e3cde98c645f5a3b24d56438bd1a2aef2430705d7"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/project.properties",
+      "kind": "file",
+      "bytes": 584,
+      "sha256": "ff52a94a6767aac75ff0c357dd23154267ff337173bd421ece775994f7c31bbc"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-java/src/main/res/values/strings.xml",
+      "kind": "file",
+      "bytes": 110,
+      "sha256": "085abffe8ea2b218935aa494c16fc0a8326cb043411cc98b99833faf78b4ce8c"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86/.gitignore",
+      "kind": "file",
+      "bytes": 7,
+      "sha256": "5b46eb48d96e8571e8c93e4ef4f6ffbe6807b6d7350664a36a064e1167a32718"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86/build.gradle",
+      "kind": "file",
+      "bytes": 896,
+      "sha256": "1faf80c3a7d2e60e1a2deea8ad5fa28b91bebfcf7c313497cc1060ed5bf047a8"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86/gradle.properties",
+      "kind": "file",
+      "bytes": 70,
+      "sha256": "3250fed3fc3ee5f1f6b7890786499580781cc8aa4b3a23d8f36f4a01af9829d7"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86/proguard-rules.pro",
+      "kind": "file",
+      "bytes": 647,
+      "sha256": "93594f43c1b7480556f7f7c5a53d094abbf5a75e3dc5b5f6241f2b60269e6246"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86/src/androidTest/java/tv/danmaku/ijk/media/ijkplayer/ApplicationTest.java",
+      "kind": "file",
+      "bytes": 361,
+      "sha256": "fdc7ad010bfb8e746f754d885171ce48a133f4a9539ffbabc7a8e3f7c07e8b59"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86/src/main/.classpath",
+      "kind": "file",
+      "bytes": 508,
+      "sha256": "cbe13e5c607836ff0af965b0b26b5d6878f88ebfa774e77af60d36953fcfdb14"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86/src/main/.project",
+      "kind": "file",
+      "bytes": 816,
+      "sha256": "7b9ddfd4e91e876ff971ea4d047a11e13ad79596431f87ce0e636f0d695f66d4"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86/src/main/.settings/org.eclipse.jdt.core.prefs",
+      "kind": "file",
+      "bytes": 173,
+      "sha256": "a99468f1a7c7157b09beec1088a48e7d6c16d4fcf0b65e2ec05624e05a6bf20f"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86/src/main/AndroidManifest.xml",
+      "kind": "file",
+      "bytes": 181,
+      "sha256": "8662e1df4af16aa020675650a18388cdda8c3ef4117b891a87b1a92e627f4be8"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86/src/main/java/tv/danmaku/ijk/media/player_x86/Pragma.java",
+      "kind": "file",
+      "bytes": 718,
+      "sha256": "e8e5f8f66ce6a4caa39c98cb63678d18d8f1d1a83acbbfd8be815ae3de7e4c79"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86/src/main/jni/Android.mk",
+      "kind": "symlink",
+      "target": "../../../../ijkplayer-armv7a/src/main/jni/Android.mk",
+      "sha256": "4b2d4a5c876d819ac7fb7496d59ec2809b7f900be948042623ea8534b2834358",
+      "bytes": 52
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86/src/main/jni/Application.mk",
+      "kind": "file",
+      "bytes": 1137,
+      "sha256": "f1f9abc8ad5db45d1d863dd70f3d965c9062bc9dab99bd42fd89402b6f1bb59b"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86/src/main/jni/ffmpeg/Android.mk",
+      "kind": "file",
+      "bytes": 176,
+      "sha256": "aa9d3148abcfd55cef6eed3b50f8287467ea4446076cf28c35c9b53a9fd03a4f"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86/src/main/jni/ffmpeg/include",
+      "kind": "symlink",
+      "target": "../../../../../../contrib/build/ffmpeg-x86/output/include/",
+      "sha256": "508dd1180255ed4d5e752e80491ff58456739af36fe2369d4514776f17ec1eec",
+      "bytes": 58
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86/src/main/jni/ijkmedia",
+      "kind": "symlink",
+      "target": "../../../../../../ijkmedia",
+      "sha256": "dfb8984d0430174126bd93a41579cf26d51749a95bf69fa2b26043b54c5364d2",
+      "bytes": 26
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86/src/main/project.properties",
+      "kind": "file",
+      "bytes": 584,
+      "sha256": "ff52a94a6767aac75ff0c357dd23154267ff337173bd421ece775994f7c31bbc"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86/src/main/res/values/strings.xml",
+      "kind": "file",
+      "bytes": 188,
+      "sha256": "9615d7107b268a4626f03606a10a5bf29cbd6a0feb3dbcf75df712dd79df2245"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86_64/.gitignore",
+      "kind": "file",
+      "bytes": 7,
+      "sha256": "5b46eb48d96e8571e8c93e4ef4f6ffbe6807b6d7350664a36a064e1167a32718"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86_64/build.gradle",
+      "kind": "file",
+      "bytes": 897,
+      "sha256": "96e45a7310c88b9c629924ffc137340211f0bfe9674c26b2d4d6c9870f849077"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86_64/gradle.properties",
+      "kind": "file",
+      "bytes": 76,
+      "sha256": "1fcebf38b7da0885285cbb1cb40871475bd20254d56bd00bf7e1e6ad6ddc2b0c"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86_64/proguard-rules.pro",
+      "kind": "file",
+      "bytes": 647,
+      "sha256": "93594f43c1b7480556f7f7c5a53d094abbf5a75e3dc5b5f6241f2b60269e6246"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86_64/src/androidTest/java/com/example/ijkplayer_x86_64/ApplicationTest.java",
+      "kind": "file",
+      "bytes": 359,
+      "sha256": "0cdf5dfb823a9da32bf72aa3e5f59aadafbeb4b9e19edb2107a4f3999a8fe108"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86_64/src/main/AndroidManifest.xml",
+      "kind": "file",
+      "bytes": 185,
+      "sha256": "f3f77c87a3655608f60ecb944781159905fb65bb71ddb925bc7a176e136aa833"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86_64/src/main/jni/Android.mk",
+      "kind": "symlink",
+      "target": "../../../../ijkplayer-armv7a/src/main/jni/Android.mk",
+      "sha256": "4b2d4a5c876d819ac7fb7496d59ec2809b7f900be948042623ea8534b2834358",
+      "bytes": 52
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86_64/src/main/jni/Application.mk",
+      "kind": "file",
+      "bytes": 1209,
+      "sha256": "6998f8d45101b4249124781b1567a2730c2f277d321337c09c167c444bea5c29"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86_64/src/main/jni/ffmpeg/Android.mk",
+      "kind": "file",
+      "bytes": 176,
+      "sha256": "aa9d3148abcfd55cef6eed3b50f8287467ea4446076cf28c35c9b53a9fd03a4f"
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86_64/src/main/jni/ffmpeg/include",
+      "kind": "symlink",
+      "target": "../../../../../../contrib/build/ffmpeg-x86_64/output/include/",
+      "sha256": "f3b3cb3772444de738cd8f6f891ccd701088562de0f3916b78110f121c906b11",
+      "bytes": 61
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86_64/src/main/jni/ijkmedia",
+      "kind": "symlink",
+      "target": "../../../../../../ijkmedia",
+      "sha256": "dfb8984d0430174126bd93a41579cf26d51749a95bf69fa2b26043b54c5364d2",
+      "bytes": 26
+    },
+    {
+      "path": "android/ijkplayer/ijkplayer-x86_64/src/main/res/values/strings.xml",
+      "kind": "file",
+      "bytes": 157,
+      "sha256": "0a2736942b59936ecbfd8b331f6436884b2638214ef7ea12a4a9d8123ddcc81a"
+    },
+    {
+      "path": "android/ijkplayer/settings.gradle",
+      "kind": "file",
+      "bytes": 211,
+      "sha256": "52d114b40a2c26d67ee75f308f3417d5c4e02c56f1eeff93d26c44e2eb7c3610"
+    },
+    {
+      "path": "android/ijkplayer/tools/gradle-bintray-upload.gradle",
+      "kind": "file",
+      "bytes": 2369,
+      "sha256": "aea29a50fbb22113ac1798c6927b024b7a65f98e188f59f8e34eef52853139b8"
+    },
+    {
+      "path": "android/ijkplayer/tools/gradle-mvn-push.gradle",
+      "kind": "file",
+      "bytes": 4206,
+      "sha256": "ffa5699d1beec727c92c61047cc25df37d675d97610cd2c6bd712e4610bf26a6"
+    },
+    {
+      "path": "android/ijkplayer/tools/gradle-on-demand.gradle",
+      "kind": "file",
+      "bytes": 1081,
+      "sha256": "92c592b5f120879ae309915b6801b2dd2951fb2fc2d4725c3814850bbae1e317"
+    },
+    {
+      "path": "android/patch-debugging-with-lldb.sh",
+      "kind": "file",
+      "bytes": 3512,
+      "sha256": "36e5077d9df456bd48100ed70f967d1ecb76ec4474a4d7195334a58ad9ee5c61"
+    },
+    {
+      "path": "android/patches/0001-gitignore-ignore-.externalNativeBuild.patch",
+      "kind": "file",
+      "bytes": 580,
+      "sha256": "ef8fcf49fe7bff142fe4d40f2be18da0d7de787c6c9256470d7b3494fd50d0e6"
+    },
+    {
+      "path": "android/patches/0002-gradle-upgrade-build-tool-to-2.2.0-beta2.patch",
+      "kind": "file",
+      "bytes": 848,
+      "sha256": "530b06e896aaefb4f2dd2d7133ae20278775e1a70dec7e624046e9b349aff797"
+    },
+    {
+      "path": "android/patches/0003-arm64-enable-debugging-with-LLDB.patch",
+      "kind": "file",
+      "bytes": 5380,
+      "sha256": "7651e55d24d52838ead312bf87030d47d76d8289e30dbcb936700e09ba596ac7"
+    },
+    {
+      "path": "android/patches/0003-armv5-enable-debugging-with-LLDB.patch",
+      "kind": "file",
+      "bytes": 5319,
+      "sha256": "4f4092861a6c8a90bdddeb89eb446472ab2abc6cd74e632b029eeceb6d38b1e3"
+    },
+    {
+      "path": "android/patches/0003-armv7a-enable-debugging-with-LLDB.patch",
+      "kind": "file",
+      "bytes": 5255,
+      "sha256": "927bb7c54971050fedfe6551499aff6f15cc47ec10cf06900e566eb25f7884e7"
+    },
+    {
+      "path": "android/patches/0003-x86-enable-debugging-with-LLDB.patch",
+      "kind": "file",
+      "bytes": 5281,
+      "sha256": "38d995d055745d1900cb624e384aa88d1205b73fda0b1a8e79f4f03d040c6ece"
+    },
+    {
+      "path": "android/patches/0003-x86_64-enable-debugging-with-LLDB.patch",
+      "kind": "file",
+      "bytes": 5350,
+      "sha256": "fe067657383ddf970b1866c62cf483df2894060dba4a967bd13ce014ce790f1e"
+    },
+    {
+      "path": "android/patches/0004-arm64-link-prebuilt-staic-libraries-of-ffmepg.patch",
+      "kind": "symlink",
+      "target": "0004-armv7a-link-prebuilt-staic-libraries-of-ffmepg.patch",
+      "sha256": "3e49eea79c66eab178bc35f1166b3d9535969dc595817c490583351c5b9fa118",
+      "bytes": 57
+    },
+    {
+      "path": "android/patches/0004-armv5-link-prebuilt-staic-libraries-of-ffmepg.patch",
+      "kind": "symlink",
+      "target": "0004-armv7a-link-prebuilt-staic-libraries-of-ffmepg.patch",
+      "sha256": "3e49eea79c66eab178bc35f1166b3d9535969dc595817c490583351c5b9fa118",
+      "bytes": 57
+    },
+    {
+      "path": "android/patches/0004-armv7a-link-prebuilt-staic-libraries-of-ffmepg.patch",
+      "kind": "file",
+      "bytes": 5048,
+      "sha256": "3deb52d48d143a453ec79f2bceeab027558b74adfd1678adc90eb9ef1bf4177d"
+    },
+    {
+      "path": "android/patches/0004-x86-link-prebuilt-staic-libraries-of-ffmepg.patch",
+      "kind": "file",
+      "bytes": 5033,
+      "sha256": "57acee7dde537e133882b2d8f00f4be3edf320b211189c68447aa8653b8b37f7"
+    },
+    {
+      "path": "android/patches/0004-x86_64-link-prebuilt-staic-libraries-of-ffmepg.patch",
+      "kind": "file",
+      "bytes": 5048,
+      "sha256": "09e46e605a3c644907a332bd6104e1cb023e9a3bab10fb08ef25d4ae9cbef4d8"
+    },
+    {
+      "path": "commit.patch",
+      "kind": "file",
+      "bytes": 25052,
+      "sha256": "06fad845ad96ddec8dfcbcc86d96f79cd8af54bf68bb78ceeb32a5a78b692504"
+    },
+    {
+      "path": "compile-android-j4a.sh",
+      "kind": "file",
+      "bytes": 796,
+      "sha256": "8461c41881bbeaab64337a897b9fff4d799a4610bb5516e7ca4b806ca271df58"
+    },
+    {
+      "path": "config/module-default.sh",
+      "kind": "file",
+      "bytes": 10370,
+      "sha256": "70f578007781ab668d90e7f05a6ee4b935b555298d7d8f0723920cbd9bd61138"
+    },
+    {
+      "path": "config/module-lite-hevc.sh",
+      "kind": "file",
+      "bytes": 14581,
+      "sha256": "99911f48c8576a50fcba5efd0dba188c5eafa1fd1cfe5437b667f37bc156ee9f"
+    },
+    {
+      "path": "config/module-lite-more.sh",
+      "kind": "file",
+      "bytes": 17402,
+      "sha256": "db17894337914a375415e45073ee913bcc132795f05c86b8df73863e6244572c"
+    },
+    {
+      "path": "config/module-lite.sh",
+      "kind": "file",
+      "bytes": 15967,
+      "sha256": "256eb42e712287b6ab0e7e202d7cb9adbb5e3a100931ebeefd05b4c10d80d506"
+    },
+    {
+      "path": "config/module.sh",
+      "kind": "file",
+      "bytes": 17402,
+      "sha256": "db17894337914a375415e45073ee913bcc132795f05c86b8df73863e6244572c"
+    },
+    {
+      "path": "doc/FFMPEG5.md",
+      "kind": "file",
+      "bytes": 19230,
+      "sha256": "1d2b5899884c84502bf85dfb18ab68d73dfda9a7cb1a10c7e94aad5fb81495b2"
+    },
+    {
+      "path": "doc/FFMPEG5_RECOVERY.md",
+      "kind": "file",
+      "bytes": 4203,
+      "sha256": "a82dcb7056eaa13b20fce0d4fa0c8c03511abea3fc1ff7180baa7894006229e2"
+    },
+    {
+      "path": "doc/preflight_checklist.md",
+      "kind": "file",
+      "bytes": 777,
+      "sha256": "cc7ff21ea9a4d2b5288c2a31f3cd3722ff1d3f1ca45f18b42add376afa350d98"
+    },
+    {
+      "path": "doc/third-party/openssl-3.5.9-LICENSE.txt",
+      "kind": "file",
+      "bytes": 10175,
+      "sha256": "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a"
+    },
+    {
+      "path": "extra/init-extra.sh",
+      "kind": "file",
+      "bytes": 822,
+      "sha256": "8d68b8ef9c7938b42f6911ad95d380d68bc6469e11eb7d1ac8855465b11860c9"
+    },
+    {
+      "path": "ijkmedia/Android.mk",
+      "kind": "file",
+      "bytes": 904,
+      "sha256": "3636cae46095c403a0847397a7a6d93434e2f39d5485b5b3fbddfc6af343ba0d"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/.gitignore",
+      "kind": "file",
+      "bytes": 4,
+      "sha256": "47de97e16916cd2d895d58e6406cf39c7aec6f4b29a114d53f1d1d8a652c625b"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/Android.mk",
+      "kind": "file",
+      "bytes": 2183,
+      "sha256": "4fb24c30397253cd5080e0a69d123ec52c7d86ac01c855215c945916dd19e77e"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/Makefile",
+      "kind": "file",
+      "bytes": 1322,
+      "sha256": "d21439ed556745116d2e4c58ad1976e67ba91052368d76c106aca93c79e52e63"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/android/media/AudioTrack.c",
+      "kind": "file",
+      "bytes": 19854,
+      "sha256": "58bced478f1d45fb060a7d6fd6f0b33e7b592828acbb1682f3374dfa6cde5c0d"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/android/media/AudioTrack.h",
+      "kind": "file",
+      "bytes": 9204,
+      "sha256": "0e60c025424717fa238de24629b2e6422c4652e06db321ce974571488200f6ce"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/android/media/AudioTrack.include.j4a",
+      "kind": "file",
+      "bytes": 47,
+      "sha256": "605cf5d1c575882d41093dc26b810230e03bcdca821a5185c92195d9cf55e0e1"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/android/media/AudioTrack.loader.j4a",
+      "kind": "file",
+      "bytes": 45,
+      "sha256": "dc35cbbb296b86801c118f7b26a0531b4c324165c02a83995939da158f4e45a3"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/android/media/MediaCodec.c",
+      "kind": "file",
+      "bytes": 23183,
+      "sha256": "54548d0a2b0f60e8bcaea7fc79a0c2ead5ba0f5acceaf24c3960ec2a20e1d4db"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/android/media/MediaCodec.h",
+      "kind": "file",
+      "bytes": 11420,
+      "sha256": "68d1a22132668bf13b724aefbd53b05417357e3e2f4fa24e40e26b5005adf65f"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/android/media/MediaCodec.include.j4a",
+      "kind": "file",
+      "bytes": 47,
+      "sha256": "5ff34f0eee732d7681bc7fa82b433d56e31d789d1df655e5d103aba6fccb6c05"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/android/media/MediaCodec.loader.j4a",
+      "kind": "file",
+      "bytes": 45,
+      "sha256": "715d59e8953d5e602ca0327db3bd96679e8fd1adb0f809c0ad319e20b7164b95"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/android/media/MediaFormat.c",
+      "kind": "file",
+      "bytes": 11997,
+      "sha256": "ed7a2e26a62cc45a319c70fea8aef143ec447f98685a869de50b93f0c8d3e32d"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/android/media/MediaFormat.h",
+      "kind": "file",
+      "bytes": 5890,
+      "sha256": "38c4fc68867aec0608ffa08b0c14a8b8e635c50e0580495ae66425e0793e874d"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/android/media/MediaFormat.include.j4a",
+      "kind": "file",
+      "bytes": 48,
+      "sha256": "1a3324fb4ce5ef66164dfbf13b834af4bbdb9717658b36f184c1ff27467e5021"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/android/media/MediaFormat.loader.j4a",
+      "kind": "file",
+      "bytes": 46,
+      "sha256": "1cc40d89b589836ae052b97a8339e8d9c0d1ecad6a03e11786e12db2a53d61d0"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/android/media/PlaybackParams.c",
+      "kind": "file",
+      "bytes": 3365,
+      "sha256": "1431144cd60ece76d83996bca1d5474d99e0a0a7ffaaf010b4cbbdbbe078ce9f"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/android/media/PlaybackParams.h",
+      "kind": "file",
+      "bytes": 1753,
+      "sha256": "a08f41c1b8f59a0041474e0a44705ad5127c3101bd14666c008b3bdee9927c64"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/android/media/PlaybackParams.include.j4a",
+      "kind": "file",
+      "bytes": 51,
+      "sha256": "b146797cabd95aa417c33b58557b352e0f16b86039daa803004d6427398b70e8"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/android/media/PlaybackParams.loader.j4a",
+      "kind": "file",
+      "bytes": 49,
+      "sha256": "8f1e310590e5108f72b76d0b85cc7eb8f8afdc15e11990f8960009e76c19a52f"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/android/os/Build.c",
+      "kind": "file",
+      "bytes": 3687,
+      "sha256": "b8c1bced080f8178f78e50b0aa18479a59736e5a189d445c2d013555e240a219"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/android/os/Build.h",
+      "kind": "file",
+      "bytes": 1225,
+      "sha256": "5e2d40bce8c23cd9541c24e8e943c983d18e214e993b436709206c39bd9be527"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/android/os/Build.include.j4a",
+      "kind": "file",
+      "bytes": 39,
+      "sha256": "447494ca85f53d6fafd76d53032552d20f6b59e23f855936e94bf34499b394d5"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/android/os/Build.loader.j4a",
+      "kind": "file",
+      "bytes": 37,
+      "sha256": "9e9c7b3936e2dfd21acd4e70d09f850394c3f8b359652043130eae0aa93b2ae9"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/android/os/Bundle.c",
+      "kind": "file",
+      "bytes": 19121,
+      "sha256": "ce0bbf1e56ca9229fff1f0754bc4700652d90f50beae0eaf3c2101602d14b322"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/android/os/Bundle.h",
+      "kind": "file",
+      "bytes": 8533,
+      "sha256": "ba3dbf6a279f0e5dbbb1778b1960d3ee367a512ac6015139c90ae55feee5ed69"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/android/os/Bundle.include.j4a",
+      "kind": "file",
+      "bytes": 40,
+      "sha256": "08727898505a1cc4663a9c7ff73620d087fc93621cf843c4d307e4d25d68116f"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/android/os/Bundle.loader.j4a",
+      "kind": "file",
+      "bytes": 38,
+      "sha256": "84c46547b54a761eea9a388a97dff742d6b46f85c2b1bef740a65dfef29b3df7"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/java/nio/Buffer.c",
+      "kind": "file",
+      "bytes": 1529,
+      "sha256": "f4cac9ae668b3df20e196302aa0fb737cd65e2adf24257c8d2e65f07906db4bc"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/java/nio/Buffer.h",
+      "kind": "file",
+      "bytes": 921,
+      "sha256": "f3575d210dd3e950eea8f3154329ebf8d65caa1ffef69dc32255b12c461fc039"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/java/nio/Buffer.include.j4a",
+      "kind": "file",
+      "bytes": 38,
+      "sha256": "729833db6852a38fc2bc64492f78364854c2290f08c00bba12773d17d7970492"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/java/nio/Buffer.loader.j4a",
+      "kind": "file",
+      "bytes": 36,
+      "sha256": "7c701ed21cac68e4334923fe210e3ada43fa5a898715653593561a371d33d53b"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/java/nio/ByteBuffer.c",
+      "kind": "file",
+      "bytes": 5780,
+      "sha256": "f08c9173886b7187225f88775decd9e230b8e73a86b509a391ad3bf6c4afd957"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/java/nio/ByteBuffer.h",
+      "kind": "file",
+      "bytes": 2703,
+      "sha256": "45d9304bbe157f7722d3f5561825fb01e03f3cf92291b63c47fbea9b80b6fe49"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/java/nio/ByteBuffer.include.j4a",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "bc06b0dac4efe5b4fdccaf21741627b25d776e87943ddb6922fa31869a95148c"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/java/nio/ByteBuffer.loader.j4a",
+      "kind": "file",
+      "bytes": 40,
+      "sha256": "1dab4d17c50ee7f463460bdb607247c4d3aaba78575ff7b882865b12f19b91ec"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/java/util/ArrayList.c",
+      "kind": "file",
+      "bytes": 3648,
+      "sha256": "0c85c453c8d01975a18e5f4714ebf098844b1cebca589adc17863eb8a249844d"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/java/util/ArrayList.h",
+      "kind": "file",
+      "bytes": 1862,
+      "sha256": "7b1eca38062cd7382405a5bc0a856d05354b25462b74f32281721390ebe22a92"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/java/util/ArrayList.include.j4a",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "444cc593261c023f65d82db9b14a83b795735eaa54f0122bc59faf25b9f9a618"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/java/util/ArrayList.loader.j4a",
+      "kind": "file",
+      "bytes": 40,
+      "sha256": "543ca4f16bbd2c9678c869798a415664fe21c8a7a275d9d635227ad799d3adc6"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/tv/danmaku/ijk/media/player/IjkMediaPlayer.c",
+      "kind": "file",
+      "bytes": 16092,
+      "sha256": "ffdc4389bcbafd87f79e5b18a367ed1ae760507e9e99c34ad7b4ab103079c1fe"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/tv/danmaku/ijk/media/player/IjkMediaPlayer.h",
+      "kind": "file",
+      "bytes": 8656,
+      "sha256": "d85053bfbe861d38c3f7e02a23dd60dbf996ca6059524258a88e6c0971a299e6"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/tv/danmaku/ijk/media/player/IjkMediaPlayer.include.j4a",
+      "kind": "file",
+      "bytes": 65,
+      "sha256": "5a42df64818855658cc5ee29fd33cc6e9b0a34e96a049229385aa2671a3ee4c2"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/tv/danmaku/ijk/media/player/IjkMediaPlayer.loader.j4a",
+      "kind": "file",
+      "bytes": 63,
+      "sha256": "c2476de1ddfc0fb9c1218ee83f6f1ce491f618a6872c0e4464aa6acf319ae392"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/tv/danmaku/ijk/media/player/misc/IAndroidIO.c",
+      "kind": "file",
+      "bytes": 6627,
+      "sha256": "787d1571bd1a161b265a2ad0ff5a47bcc44a84e950fb63152eb9303dfb58f39f"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/tv/danmaku/ijk/media/player/misc/IAndroidIO.h",
+      "kind": "file",
+      "bytes": 3366,
+      "sha256": "3d7e4e315bfdcaab9aea4101255c10a397451a4da655a5b3b08d5ee3406dd6ff"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/tv/danmaku/ijk/media/player/misc/IAndroidIO.include.j4a",
+      "kind": "file",
+      "bytes": 66,
+      "sha256": "66832b6e5cfb19b283426dff245546af0b6f780dc75f25c29a7f07f6f34788f3"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/tv/danmaku/ijk/media/player/misc/IAndroidIO.loader.j4a",
+      "kind": "file",
+      "bytes": 64,
+      "sha256": "92c3467ce4dd6f9bdb884c4b3ca5eecab42715b46e1ba29cc23906c627105ad3"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/tv/danmaku/ijk/media/player/misc/IMediaDataSource.c",
+      "kind": "file",
+      "bytes": 4761,
+      "sha256": "e762937abd35a547780e4d32f3537202ad5a8fd72b2762de503dad10f1e0b78f"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/tv/danmaku/ijk/media/player/misc/IMediaDataSource.h",
+      "kind": "file",
+      "bytes": 2646,
+      "sha256": "b2b0130e41cdfc2c797a98ac733d79bdd3a5c9c2257ee7f4f2f6e1e3967e9ca9"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/tv/danmaku/ijk/media/player/misc/IMediaDataSource.include.j4a",
+      "kind": "file",
+      "bytes": 72,
+      "sha256": "28b1ecd872507ce12032e5c6475697f8e143dc6494962252fd98d582fea2dc94"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/class/tv/danmaku/ijk/media/player/misc/IMediaDataSource.loader.j4a",
+      "kind": "file",
+      "bytes": 70,
+      "sha256": "354d4fa30f49b8406b9a3021acbb06bbee4b03d9620b1a1e0adbffe8905702a2"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/j4a_allclasses.c",
+      "kind": "file",
+      "bytes": 1078,
+      "sha256": "6f0c123dbbbef40e22910dfbbdaefd3eaaf269512867b618063c76033b264de1"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/j4a_allclasses.h",
+      "kind": "file",
+      "bytes": 985,
+      "sha256": "ae6b525e07f877a17406fdb76e1f990825136e077605f1b77322de05acf87633"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/j4a_allclasses.include.h",
+      "kind": "file",
+      "bytes": 609,
+      "sha256": "f324ca2dd549d29bc1a4c458cf471bbb5b89c3fd5e555ead43e2e8dfdd0d6f27"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/j4a_allclasses.loader.h",
+      "kind": "file",
+      "bytes": 585,
+      "sha256": "f4b08b0f7a52f8e6816dc3271c695caebfd865b69069981be014ac0e9b60fb98"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/j4a_base.c",
+      "kind": "file",
+      "bytes": 6855,
+      "sha256": "fde37857ff58b1be5dec94ce76534ca1d80c2595f8f6e71a3da7aa73bbffe4e5"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4a/j4a_base.h",
+      "kind": "file",
+      "bytes": 4396,
+      "sha256": "ad970982e90f833bae8023443efd1325ce07f39005cb919bdaf0ea7060228042"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4au/class/android/media/AudioTrack.util.c",
+      "kind": "file",
+      "bytes": 5856,
+      "sha256": "be6793e94725688be3251dc3a28adda5ccae7d43287234eb1f5c5fb15117cd91"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4au/class/android/media/AudioTrack.util.h",
+      "kind": "file",
+      "bytes": 1674,
+      "sha256": "3a42989c14f03d4fe04d78e2d0c67a5241736d6ab7229edd93ca15a75356f414"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4au/class/java/nio/ByteBuffer.util.c",
+      "kind": "file",
+      "bytes": 1723,
+      "sha256": "58217fe695f9ab39fd5d9579e7e5a3ba4aa1c121180ea7df425efc175498ec6c"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/j4au/class/java/nio/ByteBuffer.util.h",
+      "kind": "file",
+      "bytes": 1669,
+      "sha256": "d65bbbc6d42d6b5838cead934b748047171d2545f7320768d5dd9fe06aba6cd8"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/java/android/media/AudioTrack.java",
+      "kind": "file",
+      "bytes": 1059,
+      "sha256": "f5b8a533359dd1b80e36e5722d0e6f5e449af7e6b936a8f282d10944ca2b3812"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/java/android/media/MediaCodec.java",
+      "kind": "file",
+      "bytes": 1037,
+      "sha256": "803a5b4e823020d4be5efc857bb2eb28ea744c0c9640cfecf35ddc6d355e36d1"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/java/android/media/MediaCrypto.java",
+      "kind": "file",
+      "bytes": 71,
+      "sha256": "c3192dab2192fd7ba978b9c640b7199b19a643607d5a0a3bb6dbb19541394d8c"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/java/android/media/MediaFormat.java",
+      "kind": "file",
+      "bytes": 407,
+      "sha256": "e1799d10e9de2adc8a4e0a144d3c0e56a924f8647d47d2cee4fd71d0013ea6d6"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/java/android/media/PlaybackParams.java",
+      "kind": "file",
+      "bytes": 135,
+      "sha256": "ede6d94b9dce4f3d8712e209dbdfe3ad04e7c753ecd789fce2992ac1121bbf6a"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/java/android/os/Build.java",
+      "kind": "file",
+      "bytes": 125,
+      "sha256": "66adbbb94222078ad106d0cae940324e92489cc2f115bac9ef0832fe1826cb62"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/java/android/os/Bundle.java",
+      "kind": "file",
+      "bytes": 468,
+      "sha256": "ec428e7a3d70ae90b7a1ef76701061db26cd347d8003de641d492862a45616b9"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/java/java/nio/Buffer.java",
+      "kind": "file",
+      "bytes": 43,
+      "sha256": "347d7ee1f37ed5ba540298ee5dc62e797e40215f4013d0d26b66515e24b81673"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/java/java/nio/ByteBuffer.java",
+      "kind": "file",
+      "bytes": 266,
+      "sha256": "8826c3404ea30fc8e410ca07af12c575781bf64d49e269d3d33a0ce8d9cdf772"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/java/java/util/ArrayList.java",
+      "kind": "file",
+      "bytes": 121,
+      "sha256": "e39c3b38ad6b2c524beef6c29770aaeeb9d697c6d3cf3a17360c801ed2419c48"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/java/tv/danmaku/ijk/media/player/IjkMediaPlayer.java",
+      "kind": "file",
+      "bytes": 515,
+      "sha256": "e07344304b9d06d5e21d9e3e391ba3bed5b4927f512c683e3fe2798c77b1033b"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/java/tv/danmaku/ijk/media/player/misc/IAndroidIO.java",
+      "kind": "file",
+      "bytes": 218,
+      "sha256": "fb58ddd2c0add96996606b78a04c7e17de3391c919031d42a1a35552c3f05b00"
+    },
+    {
+      "path": "ijkmedia/ijkj4a/java/tv/danmaku/ijk/media/player/misc/IMediaDataSource.java",
+      "kind": "file",
+      "bytes": 206,
+      "sha256": "92ab4dae112d8df3ffbb84f722839140210894fb21fb8acc2f40e80ace112744"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/.gitignore",
+      "kind": "file",
+      "bytes": 13,
+      "sha256": "ef0162260300a49a319da47544f6fdf62a4d2713da6e98152aaf75b5754155dd"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/Android.mk",
+      "kind": "file",
+      "bytes": 3588,
+      "sha256": "b6fab25e413235abb6ade78d76e9736008aaa2b52f7b36ea651a31f0116f96c6"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/ffmpeg_api_jni.c",
+      "kind": "file",
+      "bytes": 2576,
+      "sha256": "75ec7825bab8a39c109b84fe109f8b4ad5e8e4316212b2f12d218d000ca86537"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/ffmpeg_api_jni.h",
+      "kind": "file",
+      "bytes": 997,
+      "sha256": "64d06d20b9dab312ebc06a5a3a16f3599f76920593132d3436da14f064e0ba3f"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/ijkplayer_android.c",
+      "kind": "file",
+      "bytes": 3990,
+      "sha256": "3d179367025569b824edbba14080c9545989feb12498188418768391f012a0d6"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/ijkplayer_android.h",
+      "kind": "file",
+      "bytes": 1733,
+      "sha256": "414c13553b3af598c897b3537d363aaee481ec26877a693cb4fac4491ae1c5a5"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/ijkplayer_android_def.h",
+      "kind": "file",
+      "bytes": 5821,
+      "sha256": "29603b5e9c554e981a2a480497397ad7cdaa3ad294bf73e2db7391dc07cc6031"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/ijkplayer_jni.c",
+      "kind": "file",
+      "bytes": 44135,
+      "sha256": "b1a123746e27357bebf67c03a29ea595948ba02bfbc05c9124eca0520e1b16ba"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/ffamc_eos.h",
+      "kind": "file",
+      "bytes": 4921,
+      "sha256": "c3c726c232d4b3f1b5bdc6df7a425fba3c2ca2e008a4344479b04b8c037312cc"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/ffamc_eos_policy.h",
+      "kind": "file",
+      "bytes": 1472,
+      "sha256": "f35fe6c30ed88dd91ef62cbcbe78382b9de7f87d12e5bccb2c9e47568d394f51"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/ffamc_error_policy.h",
+      "kind": "file",
+      "bytes": 1059,
+      "sha256": "05f49d1e697c1ab74e450c78279bc184a6a798825b578a249adc406d43e575fa"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/ffamc_ffmpeg.h",
+      "kind": "file",
+      "bytes": 12949,
+      "sha256": "d40e70bba1080e658ee2314d44efd85e85933edc4d7447386b2fef3adf97e954"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/ffamc_generation.h",
+      "kind": "file",
+      "bytes": 8690,
+      "sha256": "1873d7e20dbcd438dc8906d7490ae441b4c419156b50a8a9c5a66707854b2f2b"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/ffamc_hevc_boundary.h",
+      "kind": "file",
+      "bytes": 1159,
+      "sha256": "f621676a9f7f229e60ea8fcc79110b7bf33be344296884e5d566613be45bb381"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/ffamc_input.h",
+      "kind": "file",
+      "bytes": 7025,
+      "sha256": "4855a2d9c91dcb0cc913416513c33daa52f085efad864b675d817463ebe12be0"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/ffamc_packet_queue.h",
+      "kind": "file",
+      "bytes": 1308,
+      "sha256": "2ce6327fc88f0671b36c73516e5b919b3a7ca4b3053a9fbd282edd4d2e4a85b8"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/ffamc_visible_size.h",
+      "kind": "file",
+      "bytes": 955,
+      "sha256": "f64ca4dadca8da43daf55deea1e0c2ac3b5c6b9805404d13ee090ecda850bb15"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/ffpipeline_android.c",
+      "kind": "file",
+      "bytes": 10102,
+      "sha256": "0a099d38496705eb728c7ef8699e700f5f0eb4ac27e474aaf2b8dab473415717"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/ffpipeline_android.h",
+      "kind": "file",
+      "bytes": 2412,
+      "sha256": "eeb3d85aa0989fa6ee79db202666e041d3d684b24912fa2905b75cd23d4fac0d"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/ffpipenode_android_mediacodec_vdec.c",
+      "kind": "file",
+      "bytes": 78167,
+      "sha256": "837af7367b6f956bfe4b5fe7fcfecd494121da4345658d364e5bcd1352e832a2"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/ffpipenode_android_mediacodec_vdec.h",
+      "kind": "file",
+      "bytes": 1539,
+      "sha256": "627975d693db74bd927a8250fc413216ca9e371b05e794ffa7a219710c61eaca"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/h264_nal.h",
+      "kind": "file",
+      "bytes": 4556,
+      "sha256": "548c068cfe37d25f99e1e3bd6836172b17f4489de076a2ad9e95dbd16b60399b"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/hevc_nal.h",
+      "kind": "file",
+      "bytes": 2984,
+      "sha256": "d5bd406d779dda77bff7f0543f5c6c2fe393dadc04e0063f2a5a559c207e4a15"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/mpeg4_esds.h",
+      "kind": "file",
+      "bytes": 2207,
+      "sha256": "7f56029ce60b8ea2217049ea281552348732b3f448d9b6a80fa399c1a8518d32"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/tests/README-eos.md",
+      "kind": "file",
+      "bytes": 3075,
+      "sha256": "0c438e238420bc1010f181422f948294b9171d2ccb9f7a5041f2903e51f2fc77"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/tests/README.md",
+      "kind": "file",
+      "bytes": 3526,
+      "sha256": "b27a1895b4ff7296a51665540e8af9eb83246685ef380ecbd07c4a0191d21d66"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/tests/ffamc_eos_test.c",
+      "kind": "file",
+      "bytes": 5897,
+      "sha256": "477b3a7c48d6b77ab08a9832799f6f1982cf1f65db0981727ac6900b64e2e1ac"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/tests/ffamc_ffmpeg_test.c",
+      "kind": "file",
+      "bytes": 10052,
+      "sha256": "ed16a739ecf38a5971c1c910a668df44e519762477b80ccec3a4afb65a53f68e"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/tests/ffamc_hevc_parameter_update_test.c",
+      "kind": "file",
+      "bytes": 24424,
+      "sha256": "97c2a8429ae09452be34afbc7e35aa5ecefa9a66ebed4643e7ef9ecc3402495f"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/tests/ffamc_input_test.c",
+      "kind": "file",
+      "bytes": 9041,
+      "sha256": "eaba03c7c453ffa6f9d48f45d1463f4a2b70c50988a56fe6ec1e042875df8c5c"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/tests/ffamc_packet_queue_test.c",
+      "kind": "file",
+      "bytes": 5612,
+      "sha256": "0f15b2138f2519a63ef26d0867303b45867eeb030554394768032337fe95698d"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/tests/make_hevc_parameter_update_fixture.py",
+      "kind": "file",
+      "bytes": 4720,
+      "sha256": "16290509a582afc32ef23e4d214997e695f51b997901316160be8576b6aa4cb5"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/tests/run_ffamc_eos_tests.sh",
+      "kind": "file",
+      "bytes": 366,
+      "sha256": "2355312dff4405464c8efe1a41f75e59d0e62d29a855feb72d487cee05d35501"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/android/pipeline/tests/run_ffamc_ffmpeg_tests.sh",
+      "kind": "file",
+      "bytes": 3588,
+      "sha256": "959c23a11b2b4c3a328f81236693e3c1ae09816565f8c02dd58405647bfab728"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/config.h",
+      "kind": "file",
+      "bytes": 1464,
+      "sha256": "138f60be36a179691061c694e781ed7dddc55d2152f067f4ef0c0dad4472bf48"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ff_cmdutils.c",
+      "kind": "file",
+      "bytes": 7735,
+      "sha256": "4438dec8c0d6afb2abeb44ef9e6647184d8c4d3b547257746204d7225d75f394"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ff_cmdutils.h",
+      "kind": "file",
+      "bytes": 1937,
+      "sha256": "eddc8c1923079820e8dd2131420d61f2b21b13c38fc4d07284a03bdd8710e423"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ff_eof_clock.h",
+      "kind": "file",
+      "bytes": 16967,
+      "sha256": "e691689cf1512a7baa094e198c77bf581fba6124c9cbafb058f35bb4952083be"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ff_fferror.h",
+      "kind": "file",
+      "bytes": 1127,
+      "sha256": "7c2eaeb931dd345a321a49e04f834878b817b6ad31c1cf98bea6bb6bb0b4cb1d"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ff_ffinc.h",
+      "kind": "file",
+      "bytes": 1643,
+      "sha256": "671f8cb230fc7bc1b198dda33072f4f12610f5ba63f65706ef89cf1c697c3a53"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ff_ffmsg.h",
+      "kind": "file",
+      "bytes": 5181,
+      "sha256": "7e3a1d7c49bb09217b119e0ffdd07993e6671e0c8151c912411ad02d5f8b18f8"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ff_ffmsg_queue.h",
+      "kind": "file",
+      "bytes": 7072,
+      "sha256": "ef56d9304b750c19b99ddbe56afc24c2d762b12e14d5fc0164973edb4c9093e6"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ff_ffpipeline.c",
+      "kind": "file",
+      "bytes": 2345,
+      "sha256": "86ca1d8047f84b6a569171c97149e3a326dabb1a8ad5d5a0405fc188ce8d56ff"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ff_ffpipeline.h",
+      "kind": "file",
+      "bytes": 2283,
+      "sha256": "9ee1dc07b74b8985cbef55acdd406167c4457d8f446c288ea25d9914ae467fde"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ff_ffpipenode.c",
+      "kind": "file",
+      "bytes": 2077,
+      "sha256": "6eda9de9f92e380e87800f5a9c6cc0adca87ce56619b012d2e53938ff34bd5ce"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ff_ffpipenode.h",
+      "kind": "file",
+      "bytes": 1565,
+      "sha256": "7de03275cd2a921c69d19aca7c63dee2b49f4d4784dd1d543852594da1202424"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ff_ffplay.c",
+      "kind": "file",
+      "bytes": 198061,
+      "sha256": "e8db63d06f8d5c27d2aa16978a6ad47b2c25ef15fcaef06d76db5509b6f11150"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ff_ffplay.h",
+      "kind": "file",
+      "bytes": 5480,
+      "sha256": "17c20a22f3bfdf7826b3bfa7f822dfbcd4c8c02846cc1745622d189516b8b0d6"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ff_ffplay_debug.h",
+      "kind": "file",
+      "bytes": 1617,
+      "sha256": "b0073d623abf33f1ce8539b7f5dfb510f3b6af47ec50fc398a31a8770eca2cc5"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ff_ffplay_def.h",
+      "kind": "file",
+      "bytes": 27481,
+      "sha256": "3ab0aba1ccd4e41ffbf0923de40b104548bd489ef77b26c5a88d783e00d0c1f2"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ff_ffplay_options.h",
+      "kind": "file",
+      "bytes": 12225,
+      "sha256": "c22a8f56010c80dac40e9b6ddfeef7cd120a20b9c54981af2ef63cf0ba659484"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ff_rate_clock.h",
+      "kind": "file",
+      "bytes": 1216,
+      "sha256": "62299cfadf39c327a3997dde1e907b11eff64950c4f2364769d11f4a7daf3060"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavformat/allformats.c",
+      "kind": "file",
+      "bytes": 2574,
+      "sha256": "1b6003a614a005a74bfcf009cde27a5a2a3ab167a24c63f805d346d7576a08f4"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavformat/cJSON.c",
+      "kind": "file",
+      "bytes": 68712,
+      "sha256": "22bfa18b78da1718f742aaa4f4ff79aa16be693e2a1658eadd40706615515d71"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavformat/cJSON.h",
+      "kind": "file",
+      "bytes": 13717,
+      "sha256": "ceb9a8b5c61d19cf9b29b0d59d05c1c03e1d8ab616fc1021cb51e7c82ed517df"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavformat/ijkasync.c",
+      "kind": "file",
+      "bytes": 21944,
+      "sha256": "870fabe2e367fdd71901b3f2cddef9d328acf1efa39dcfad55e0890c4958b504"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavformat/ijkavformat.h",
+      "kind": "file",
+      "bytes": 1033,
+      "sha256": "46241f9ca1d4fd8c2d2ee4571196443dfbbfdefe59eb5e50d1612de0fe13c10d"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavformat/ijkio.c",
+      "kind": "file",
+      "bytes": 4138,
+      "sha256": "033dbd2406474e5b61cbc8d9b7e6e9b13f317d4a28bcaca4139c7a0f40c3cdb3"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavformat/ijkioandroidio.c",
+      "kind": "file",
+      "bytes": 5882,
+      "sha256": "29d3f706d5ccd7ac854e7c5065ef4566a661aaef48f555f608003d7a0d173a39"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavformat/ijkioapplication.c",
+      "kind": "file",
+      "bytes": 1856,
+      "sha256": "4f400d98b51ea06ae7db8b85a5447342240a4445bbc192322605624940841d46"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavformat/ijkioapplication.h",
+      "kind": "file",
+      "bytes": 2503,
+      "sha256": "772984516f009e09b7259231460ac719acebbcdda54f6913c94f62ceefd91c33"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavformat/ijkiocache.c",
+      "kind": "file",
+      "bytes": 37672,
+      "sha256": "473d1a5bcd399b11732b600c1e597d01c63bb6a2d2c228b16aeaadd3095509a6"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavformat/ijkioffio.c",
+      "kind": "file",
+      "bytes": 3003,
+      "sha256": "3257363e920606ef62f3015fb83ef9bb74a430aeb8ba4b1118e941f11f7d1ede"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavformat/ijkiomanager.c",
+      "kind": "file",
+      "bytes": 16864,
+      "sha256": "251638bf8fb8181633793fe5f34cfd4bdb8b02a086589c6bb5316fc07b10d37f"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavformat/ijkiomanager.h",
+      "kind": "file",
+      "bytes": 2184,
+      "sha256": "ca67edc6879db715ca95cacf5b7221f08004acbeca31aa9faec6a8314c347916"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavformat/ijkioprotocol.c",
+      "kind": "file",
+      "bytes": 2344,
+      "sha256": "4f376fe9f9971115223c574b80de29adbec2769f077f5a0a345b37e00ae40df6"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavformat/ijkioprotocol.h",
+      "kind": "file",
+      "bytes": 958,
+      "sha256": "4af1e37e264f0bc5449795def279b3cbf22349fe4c0ce63dd2211adc2467d67a"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavformat/ijkiourl.h",
+      "kind": "file",
+      "bytes": 1768,
+      "sha256": "95c554ffed60202f2e1352048e0016dac7f1faded2567e3ed0bf076041791bf8"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavformat/ijkiourlhook.c",
+      "kind": "file",
+      "bytes": 14046,
+      "sha256": "b5f6506a8d2361015a7434d275cc64f08dd9a0f13e864fb3cf0e70007a810193"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavformat/ijklas.c",
+      "kind": "file",
+      "bytes": 69325,
+      "sha256": "3239a8f1d71de33adfa9b2f15dcc496870481214ab29fcd1d2b35214d5ed2588"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavformat/ijklas.h",
+      "kind": "file",
+      "bytes": 1234,
+      "sha256": "96276d2ac9bb9e483ab8aa40cfdab74aadfd1e9e6faf4859f5c4132dd2363aa1"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavformat/ijklivehook.c",
+      "kind": "file",
+      "bytes": 9129,
+      "sha256": "390f3a11c75f5f4ec3a430597d7546a43854376bc4091ea2978da89060dd67f9"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavformat/ijklongurl.c",
+      "kind": "file",
+      "bytes": 2990,
+      "sha256": "6408aabd5d22ce5aedf77332662075b33bda5699704e3962468409634a7839c3"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavformat/ijkmediadatasource.c",
+      "kind": "file",
+      "bytes": 6817,
+      "sha256": "ef3f227ed9326578abaa9cee4de3440cbd00d9e65c96a444ac251ab0e884952e"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavformat/ijksegment.c",
+      "kind": "file",
+      "bytes": 4011,
+      "sha256": "e183a2d7057373fb16fb49b29fde19799751ac38736d20bd5cdd3393c98660db"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavformat/ijkurlhook.c",
+      "kind": "file",
+      "bytes": 13740,
+      "sha256": "ab4a9f748ea40289d07998e18608d25c6dbb9f16c2c5b0108e62f9eb3fbd8011"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavutil/ijkdict.c",
+      "kind": "file",
+      "bytes": 6059,
+      "sha256": "a5be36398edf27dd46e12fa6421b1b9e11bbcec744b4e8512b7301994e644eef"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavutil/ijkdict.h",
+      "kind": "file",
+      "bytes": 5639,
+      "sha256": "0d78331bfbaf71acc90418863494e3ecb6544151f23783e44efdbe1bb62c05eb"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavutil/ijkfifo.c",
+      "kind": "file",
+      "bytes": 6185,
+      "sha256": "f6fb2d2747a56eaf5ba4159cbceef14f49a3c2d0bdd548f0380d31090943725d"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavutil/ijkfifo.h",
+      "kind": "file",
+      "bytes": 6026,
+      "sha256": "27cd76872f86a88ea2706ace90926ded7cf064ca058057d9b0dae24d071fbc6b"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavutil/ijkstl.cpp",
+      "kind": "file",
+      "bytes": 4020,
+      "sha256": "5775345457a358eb6a9fdbcc2e398f2cd0d864159cca000a16a8d142587d2812"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavutil/ijkstl.h",
+      "kind": "file",
+      "bytes": 1475,
+      "sha256": "2cfe7b8edc873eae76c9e97e3299fc38d64bb3c8767215794c8c059c32e93a46"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavutil/ijkthreadpool.c",
+      "kind": "file",
+      "bytes": 7037,
+      "sha256": "ee5f4db717c9ca84d3f228815b92939d886cc849dbace324fa43e4dba68aca29"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavutil/ijkthreadpool.h",
+      "kind": "file",
+      "bytes": 2910,
+      "sha256": "f5c324c0a24e00860deaedb31ed89b31bae0f970060496b67f44e2c952774974"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavutil/ijktree.c",
+      "kind": "file",
+      "bytes": 5772,
+      "sha256": "1ea0187acdcb38c7017b211da35ed92e97c794736563f4247d734e5109176559"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavutil/ijktree.h",
+      "kind": "file",
+      "bytes": 5409,
+      "sha256": "72de9ea7a150c325c5448ce49a4a18169332b2c957f5fb865a5bd973e4569d8e"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavutil/ijkutils.c",
+      "kind": "file",
+      "bytes": 482,
+      "sha256": "fe461bc8eddb72d3bc5ca9dc260e3bf6a41e21194c1234800527bbff8c5c0b00"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavutil/ijkutils.h",
+      "kind": "file",
+      "bytes": 4264,
+      "sha256": "2a5ed24fd2d314d2bdd254e25b2e88e3e09dbcdfa0f39e7da91e607c809865b8"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkavutil/opt.h",
+      "kind": "file",
+      "bytes": 1708,
+      "sha256": "94680884fe353e193c1d3dad4437abf9156e54c5222874cbb31280db61f940c1"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkmeta.c",
+      "kind": "file",
+      "bytes": 10002,
+      "sha256": "84917d66a4359f2b1cbfe3118217b1e91327b60c564c82402645c603249360b0"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkmeta.h",
+      "kind": "file",
+      "bytes": 3406,
+      "sha256": "b8358dfa9c1d410749a2c75a287b2376d76597430ccaffea3a4d9a0b2f218f53"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkplayer.c",
+      "kind": "file",
+      "bytes": 22124,
+      "sha256": "9e6117e8f3e0f112646519fef4143f6574541a50293eccf9ad9a6ee952bc8a04"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkplayer.h",
+      "kind": "file",
+      "bytes": 7997,
+      "sha256": "4121e2acca3f2968156a037e615e7bd4e9f3472de1b0db74c89675539f8c0b5f"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/ijkplayer_internal.h",
+      "kind": "file",
+      "bytes": 1455,
+      "sha256": "e2ca80effdbb457284da016a8deaddab3de2e598480eadf11af0064858c20b79"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/pipeline/ffpipeline_ffplay.c",
+      "kind": "file",
+      "bytes": 1953,
+      "sha256": "fdad3d3b1d85de0544736c1c50355d29429373573ea79af07515ed0a82655598"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/pipeline/ffpipeline_ffplay.h",
+      "kind": "file",
+      "bytes": 1112,
+      "sha256": "0c0ac7686d5059e1da171fdf3a6ac54ff7cb3a466abb5ec925419f363889631e"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/pipeline/ffpipenode_ffplay_vdec.c",
+      "kind": "file",
+      "bytes": 1789,
+      "sha256": "89aff3d346e582a7073e0ab67a45d2bf7a58fc688c8f9ded3a82d8a14bc21c5d"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/pipeline/ffpipenode_ffplay_vdec.h",
+      "kind": "file",
+      "bytes": 1123,
+      "sha256": "fcd0fddc907ecb19f29d7a49cff0f8741dccd4dc2343f0d29c06983b764443c1"
+    },
+    {
+      "path": "ijkmedia/ijkplayer/version.sh",
+      "kind": "file",
+      "bytes": 1905,
+      "sha256": "cf94e0ddcdce5c2f071e906e637123292bdb8f41409b304beeb3a817ae5d4ac3"
+    },
+    {
+      "path": "ijkmedia/ijksdl/Android.mk",
+      "kind": "file",
+      "bytes": 3629,
+      "sha256": "cacc140c9a84eb619a61c9a2befa6282d0d5d18253c9b2b85df01fc4ace1ce2e"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/android_audiotrack.c",
+      "kind": "file",
+      "bytes": 15964,
+      "sha256": "8a41c5193281a723942189407b21dd57d4a43be9f00647129ace2975ddd8953e"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/android_audiotrack.h",
+      "kind": "file",
+      "bytes": 4991,
+      "sha256": "d3456f2ed893bbd51d96b8fcf8aee9a469ca8a035403dda1382dadc08b517a1f"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/android_nativewindow.c",
+      "kind": "file",
+      "bytes": 10117,
+      "sha256": "5d786f8f71f8f00eba7708763c5f2000505e8fc35810cce786a8efd49ab3bc1a"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/android_nativewindow.h",
+      "kind": "file",
+      "bytes": 1339,
+      "sha256": "4b6e82ee63e98d6fed53bd239c24ddcb783e1f945b7e20cc32a4f429d2ca7ca6"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_android.h",
+      "kind": "file",
+      "bytes": 1330,
+      "sha256": "eb5c8c965f975288d0f79b977ae1a495af4388e8b60f45cb240e8cdede142b1a"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_android_jni.c",
+      "kind": "file",
+      "bytes": 5721,
+      "sha256": "82eb9c7ac2ddc9d95decff35cd9d8bbadd5baeb417bd3ca5dd3fbeeb7dc39785"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_android_jni.h",
+      "kind": "file",
+      "bytes": 4519,
+      "sha256": "ff98ffe8cf8bb36cf9f9e0141e6c3b5400ac45f9fd6b5a6b68749914e1fc3533"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_aout_android_audiotrack.c",
+      "kind": "file",
+      "bytes": 29695,
+      "sha256": "cd5ee14217198546804fb5df755bb64ca518eb17353b8fa1e3790b82ecbdbdb7"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_aout_android_audiotrack.h",
+      "kind": "file",
+      "bytes": 1322,
+      "sha256": "0dc3eb45d47e2c72d9003cbc72d0c979a1c8b79f9cf0b64f48b4876f3c242ff3"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_aout_android_opensles.c",
+      "kind": "file",
+      "bytes": 20195,
+      "sha256": "a9830129e6353f994068403c85d192ef0d5737cbb27011bcbe678c319845e52c"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_aout_android_opensles.h",
+      "kind": "file",
+      "bytes": 1312,
+      "sha256": "2b7fa28064da206d16d9550a153128a4ef05a41c9c08a34e7a66830af8f9268d"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_codec_android_mediacodec.c",
+      "kind": "file",
+      "bytes": 8864,
+      "sha256": "5279e81c1e430434c51d60239e0f7ca47ad32a9f7d21caff10d258a761af8410"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_codec_android_mediacodec.h",
+      "kind": "file",
+      "bytes": 6443,
+      "sha256": "c8d97ee2bfbdcb5702df6bd1689fa318661b92e0f8b0bb87bb1c20132d92ae5f"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_codec_android_mediacodec_dummy.c",
+      "kind": "file",
+      "bytes": 5241,
+      "sha256": "94e3fa259ea73d20a67d58d7059453a73ddd170a88d8ec7807873d2a9861f53e"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_codec_android_mediacodec_dummy.h",
+      "kind": "file",
+      "bytes": 1096,
+      "sha256": "2e0099dee1024c8fd7924b66070a3bf6062970131e43b7739cf025ff0cd7d960"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_codec_android_mediacodec_internal.c",
+      "kind": "file",
+      "bytes": 5554,
+      "sha256": "0da677fd068826348478db1c2e3058ee9ae7db60ab0bdf043a2d7a2be1309b44"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_codec_android_mediacodec_internal.h",
+      "kind": "file",
+      "bytes": 2704,
+      "sha256": "623f365430b94b889b0d8fc15c1359f0ec3fbbccd304c1cac42393b5be4668b5"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_codec_android_mediacodec_java.c",
+      "kind": "file",
+      "bytes": 14963,
+      "sha256": "a2acc83eefe47061ca6342707ed6f8172afb3ad99a3bee4d7c06423591f52b51"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_codec_android_mediacodec_java.h",
+      "kind": "file",
+      "bytes": 1480,
+      "sha256": "41330fe0bd53fe2f0faa05c4a16ec53365dcf7c357b081dbe5fa57a36c256f0e"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_codec_android_mediadef.c",
+      "kind": "file",
+      "bytes": 7432,
+      "sha256": "180824d8a46427b8fc6b9a54b9d9e4a9a840da81f314fb0aae8de8704cab1d46"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_codec_android_mediadef.h",
+      "kind": "file",
+      "bytes": 10890,
+      "sha256": "d54ea3dc3312ce764c67993ea388fd7635b45b544024a49f20c42224479d8163"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_codec_android_mediaformat.c",
+      "kind": "file",
+      "bytes": 2163,
+      "sha256": "8588289f0535038370b4724673d594fbadfd11aab38d262075ff9f590a9a72eb"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_codec_android_mediaformat.h",
+      "kind": "file",
+      "bytes": 2373,
+      "sha256": "4cbe5eb1237a2349e0003c98b27ff9c4de16ce0e72429ef08126e4c24b796f03"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_codec_android_mediaformat_internal.h",
+      "kind": "file",
+      "bytes": 2066,
+      "sha256": "a02b0ceeec267e20b700f2be0b1126538ea12a121c8f273ed5fc63927ed5c5ea"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_codec_android_mediaformat_java.c",
+      "kind": "file",
+      "bytes": 6946,
+      "sha256": "069b7595a49cc3de41ffaff4783b585bc1c37be9e19f47b6539725a155a2d086"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_codec_android_mediaformat_java.h",
+      "kind": "file",
+      "bytes": 1538,
+      "sha256": "68f62f57d72c356f06e76f985db4438963d9b60661aff27a26432d02e32db1da"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_inc_internal_android.h",
+      "kind": "file",
+      "bytes": 1876,
+      "sha256": "6f800b2e767d147be8cc346e897f16302730dae1fe689c501f6980b4a231306c"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_vout_android_nativewindow.c",
+      "kind": "file",
+      "bytes": 16098,
+      "sha256": "13d10608ffb4171f2b3493e50cdb7cb6e8a51399c169219c65f70677d4b1144e"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_vout_android_nativewindow.h",
+      "kind": "file",
+      "bytes": 2576,
+      "sha256": "c07aca0192d203a81e26ba3fde0adfc7a79773d03b1d1aa0b1c4c46b632145c2"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_vout_android_surface.c",
+      "kind": "file",
+      "bytes": 1884,
+      "sha256": "1dde83b7b6d236ad5b915a90577a3a64e92fb7f3167385b6d376c84149652a64"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_vout_android_surface.h",
+      "kind": "file",
+      "bytes": 1393,
+      "sha256": "9bcf18ce624409a2be1426b34e3472346b7f03d68093d57f6cb749b8a1fbf5d6"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_vout_overlay_android_mediacodec.c",
+      "kind": "file",
+      "bytes": 5904,
+      "sha256": "a846bf3d049badee315791e7d7e109856dffe27523d534f1d1ada947560f6156"
+    },
+    {
+      "path": "ijkmedia/ijksdl/android/ijksdl_vout_overlay_android_mediacodec.h",
+      "kind": "file",
+      "bytes": 1662,
+      "sha256": "0f47d4ed4f650a9cb81535402c6cd7b18e1489dcec7f622c6293be437b223567"
+    },
+    {
+      "path": "ijkmedia/ijksdl/dummy/ijksdl_dummy.h",
+      "kind": "file",
+      "bytes": 1213,
+      "sha256": "84cfc041d1da950dcff3bfc89ebcdf1708e6d1e6a0a6a03346389a80f073f73a"
+    },
+    {
+      "path": "ijkmedia/ijksdl/dummy/ijksdl_vout_dummy.c",
+      "kind": "file",
+      "bytes": 2061,
+      "sha256": "1d195d53b0d4f3b9da4c9bf82c9b81d5ccf8abf9eee3184d6b8fadbe3759e5c2"
+    },
+    {
+      "path": "ijkmedia/ijksdl/dummy/ijksdl_vout_dummy.h",
+      "kind": "file",
+      "bytes": 1230,
+      "sha256": "7d78b2fb824943e7d3fcd77776fcec10d67f421372cc07b115403d49fd88c8bd"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ffmpeg/abi_all/image_convert.c",
+      "kind": "file",
+      "bytes": 2483,
+      "sha256": "36eb0b757d12f4ac1ccb37ab57fcf11832e52d66125aaf7c5e844b44fae55ff4"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ffmpeg/ijksdl_image_convert.h",
+      "kind": "file",
+      "bytes": 1268,
+      "sha256": "33da4f5a3b97c51172e81d38540d11801ab18050b0dc50e25001248ccd503cf3"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ffmpeg/ijksdl_inc_ffmpeg.h",
+      "kind": "file",
+      "bytes": 1216,
+      "sha256": "856ba50139bcb8c02075040e2a75fc78eb1ba49071f3c89aebf47164f50b8e38"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ffmpeg/ijksdl_vout_overlay_ffmpeg.c",
+      "kind": "file",
+      "bytes": 13436,
+      "sha256": "b2b1c4bb75e20929a8f2ea0fd872b088cd204ce17d8aeb31e4fb898f46d8d167"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ffmpeg/ijksdl_vout_overlay_ffmpeg.h",
+      "kind": "file",
+      "bytes": 1415,
+      "sha256": "95989a780ea3b0330d52ba26af71a21dbf5cef634843129ad7f92c4d340a907d"
+    },
+    {
+      "path": "ijkmedia/ijksdl/gles2/color.c",
+      "kind": "file",
+      "bytes": 1305,
+      "sha256": "13bb794ec72e8478c8f733d8bf96b5604d46585d1264b58ab6e83b4cabbce850"
+    },
+    {
+      "path": "ijkmedia/ijksdl/gles2/common.c",
+      "kind": "file",
+      "bytes": 2032,
+      "sha256": "99dbff0988730f385f8586438c43ff9e575e358f874addc01f319cb9628eede0"
+    },
+    {
+      "path": "ijkmedia/ijksdl/gles2/fsh/rgb.fsh.c",
+      "kind": "file",
+      "bytes": 1236,
+      "sha256": "c4a890f0920fb1ba3482a80b6897cadc2788ec821c0e523ff1880ae71f50f8f8"
+    },
+    {
+      "path": "ijkmedia/ijksdl/gles2/fsh/yuv420p.fsh.c",
+      "kind": "file",
+      "bytes": 1636,
+      "sha256": "a49123c037eb38c31a06ebf4f5ef0ce1b2c5ecc2939b73b0c32773e3386dba5a"
+    },
+    {
+      "path": "ijkmedia/ijksdl/gles2/fsh/yuv420sp.fsh.c",
+      "kind": "file",
+      "bytes": 1545,
+      "sha256": "ef739587cf5dcdd2b2350f58d6683df56409b5143cdff45f612b0f4c0f28d47a"
+    },
+    {
+      "path": "ijkmedia/ijksdl/gles2/fsh/yuv444p10le.fsh.c",
+      "kind": "file",
+      "bytes": 1943,
+      "sha256": "47f7756f563ab57bd7a92303a1bc576710c712c6d2a91e5ba01611c4183a29be"
+    },
+    {
+      "path": "ijkmedia/ijksdl/gles2/internal.h",
+      "kind": "file",
+      "bytes": 3468,
+      "sha256": "d700d951ec696902dc311f29fd32663f517f97e0bcd680a914aaf0e74079d423"
+    },
+    {
+      "path": "ijkmedia/ijksdl/gles2/renderer.c",
+      "kind": "file",
+      "bytes": 15108,
+      "sha256": "e747a087524f436f00561a4748cf420f0997057f08b55452326d9b59e076ca47"
+    },
+    {
+      "path": "ijkmedia/ijksdl/gles2/renderer_rgb.c",
+      "kind": "file",
+      "bytes": 7231,
+      "sha256": "7dfb0eaad9349ef7138c47bac4e9e54f66b954517c04926ca31be3486f8e5dc1"
+    },
+    {
+      "path": "ijkmedia/ijksdl/gles2/renderer_yuv420p.c",
+      "kind": "file",
+      "bytes": 4420,
+      "sha256": "7296788baa93c37ca17de20dcb8af0cec251965e824c0eada7150186bbe48508"
+    },
+    {
+      "path": "ijkmedia/ijksdl/gles2/renderer_yuv420sp.c",
+      "kind": "file",
+      "bytes": 4319,
+      "sha256": "9130cad068811e4ae3779ae045f5e04eaab2917c77d7123dacf28ad0476a54f4"
+    },
+    {
+      "path": "ijkmedia/ijksdl/gles2/renderer_yuv420sp_vtb.m",
+      "kind": "file",
+      "bytes": 9902,
+      "sha256": "7a193b3e4b160740bd12225aabd0e505e72d04e5ef863d3b337ac7747c9060e8"
+    },
+    {
+      "path": "ijkmedia/ijksdl/gles2/renderer_yuv444p10le.c",
+      "kind": "file",
+      "bytes": 4498,
+      "sha256": "a10a9efd6376bd58aa749df9edcda99369fadfb553b209c83900803c89b049e1"
+    },
+    {
+      "path": "ijkmedia/ijksdl/gles2/shader.c",
+      "kind": "file",
+      "bytes": 2374,
+      "sha256": "8a3ade0f43690e46b1029489dd006d1f385444956306a315a3e47e809b10dc1c"
+    },
+    {
+      "path": "ijkmedia/ijksdl/gles2/vsh/mvp.vsh.c",
+      "kind": "file",
+      "bytes": 1350,
+      "sha256": "acb74020ae8c085dcdb5cfad1caab330551ee47bce1f89420fda35569065f5f7"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl.h",
+      "kind": "file",
+      "bytes": 1422,
+      "sha256": "f4edf568c2dfb15c9fd9fc388417552cd3f0684a07c0dd16f412c2d1e7cc2379"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_aout.c",
+      "kind": "file",
+      "bytes": 4260,
+      "sha256": "1d173bff1b2fa10e478107c3b986e52b383d67a6cbd8e5e56f9ce8f49673f916"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_aout.h",
+      "kind": "file",
+      "bytes": 3647,
+      "sha256": "e20f35732da9206b07c068b801c0ec3b86f5bde5f3716765043dddce5bc91d6d"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_aout_internal.h",
+      "kind": "file",
+      "bytes": 1872,
+      "sha256": "f113bc5b4b7d6f7281e4271d44eb62b0dcedec57aee44a18aaae5c70eec767d1"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_audio.c",
+      "kind": "file",
+      "bytes": 1568,
+      "sha256": "04ef8e9a88091103b74af87a2ed1429bbbcaa3a1a527887bb36305b954f8b035"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_audio.h",
+      "kind": "file",
+      "bytes": 5961,
+      "sha256": "e3d5e5a102facf7c0c69aee8b4209dd002423262db1fcb4347343c037137aa2c"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_audio_playback.h",
+      "kind": "file",
+      "bytes": 9234,
+      "sha256": "d7597da6777b625675799f690e9b7ade7af3123494565a82c039c27adfedae3c"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_class.h",
+      "kind": "file",
+      "bytes": 1172,
+      "sha256": "76c7e7d18fa87d0b91fdc9a53026a7b47238c3ba62493719b8791a8ae0c3de4b"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_container.h",
+      "kind": "file",
+      "bytes": 2921,
+      "sha256": "cd946c50bde946c687540b7fa6fa15021f36e0c29f528e93717cce4001d7ba44"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_egl.c",
+      "kind": "file",
+      "bytes": 10872,
+      "sha256": "63ff6b0377afaa96b954beb7ebaf12f2ae55f8d9380fb497a9e08c4138b9f372"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_egl.h",
+      "kind": "file",
+      "bytes": 1873,
+      "sha256": "d1cc40e57271d53874675fed47fb6242ba74a94f7b15cd2c2ec895f593cf6771"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_endian.h",
+      "kind": "file",
+      "bytes": 1716,
+      "sha256": "821dcb457889af41296b320c221158d79bcbbcae898c13e65d24bd6617fc6740"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_error.c",
+      "kind": "file",
+      "bytes": 1145,
+      "sha256": "38eea971f2c3869f0015516a584dcfb18de47300315e0f68f44e41ea31bae074"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_error.h",
+      "kind": "file",
+      "bytes": 1142,
+      "sha256": "758e06c903eab4058bdd8e802817fc600d34e584bd8dd320c1f5b7e9c2b43402"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_extra_log.c",
+      "kind": "file",
+      "bytes": 3438,
+      "sha256": "771dc7d4f9fd809a01847a23c3bd9868d8f470d01eb7d5813e7237cc00fcf532"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_extra_log.h",
+      "kind": "file",
+      "bytes": 1377,
+      "sha256": "699deb96c2dfe776a6cf32a68deff2ef0dea52b98609775d15e2da9c373f6b7a"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_fourcc.h",
+      "kind": "file",
+      "bytes": 3319,
+      "sha256": "09ff42b6c878294cd3e5fcde442e04acec0a9b61cf24936d9d16431705e3be40"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_gles2.h",
+      "kind": "file",
+      "bytes": 2724,
+      "sha256": "c7d9cb1d33b027c218d72b376aaee665348fe8ce542710fae7875da8c38512fa"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_inc_internal.h",
+      "kind": "file",
+      "bytes": 1103,
+      "sha256": "574469a2dc387db7f902ea7be4f29e09cc08660b9d60053fb82a5570b6db0801"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_log.h",
+      "kind": "file",
+      "bytes": 3210,
+      "sha256": "cfdbbb6a76efec67f26a831a9eda4e36187588c88619cbe65a04507ed9ca0453"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_misc.h",
+      "kind": "file",
+      "bytes": 1872,
+      "sha256": "45ee7b683c5b88011fd7b76c37ce171414c2e6aa3dcbfedf41fdc3281c7a7fb7"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_mutex.c",
+      "kind": "file",
+      "bytes": 3773,
+      "sha256": "28146c293f8d07150d1d7d13ecf5cbec0a52d1c69b802979c47f8d2773d26e51"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_mutex.h",
+      "kind": "file",
+      "bytes": 1938,
+      "sha256": "c746bf1c3026e1fd1ec6f0163fee6ed90c0645905abfdedaf80745db8886872e"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_stdinc.c",
+      "kind": "file",
+      "bytes": 1125,
+      "sha256": "f9bf65c8555d7a534e26c6ab588689803098275fda1bd21bb035357825a7a29a"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_stdinc.h",
+      "kind": "file",
+      "bytes": 1434,
+      "sha256": "c7a76c49366a5b500476efdff58e6357c0b421c03802d62b650fb179aa033880"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_thread.c",
+      "kind": "file",
+      "bytes": 3177,
+      "sha256": "448cc616c94b2183d44c6a03b3bdbd2c1a8ccba0439f88e2cb0ab25a535fb876"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_thread.h",
+      "kind": "file",
+      "bytes": 1696,
+      "sha256": "80a5bb7e5e403324005f5aa8e39cbd98912f8e3c92ac5970f1b985e167dee0e9"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_timer.c",
+      "kind": "file",
+      "bytes": 7546,
+      "sha256": "9718315fa88fecaa94807de534c117ff44e507ecfda1fda0bf1ba12f4c651391"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_timer.h",
+      "kind": "file",
+      "bytes": 2442,
+      "sha256": "8c936db24f5738ef9cb54ec17dd75a44020a2955f73521c6c483ccaef018151e"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_video.h",
+      "kind": "file",
+      "bytes": 1164,
+      "sha256": "101b1565cd655b69ba0150f4ffcbcbba1820881bfa367916627e51bcd38ff1e0"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_vout.c",
+      "kind": "file",
+      "bytes": 2878,
+      "sha256": "63df515bf4c56acdcb6be1cd3c42f62c385a55f096ecca39c1a4c2c0aa13305e"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_vout.h",
+      "kind": "file",
+      "bytes": 3077,
+      "sha256": "04674d56448d14f78d7a857c1d8b04c96b8e187b3088769954534cac60d0a90a"
+    },
+    {
+      "path": "ijkmedia/ijksdl/ijksdl_vout_internal.h",
+      "kind": "file",
+      "bytes": 2486,
+      "sha256": "71e0d39a0bdec8447dda3f5a26c942b0b1062c6ca7bc1234fdde729db02ddc92"
+    },
+    {
+      "path": "ijkprof/android-ndk-profiler-dummy/jni/Android-include.mk",
+      "kind": "file",
+      "bytes": 855,
+      "sha256": "529651ba7bf1feff495381f3502b4d3a7a3d5b868c73ac8dcceb9b72da4472cb"
+    },
+    {
+      "path": "ijkprof/android-ndk-profiler-dummy/jni/Android.mk",
+      "kind": "file",
+      "bytes": 1112,
+      "sha256": "40be6d8106be4924d348f24081492e5af4bc11d0a2d171821451f91ac904af31"
+    },
+    {
+      "path": "ijkprof/android-ndk-profiler-dummy/jni/prof.c",
+      "kind": "file",
+      "bytes": 1327,
+      "sha256": "3854fffc984b783a80fd84a8c61bd64b4972a1eb1593188875e052eb104f2417"
+    },
+    {
+      "path": "ijkprof/android-ndk-profiler-dummy/jni/prof.h",
+      "kind": "file",
+      "bytes": 1262,
+      "sha256": "0ada8ef4dbf071892da2459e261add68fc4a41e9a1fa0477bbdae9e03765ab40"
+    },
+    {
+      "path": "init-android-exo.sh",
+      "kind": "file",
+      "bytes": 1955,
+      "sha256": "2c6dbb106d112f1a64dc2ed6ce76ac453945515b73cdfefbd7066914b852aec9"
+    },
+    {
+      "path": "init-android-ffmpeg5.sh",
+      "kind": "file",
+      "bytes": 3278,
+      "sha256": "3cd201c69b31405e7441fcc42037f53b26759df738bd9ff826d4f7eb0dc49f32"
+    },
+    {
+      "path": "init-android-j4a.sh",
+      "kind": "file",
+      "bytes": 1122,
+      "sha256": "1d121ceaa70904bf7498fef5ec524dcc786ee232f7acb2f0e55fb8d1ecdb6026"
+    },
+    {
+      "path": "init-android-libsoxr.sh",
+      "kind": "file",
+      "bytes": 1902,
+      "sha256": "a6ff218a88e868abd3899dce663f64793b26d3ac82134aa1d68dea1d10796142"
+    },
+    {
+      "path": "init-android-libyuv.sh",
+      "kind": "file",
+      "bytes": 1145,
+      "sha256": "d62a7253359c526a8577da789d02192b9184b8d39324d2540410ac98dd2492d0"
+    },
+    {
+      "path": "init-android-openssl.sh",
+      "kind": "file",
+      "bytes": 1387,
+      "sha256": "c794295739114a9d24cb9bc61cafcd212adfb8199f87d17ed1609d7da334fcd4"
+    },
+    {
+      "path": "init-android-prof.sh",
+      "kind": "file",
+      "bytes": 1219,
+      "sha256": "3bd4ce65c74922961804ea4061f21f63a7e66e32777d3edb584f6dcba8ee88a6"
+    },
+    {
+      "path": "init-android-soundtouch.sh",
+      "kind": "file",
+      "bytes": 1215,
+      "sha256": "a3d5f02f612d499f918fd5a164e4917a9a70e9f04b537d4c1689a82ce70bfa95"
+    },
+    {
+      "path": "init-android.sh",
+      "kind": "file",
+      "bytes": 2585,
+      "sha256": "cf51f0c46c76bbe699c9b6c4dca9e31f146a81e3c5baad3d8fd9c006e3b83341"
+    },
+    {
+      "path": "init-config.sh",
+      "kind": "file",
+      "bytes": 750,
+      "sha256": "902b36d22aa144bda32ec52c684f545f081acaf431f19ea57b8e87f50cc31936"
+    },
+    {
+      "path": "init-ios-openssl.sh",
+      "kind": "file",
+      "bytes": 1305,
+      "sha256": "28e0f0950bbcbe6fd8280fdf1fc25ed02ba9d1f505e8d29a563f925c68c93150"
+    },
+    {
+      "path": "init-ios.sh",
+      "kind": "file",
+      "bytes": 2677,
+      "sha256": "a868095890126a98f947f6135b45315e56efc0586299d5518cdb5673daede18b"
+    },
+    {
+      "path": "ios/.gitignore",
+      "kind": "file",
+      "bytes": 37,
+      "sha256": "ba30ee7e14039793da52841987606ade7f0e5a224f32589c6224bf74731d6737"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/AppIcons.xcassets/AppIcon.appiconset/Contents.json",
+      "kind": "file",
+      "bytes": 669,
+      "sha256": "513b25143850f444a608f6ba9e4dbe5905643a74f600299015f889f8dd8bad8a"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/Barcode.h",
+      "kind": "file",
+      "bytes": 416,
+      "sha256": "6fae4df73878389724d4c3c4891528228d61c1187bab3e2fc1e3ec5ad2228564"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/Barcode.m",
+      "kind": "file",
+      "bytes": 2161,
+      "sha256": "07e68084eb2854e17d618bff9dbf1c6afa0ec684bd61723388acba24972597c0"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/Default-568h@2x.png",
+      "kind": "file",
+      "bytes": 18594,
+      "sha256": "cff22ecf70a2ac5432c55cc83711992c766ce8c7a42613b4f1771bdb8393cb1e"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/Default.png",
+      "kind": "file",
+      "bytes": 6540,
+      "sha256": "d6ea0fdda5e3dfd3bd95005c59f87a55071e4d09136468742c658d154289e93b"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/Default@2x.png",
+      "kind": "file",
+      "bytes": 16107,
+      "sha256": "16b8609bcc9ae242bf945fa6f748916dfffa89d94c71ff538e05f1eeb7ec5007"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKAppDelegate.h",
+      "kind": "file",
+      "bytes": 869,
+      "sha256": "4866920f6be348d0e79cb7d87477d05c81a771f08778769398867e5b664f0650"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKAppDelegate.m",
+      "kind": "file",
+      "bytes": 2898,
+      "sha256": "857eccf8ee9a50d243c27370526e0e35541dffe608b7e1045db42b6a8b697b20"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKCommon.h",
+      "kind": "file",
+      "bytes": 997,
+      "sha256": "7258a49d154fcc4d1279e6cff39dda7be7632ae15d15f9bdfa29723ebb8bc89e"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKDemoHistory.h",
+      "kind": "file",
+      "bytes": 980,
+      "sha256": "3da7f09602937b597da6c74b8c6ad4cd376c3d51555801fb2638840d22e5edd1"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKDemoHistory.m",
+      "kind": "file",
+      "bytes": 2596,
+      "sha256": "0d60641d848e91739e36b00cc4c12574481931402622b41e9bf7deff9d95e3b5"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKDemoInputURLViewController.h",
+      "kind": "file",
+      "bytes": 686,
+      "sha256": "f2d2f609a44e7e03bb4c0340f7b75b14da20c1af1b39bb3a87785a8830f63f59"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKDemoInputURLViewController.m",
+      "kind": "file",
+      "bytes": 1827,
+      "sha256": "b72bbeee76d4f9ce92edc04627792cc1cfc070061ad3ade1b75351c927ef1135"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKDemoInputURLViewController.xib",
+      "kind": "file",
+      "bytes": 3732,
+      "sha256": "49c93250649cc00ef9da095548cddd2a45d03f76d05e4683480d3bce05d3f737"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKDemoLocalFolderViewController.h",
+      "kind": "file",
+      "bytes": 754,
+      "sha256": "7e4b01018e92fa57fefbddf881561e5b34ff8b685427ce911b45435a5e668f64"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKDemoLocalFolderViewController.m",
+      "kind": "file",
+      "bytes": 5978,
+      "sha256": "659140af9f360217de791461d8bd4f61a45faf29209f3ff15a1e035fd5f2fe4e"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKDemoMainViewController.h",
+      "kind": "file",
+      "bytes": 682,
+      "sha256": "b03e9dd6f7d2f36f694d0f0771176fc39e76cd3eae774f6e51eb16aa97e77f47"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKDemoMainViewController.m",
+      "kind": "file",
+      "bytes": 8676,
+      "sha256": "f39a2c0c797704f5d0f26e3d8134d672e6e2110dc5e7becb72ea62f1a74f1327"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKDemoMainViewController.xib",
+      "kind": "file",
+      "bytes": 2670,
+      "sha256": "6395fcacc5c9c8eca287a0b476d6472f14796b04e12ab06474cdcb42ac4be0b2"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKDemoSampleViewController.h",
+      "kind": "file",
+      "bytes": 750,
+      "sha256": "6b69cd3def270eb11318add8020c5c7309c406c0c4988ec72b685d0858a9ecf6"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKDemoSampleViewController.m",
+      "kind": "file",
+      "bytes": 6564,
+      "sha256": "171a8d0c5f05be4d4d1efc2022b713e69df32e0d9a82cad577551a444817a80b"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKDemoSampleViewController.xib",
+      "kind": "file",
+      "bytes": 2704,
+      "sha256": "ec8563dee46f70e5a5b38bd5e59dd5d924588dcdb203321ae8cb38bc49c66907"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKMediaControl.h",
+      "kind": "file",
+      "bytes": 1494,
+      "sha256": "d21e637df539bbef65a30fe6fe859c370326600edfedb5ec8e9d61a862da80a2"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKMediaControl.m",
+      "kind": "file",
+      "bytes": 3131,
+      "sha256": "f0f589e26f5b1b6ba0726a9ee34155bf967ac633c95a608390505227d5b8dfa4"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKMediaDemo-Info.plist",
+      "kind": "file",
+      "bytes": 1576,
+      "sha256": "6746e603ba3db12f9196ee912a8a60c226c14d576d4d8575777f5ba4fe4dd40c"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKMediaDemo-Prefix.pch",
+      "kind": "file",
+      "bytes": 310,
+      "sha256": "b7602a3521c7e2ba4bd51b00c4a54abf58185f98c077fef1aa50230bd47089a6"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKMoviePlayerViewController.h",
+      "kind": "file",
+      "bytes": 1628,
+      "sha256": "c333223624b0b68242590b66ecc6dc15a5da28cb8519b912b5f7bf12148cce5a"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKMoviePlayerViewController.m",
+      "kind": "file",
+      "bytes": 11251,
+      "sha256": "259149b4797dcd8f63b49da962eca6cd4aadbb175e4a75e244cf6385d6529632"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKMoviePlayerViewController.xib",
+      "kind": "file",
+      "bytes": 12010,
+      "sha256": "438d5e2c710500318bba7e8fbcb383f43e11d76749b513a51fd6075fa96665f2"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKQRCodeScanViewController.h",
+      "kind": "file",
+      "bytes": 684,
+      "sha256": "2febf94ef3150422f8dfe8424310ab433dad77579352a57808119736f3edf803"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKQRCodeScanViewController.m",
+      "kind": "file",
+      "bytes": 7266,
+      "sha256": "23175d53fc0725c55d213b4f1cb7f9a9f4009e32b086d4675d7b31f71a35346a"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/IJKQRCodeScanViewController.xib",
+      "kind": "file",
+      "bytes": 1305,
+      "sha256": "21a043402343fca1eca713e71cbbf5e0ea4cb5d68297edb8046f3e7d929528fc"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/Images.xcassets/AppIcon.appiconset/Contents.json",
+      "kind": "file",
+      "bytes": 669,
+      "sha256": "513b25143850f444a608f6ba9e4dbe5905643a74f600299015f889f8dd8bad8a"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/Images.xcassets/LaunchImage.launchimage/Contents.json",
+      "kind": "file",
+      "bytes": 881,
+      "sha256": "09685788e2b88031ca9a5412f5281d10505312c66e283f65941b9b28c6851121"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/Images.xcassets/LaunchImage.launchimage/Default-568h@2x.png",
+      "kind": "file",
+      "bytes": 18594,
+      "sha256": "cff22ecf70a2ac5432c55cc83711992c766ce8c7a42613b4f1771bdb8393cb1e"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/Images.xcassets/LaunchImage.launchimage/Default.png",
+      "kind": "file",
+      "bytes": 6540,
+      "sha256": "d6ea0fdda5e3dfd3bd95005c59f87a55071e4d09136468742c658d154289e93b"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/Images.xcassets/LaunchImage.launchimage/Default@2x.png",
+      "kind": "file",
+      "bytes": 16107,
+      "sha256": "16b8609bcc9ae242bf945fa6f748916dfffa89d94c71ff538e05f1eeb7ec5007"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/LaunchScreen.xib",
+      "kind": "file",
+      "bytes": 3927,
+      "sha256": "25dd821b9fdbe2c7a73f06211ba1cbe9f19081929b92ba27445aa74a843a9c95"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/en.lproj/InfoPlist.strings",
+      "kind": "file",
+      "bytes": 45,
+      "sha256": "feb5e820d68ed31f871d2bdaf8d14935ed343a7a875ddd774d5556da8dfd951a"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo/main.m",
+      "kind": "file",
+      "bytes": 344,
+      "sha256": "18a12b333f640afe158e995244f3ff13f86fc68769e550d1e09510ce4ef63036"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo.xcodeproj/project.pbxproj",
+      "kind": "file",
+      "bytes": 33846,
+      "sha256": "b0d288805a05fd15cdba2f91363653cc4a8d460327d62fbd0c5f3237bcae35a5"
+    },
+    {
+      "path": "ios/IJKMediaDemo/IJKMediaDemo.xcodeproj/project.xcworkspace/contents.xcworkspacedata",
+      "kind": "file",
+      "bytes": 157,
+      "sha256": "82c295819ee3a1f50a7d0142e77fd29e03321c7dc5a078168707109ab9548cff"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/AppIcons.xcassets/AppIcon.appiconset/Contents.json",
+      "kind": "file",
+      "bytes": 2690,
+      "sha256": "42b3628fcb7a47e3f1c5987dab3e1244cf0b69dde9f3bb673e3c67602799611a"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/AppIcons.xcassets/AppIcon.appiconset/icapp_ipad_ios5_72pt.png",
+      "kind": "file",
+      "bytes": 2906,
+      "sha256": "2c56e8e90642e4566d00e1b9c64aa58ead7b4b7b76bf3561b364d2dc52676f1b"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/AppIcons.xcassets/AppIcon.appiconset/icapp_ipad_ios5_72pt@2x.png",
+      "kind": "file",
+      "bytes": 4569,
+      "sha256": "0a0f34b4c97b4df175fe3eb0728e4392949ce76a23bf1d5fb1ff09f9fd32f81e"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/AppIcons.xcassets/AppIcon.appiconset/icapp_ipad_ios7_76pt.png",
+      "kind": "file",
+      "bytes": 2898,
+      "sha256": "ada707c452dc7d3bd27a8ee524d807fa2ddc97ff063e37bba6f5f1fff2149259"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/AppIcons.xcassets/AppIcon.appiconset/icapp_ipad_ios7_76pt@2x.png",
+      "kind": "file",
+      "bytes": 4630,
+      "sha256": "a95f5b64057263c6faaa2df1ce2a7b2fb300f3a6a1d46e9fc752fa6d0f9f5ef8"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/AppIcons.xcassets/AppIcon.appiconset/icapp_iphone_ios5_57pt.png",
+      "kind": "file",
+      "bytes": 2495,
+      "sha256": "dcae222ca3be6e3f4c8c689f704aca4abf73a4168080607a5832545428bfbde3"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/AppIcons.xcassets/AppIcon.appiconset/icapp_iphone_ios5_57pt@2x.png",
+      "kind": "file",
+      "bytes": 3867,
+      "sha256": "31d1c273c6bb21d3013fd206ff049f110dbda24c540153ae8b50371e8ba72fbf"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/AppIcons.xcassets/AppIcon.appiconset/icapp_iphone_ios7_60pt@2x.png",
+      "kind": "file",
+      "bytes": 3973,
+      "sha256": "e9146e0ebf107b42fd07736b6551346c09559f9f17736461d38dd729d94a25ba"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/AppIcons.xcassets/AppIcon.appiconset/icapp_iphone_ios7_60pt@3x.png",
+      "kind": "file",
+      "bytes": 11911,
+      "sha256": "ee47b30a4755c908acc33b42835417a352cbd235b1daf5a7718ac3d3bba8e533"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/AppIcons.xcassets/AppIcon.appiconset/icset_ipad_ios5_50pt.png",
+      "kind": "file",
+      "bytes": 2272,
+      "sha256": "669b956d6ddda01b080562ff2449f114944d5a7ad16f6e17f7bf6be858632b87"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/AppIcons.xcassets/AppIcon.appiconset/icset_ipad_ios5_50pt@2x.png",
+      "kind": "file",
+      "bytes": 3576,
+      "sha256": "2aab0c0af0d3e0d8f192c679b0508e2bea702c9ab89b1597788356009b7da3d8"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/AppIcons.xcassets/AppIcon.appiconset/icset_ipad_ios7_40pt.png",
+      "kind": "file",
+      "bytes": 1953,
+      "sha256": "45948950f6a67b5c7ba55af6b86c53f36242debe159394fb3f48e5ae2046aa3c"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/AppIcons.xcassets/AppIcon.appiconset/icset_ipad_ios7_40pt@2x.png",
+      "kind": "file",
+      "bytes": 3011,
+      "sha256": "2e2048c3a3d0ffb739bb7e01878621b30f0d58fd964f26b81d89b638a8183890"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/AppIcons.xcassets/AppIcon.appiconset/icset_ipad_iosu_29pt.png",
+      "kind": "file",
+      "bytes": 1802,
+      "sha256": "7944fb071e90624ffabd676667581214f41047ecb3a250c539639c4c9cd2aa96"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/AppIcons.xcassets/AppIcon.appiconset/icset_ipad_iosu_29pt@2x.png",
+      "kind": "file",
+      "bytes": 2477,
+      "sha256": "eb7064fa6ff4099d4f985ed9d8f2a84a3381368a5e0fee92de8b19b9e6fc817e"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/AppIcons.xcassets/AppIcon.appiconset/icset_iphone_ios7_40pt@2x.png",
+      "kind": "file",
+      "bytes": 3011,
+      "sha256": "2e2048c3a3d0ffb739bb7e01878621b30f0d58fd964f26b81d89b638a8183890"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/AppIcons.xcassets/AppIcon.appiconset/icset_iphone_ios7_40pt@3x.png",
+      "kind": "file",
+      "bytes": 3973,
+      "sha256": "e9146e0ebf107b42fd07736b6551346c09559f9f17736461d38dd729d94a25ba"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/AppIcons.xcassets/AppIcon.appiconset/icset_iphone_iosu_29pt.png",
+      "kind": "file",
+      "bytes": 1802,
+      "sha256": "7944fb071e90624ffabd676667581214f41047ecb3a250c539639c4c9cd2aa96"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/AppIcons.xcassets/AppIcon.appiconset/icset_iphone_iosu_29pt@2x.png",
+      "kind": "file",
+      "bytes": 2477,
+      "sha256": "eb7064fa6ff4099d4f985ed9d8f2a84a3381368a5e0fee92de8b19b9e6fc817e"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/AppIcons.xcassets/AppIcon.appiconset/icset_iphone_iosu_29pt@3x.png",
+      "kind": "file",
+      "bytes": 6630,
+      "sha256": "b0756be793bb023db77b723b5ab86883e6fb832a4b42dcaf354bad81570400a9"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/LaunchImages.xcassets/LaunchImage.launchimage/Contents.json",
+      "kind": "file",
+      "bytes": 1081,
+      "sha256": "6f4963aa2ea5afe943a611c8cfcc7056f4a333f5322fc4851268141a85c449e2"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/LaunchImages.xcassets/LaunchImage.launchimage/iphone_ios5_320_480.png",
+      "kind": "file",
+      "bytes": 6540,
+      "sha256": "d6ea0fdda5e3dfd3bd95005c59f87a55071e4d09136468742c658d154289e93b"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/LaunchImages.xcassets/LaunchImage.launchimage/iphone_ios5_640_1136.png",
+      "kind": "file",
+      "bytes": 18594,
+      "sha256": "cff22ecf70a2ac5432c55cc83711992c766ce8c7a42613b4f1771bdb8393cb1e"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/LaunchImages.xcassets/LaunchImage.launchimage/iphone_ios5_640_960.png",
+      "kind": "file",
+      "bytes": 16107,
+      "sha256": "16b8609bcc9ae242bf945fa6f748916dfffa89d94c71ff538e05f1eeb7ec5007"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/LaunchImages.xcassets/LaunchImage.launchimage/iphone_ios7_640_1136.png",
+      "kind": "file",
+      "bytes": 18594,
+      "sha256": "cff22ecf70a2ac5432c55cc83711992c766ce8c7a42613b4f1771bdb8393cb1e"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/LaunchImages.xcassets/LaunchImage.launchimage/iphone_ios7_640_960.png",
+      "kind": "file",
+      "bytes": 16107,
+      "sha256": "16b8609bcc9ae242bf945fa6f748916dfffa89d94c71ff538e05f1eeb7ec5007"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/MoviePlayerImages.xcassets/MoviePlayer/btn_player_back_highlighted.imageset/Contents.json",
+      "kind": "file",
+      "bytes": 381,
+      "sha256": "60e5cf7578184d7507e917cce5f9d09a124bd696cee0e3adfac1204daf0b3821"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/MoviePlayerImages.xcassets/MoviePlayer/btn_player_back_highlighted.imageset/btn_player_back_highlighted.png",
+      "kind": "file",
+      "bytes": 4449,
+      "sha256": "6bcda28f1dac58f244344a9fdd3af422382282427661cc83ba9c576ea8042fd8"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/MoviePlayerImages.xcassets/MoviePlayer/btn_player_back_highlighted.imageset/btn_player_back_highlighted@2x.png",
+      "kind": "file",
+      "bytes": 2366,
+      "sha256": "8f57072180dc5ee1ed7e31f85218af9acb26b9e740ad2243feb598aebaab526f"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/MoviePlayerImages.xcassets/MoviePlayer/btn_player_pause.imageset/Contents.json",
+      "kind": "file",
+      "bytes": 359,
+      "sha256": "5100c4c9daf4b99b6f517bbd522b61718c8f46a6f6282662373c976086d454db"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/MoviePlayerImages.xcassets/MoviePlayer/btn_player_pause.imageset/btn_player_pause.png",
+      "kind": "file",
+      "bytes": 2935,
+      "sha256": "1b8f57cc41e5c8826ebbd2f0d7a5984d4c1f4492e62e6e52f41684ccf7880960"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/MoviePlayerImages.xcassets/MoviePlayer/btn_player_pause.imageset/btn_player_pause@2x.png",
+      "kind": "file",
+      "bytes": 2946,
+      "sha256": "9a7f59d3a979d639db4bdd00f1f693e0e1c0958f58cf19f18835a16f7cd57b4a"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/MoviePlayerImages.xcassets/MoviePlayer/btn_player_play.imageset/Contents.json",
+      "kind": "file",
+      "bytes": 357,
+      "sha256": "8ef6e6bfa097bdedda1c32e600ef8d0a25fe57e4973a3fd693c361c19a3acf7b"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/MoviePlayerImages.xcassets/MoviePlayer/btn_player_play.imageset/btn_player_play.png",
+      "kind": "file",
+      "bytes": 3297,
+      "sha256": "3cc311606a4401656448b927b0c76e91c044ae9b4c3290eb906e08dc5b177fda"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/MoviePlayerImages.xcassets/MoviePlayer/btn_player_play.imageset/btn_player_play@2x.png",
+      "kind": "file",
+      "bytes": 770,
+      "sha256": "5b69a6d2f831aea58453cbd8a343f140b4631264e11a69ba6bde34b15325df17"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/MoviePlayerImages.xcassets/MoviePlayer/player_bottom_control_bg.imageset/Contents.json",
+      "kind": "file",
+      "bytes": 375,
+      "sha256": "0bfa65c943039b75d3d5be6de127e8c908f692c13526885407c60a8c59748ac0"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/MoviePlayerImages.xcassets/MoviePlayer/player_bottom_control_bg.imageset/player_bottom_control_bg.png",
+      "kind": "file",
+      "bytes": 4286,
+      "sha256": "74ba684edc94b3b12e303041527a7ddd5fb9cad85f2f16a172664f72bb56704b"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/MoviePlayerImages.xcassets/MoviePlayer/player_bottom_control_bg.imageset/player_bottom_control_bg@2x.png",
+      "kind": "file",
+      "bytes": 2188,
+      "sha256": "825e775a3798852fb646caf7080c0a2c33eb449255a0bcc193d4332ac745493f"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/MoviePlayerImages.xcassets/MoviePlayer/player_top_control_bg.imageset/Contents.json",
+      "kind": "file",
+      "bytes": 369,
+      "sha256": "084ba46c790de949995c06f0eaf2a5cb3d41b4e1e46990f62b4835a8909fe62a"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/MoviePlayerImages.xcassets/MoviePlayer/player_top_control_bg.imageset/player_top_control_bg.png",
+      "kind": "file",
+      "bytes": 2849,
+      "sha256": "57e6f7aefe0a3dfda820e8792c56d1b30bd41c2b813cd37c7e44e425fc6f5cb9"
+    },
+    {
+      "path": "ios/IJKMediaDemo/XCAssets/MoviePlayerImages.xcassets/MoviePlayer/player_top_control_bg.imageset/player_top_control_bg@2x.png",
+      "kind": "file",
+      "bytes": 192,
+      "sha256": "313e849736b806749f0fbec7b6fd41a13351435ae42ff7f59682e648732fc37f"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaFramework/IJKMediaFramework.h",
+      "kind": "file",
+      "bytes": 3577,
+      "sha256": "16de464f640f8d982ede71b7f133ca199b7c5c81bda42253d7859d8372fb67cc"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaFramework/Info.plist",
+      "kind": "file",
+      "bytes": 806,
+      "sha256": "224734b7f17caf585deaeaef12937abfaab28040fd402dd3543d4b79f96a5471"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaFrameworkTests/IJKMediaFrameworkTests.m",
+      "kind": "file",
+      "bytes": 899,
+      "sha256": "fbddb95025f9b27be5ecbfd57a3c520901d4222238ee1145bc14248dcab08626"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaFrameworkTests/Info.plist",
+      "kind": "file",
+      "bytes": 733,
+      "sha256": "1dcb5aa88dabb5f19b671f7066204bd58220ded8654dc91f5f79e09690d81365"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaFrameworkWithSSL/IJKMediaFrameworkWithSSL.h",
+      "kind": "file",
+      "bytes": 2894,
+      "sha256": "6e93d4939593d9b6cb67084308d439a4e24b4d21ab6e7463a9756e20f9ea2954"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaFrameworkWithSSL.plist",
+      "kind": "file",
+      "bytes": 806,
+      "sha256": "224734b7f17caf585deaeaef12937abfaab28040fd402dd3543d4b79f96a5471"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKAVMoviePlayerController.h",
+      "kind": "file",
+      "bytes": 3658,
+      "sha256": "09f002e68b221dbc381b2f0e6afe89e6857fe7584d92679779b1d3d8f7ea01f4"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKAVMoviePlayerController.m",
+      "kind": "file",
+      "bytes": 37045,
+      "sha256": "11b327397fec12f1026c9c3e4cb686f59cf9de3f36ce9135cb6630edb83fcc5b"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKAVPlayerLayerView.h",
+      "kind": "file",
+      "bytes": 3615,
+      "sha256": "abe82277790589e276360b2a32520f9eda6ee74d0d4a984953ca5b6f8a5d3ab3"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKAVPlayerLayerView.m",
+      "kind": "file",
+      "bytes": 5007,
+      "sha256": "2838fdac32c6a7a8591761488be04cf1f4872fc6a17a136a305ec837617b8556"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKAudioKit.h",
+      "kind": "file",
+      "bytes": 1149,
+      "sha256": "25a9c198ab82f48e6ee110446b91f6c07c91b9da6e37815415be2223aa2f574e"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKAudioKit.m",
+      "kind": "file",
+      "bytes": 3190,
+      "sha256": "da2a3e81f703f448d6eb5a5c63820400ce75e6e3e087d7e79c0b0c581444facf"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKDeviceModel.h",
+      "kind": "file",
+      "bytes": 2225,
+      "sha256": "e8b9efb7876fc058e3424bb7304e311d2ab2c0ed3dc45d1a52389cd6fea879ad"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKDeviceModel.m",
+      "kind": "file",
+      "bytes": 9024,
+      "sha256": "06c048783ed48549c3b7bc401236f8ca30e84d30ca8f4d35fa59292d7186faf0"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKFFMonitor.h",
+      "kind": "file",
+      "bytes": 2552,
+      "sha256": "2b2fce3c131c7324a01301dcd38ac1b74049471d6e223493aa2d1db525f82a8f"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKFFMonitor.m",
+      "kind": "file",
+      "bytes": 2213,
+      "sha256": "4e52f4946f9fcea1fb84b7a73dd925fa443e438646e40fdcc5e5a77c45b6941b"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKFFMoviePlayerController.h",
+      "kind": "file",
+      "bytes": 5681,
+      "sha256": "e2bf44288d66a0b1eab1438982a7778219aff9476d11864727301ac711dc74f8"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKFFMoviePlayerController.m",
+      "kind": "file",
+      "bytes": 63210,
+      "sha256": "622cbda406c21e64cb7930190bdedb2ea84e75ad8d5401cf81c77b9ac2d025d9"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKFFMoviePlayerDef.h",
+      "kind": "file",
+      "bytes": 1939,
+      "sha256": "d7738e48e7563557276f27faa2aebc435ca34c37b76c46a6445da4c9fe21b34a"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKFFMoviePlayerDef.m",
+      "kind": "file",
+      "bytes": 1791,
+      "sha256": "e5d5a111d248926d86ff51e58ed29b6656a442d543fbf172711f75f6c941ecd6"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKFFOptions.h",
+      "kind": "file",
+      "bytes": 2877,
+      "sha256": "f40719f34a8b2b7797d18015bf464fcdcf1ce6982520d701776847f4a5f16a7b"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKFFOptions.m",
+      "kind": "file",
+      "bytes": 5815,
+      "sha256": "755d88125ff1b894aa35f0c4ea6210d36eb0ca069ae2d72ad6c5992e554e59fa"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKKVOController.h",
+      "kind": "file",
+      "bytes": 1344,
+      "sha256": "3d87b22be003290f9b4c4d28381ae1a9a8712463b1b31cc3df6a550b1bdbb179"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKKVOController.m",
+      "kind": "file",
+      "bytes": 4156,
+      "sha256": "f5aca86b6b1d17fe78311aa2657a17707c7bdabaeb03a48e2fed8f85bfd87fa1"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKMPMoviePlayerController.h",
+      "kind": "file",
+      "bytes": 1143,
+      "sha256": "e0d1ec8cd8968926303dc101b0ea07fc16cc979c5a6303c3413d21eadbb5565b"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKMPMoviePlayerController.m",
+      "kind": "file",
+      "bytes": 7829,
+      "sha256": "ff6dab5d9bd4bf1236ff1d3b97223ac60fabb1981f329f8bbd0fe0406b2d3e49"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKMediaModule.h",
+      "kind": "file",
+      "bytes": 1182,
+      "sha256": "229653ee03f16558da2d923eb6eb81ec8797f74dbb6c9fdf75f8366eb93f40e6"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKMediaModule.m",
+      "kind": "file",
+      "bytes": 2033,
+      "sha256": "9940affbbe7f522274e6e173a67c71977b94e8c5b45a77530c3b5c0527c9aea4"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKMediaPlayback.h",
+      "kind": "file",
+      "bytes": 9365,
+      "sha256": "35e95b41626f431b92262d9ffedefa1b6ae14bcaaaea3f7bbbbbd17cc9953244"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKMediaPlayback.m",
+      "kind": "file",
+      "bytes": 4466,
+      "sha256": "7474a8ce978f55dbec0af079fd0ca58d1ffcb8b691dba5b21a72011df950ba1e"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKMediaPlayer-Prefix.pch",
+      "kind": "file",
+      "bytes": 463,
+      "sha256": "ddec0f4ec1afd615f3ebd292dbf193d642dd3b7a859a486e0aeca9e35f5b933e"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKMediaPlayer.h",
+      "kind": "file",
+      "bytes": 1087,
+      "sha256": "7530b8fd516c3bac06cd5230b5e6d5c2f955f96612a8bd3fd2c39cf6ccc1ea96"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKMediaUtils.h",
+      "kind": "file",
+      "bytes": 1179,
+      "sha256": "197518c4ee4447327de8b1e1984a3b1404bf4a9e1382664d228085f0abe31376"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKMediaUtils.m",
+      "kind": "file",
+      "bytes": 1934,
+      "sha256": "dbf0c273aae6db36e3ae3d84d007c2d562b408c31bf8036079a826b787425068"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKNotificationManager.h",
+      "kind": "file",
+      "bytes": 1237,
+      "sha256": "b3810f460f0e3ee14299bddd5782bcae08c21d998b530b865015a33b5d06c08c"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKNotificationManager.m",
+      "kind": "file",
+      "bytes": 2009,
+      "sha256": "d7883b8c609057c67ea8901c84fedcc08ca1f8ffc737e9b838f1b68456a7f992"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/IJKSDLGLViewProtocol.h",
+      "kind": "file",
+      "bytes": 1515,
+      "sha256": "001ce3a39846933019abc3c96f303ee969b7997bccf8353c5e32817d3f2dfa55"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/NSString+IJKMedia.h",
+      "kind": "file",
+      "bytes": 1039,
+      "sha256": "54d1725e02cfde6afba4971838b58e5f5501dedb6605bbb64a3cd3fbfd47a671"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/NSString+IJKMedia.m",
+      "kind": "file",
+      "bytes": 1519,
+      "sha256": "746865c1f22716b332467113c0a34a7dad9f70d9e19658c1d1f8662e0f40b833"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijkplayer/ios/ijkplayer_ios.h",
+      "kind": "file",
+      "bytes": 1180,
+      "sha256": "33202593cebb3633675ef0d1eaa58e10cd42e162d3b112f2b192304497b317ed"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijkplayer/ios/ijkplayer_ios.m",
+      "kind": "file",
+      "bytes": 2584,
+      "sha256": "382dbc2c2ecf82de1450a7be42ec0df06a6fdcd705ab80cf71f9d5a11f16304f"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijkplayer/ios/pipeline/IJKVideoToolBox.h",
+      "kind": "file",
+      "bytes": 1581,
+      "sha256": "86f2e90b61739191ee1deceda0f26f8896967e1038b85d63cfbfb72e4bb16164"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijkplayer/ios/pipeline/IJKVideoToolBox.m",
+      "kind": "file",
+      "bytes": 2126,
+      "sha256": "1855e73b2077aacf65b9e582b4e27f85d6182a4df40ec919a074266f4ba0a871"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijkplayer/ios/pipeline/IJKVideoToolBoxAsync.h",
+      "kind": "file",
+      "bytes": 1419,
+      "sha256": "7198d1080b59a86854a8aa144a7bc2ca4a8d26ae5c5ee9389788af7286e088ef"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijkplayer/ios/pipeline/IJKVideoToolBoxAsync.m",
+      "kind": "file",
+      "bytes": 41822,
+      "sha256": "5d4d7055505049b69eddae584ef6c7920b4f8bfecc22a6b4d06c39e580205b7f"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijkplayer/ios/pipeline/IJKVideoToolBoxSync.h",
+      "kind": "file",
+      "bytes": 1414,
+      "sha256": "54e57d8c58880ca26ea83e6a135f264fad47184995b544ca724043e1def8c43c"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijkplayer/ios/pipeline/IJKVideoToolBoxSync.m",
+      "kind": "file",
+      "bytes": 36804,
+      "sha256": "52b9c97135e0372889dc4534ad5263714a9fbc792468d70532b1237065a8aeb1"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijkplayer/ios/pipeline/ffpipeline_ios.c",
+      "kind": "file",
+      "bytes": 2700,
+      "sha256": "a787069ca817fe7f15249571a9c63c547ce2b58a445a50ae585a35a38daeeb7f"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijkplayer/ios/pipeline/ffpipeline_ios.h",
+      "kind": "file",
+      "bytes": 1058,
+      "sha256": "487e3ba44ac262521fa5862767989ed6a00283788c911e6a6e7f6cff392dfca2"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijkplayer/ios/pipeline/ffpipenode_ios_videotoolbox_vdec.h",
+      "kind": "file",
+      "bytes": 1137,
+      "sha256": "508af3fad8826014406e911220db146b75429ab29d090e45e6a89d215983fd2a"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijkplayer/ios/pipeline/ffpipenode_ios_videotoolbox_vdec.m",
+      "kind": "file",
+      "bytes": 3831,
+      "sha256": "e4cee1219274ce9932e9117cc4f2a327780ee03b1dc2adf60182fe93285a2b13"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijkplayer/ios/pipeline/h264_sps_parser.h",
+      "kind": "file",
+      "bytes": 10206,
+      "sha256": "055bf6b5c47e9ef3cc5ad15cf0345bb1c265481a29b624cc43482de7b5fac9ac"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijksdl/ios/IJKSDLAudioKit.h",
+      "kind": "file",
+      "bytes": 1253,
+      "sha256": "2028402e0118902c17f5119f2cdf6aef8f6c674c2a09e25980db20c22e2db68e"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijksdl/ios/IJKSDLAudioKit.m",
+      "kind": "file",
+      "bytes": 2200,
+      "sha256": "c5fc4b96f3333ad4187392ca3e4ced6e9aa9917d693c45b940411f14d0735121"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijksdl/ios/IJKSDLAudioQueueController.h",
+      "kind": "file",
+      "bytes": 1392,
+      "sha256": "a80e21cf2365223f5ea4a5ec5146f84dc7a1ab110c766d85756a4e491fce7391"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijksdl/ios/IJKSDLAudioQueueController.m",
+      "kind": "file",
+      "bytes": 8113,
+      "sha256": "7da01eec6f4c8be887581f1b1d0f15da393adf1192f49feabcda886b581af601"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijksdl/ios/IJKSDLAudioUnitController.h",
+      "kind": "file",
+      "bytes": 1251,
+      "sha256": "72c0a4ce1b0043cfd0c5aa97fde038fb08d69115167a08fa6e01a7acc1ca3e08"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijksdl/ios/IJKSDLAudioUnitController.m",
+      "kind": "file",
+      "bytes": 7652,
+      "sha256": "76bc7397fd0a64f1af5ba1a497f767cc035a594850153b3955cfb18008856a63"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijksdl/ios/IJKSDLGLView.h",
+      "kind": "file",
+      "bytes": 1319,
+      "sha256": "2316903d6ef4d82fc911f9c302c70be2404106a8a849df55ebf98cc4ea18fc16"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijksdl/ios/IJKSDLGLView.m",
+      "kind": "file",
+      "bytes": 19753,
+      "sha256": "dc7967a838ae3b33a573a0db582d3fbe2b017d3e1619e640cdb4ebc35a545d70"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijksdl/ios/IJKSDLHudViewCell.h",
+      "kind": "file",
+      "bytes": 301,
+      "sha256": "ff790ad22520160c9ad359f2ec9bef031cf1f6a19bd945e4b7b3f72ede065482"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijksdl/ios/IJKSDLHudViewCell.m",
+      "kind": "file",
+      "bytes": 1633,
+      "sha256": "f80ed3f71e8112d54dd6be929714641c98a6ca1d16446bcb4d02769b1f414c03"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijksdl/ios/IJKSDLHudViewController.h",
+      "kind": "file",
+      "bytes": 350,
+      "sha256": "179011de6efcd1f8314e40d1ab716e5d447cb798044d3ffd6bc8bf090296e639"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijksdl/ios/IJKSDLHudViewController.m",
+      "kind": "file",
+      "bytes": 2815,
+      "sha256": "1ae813b6ee1225443c579b3d723d2d60b09e74f796c9c7ed4381dcef655a6d33"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijksdl/ios/ijksdl_aout_ios_audiounit.h",
+      "kind": "file",
+      "bytes": 974,
+      "sha256": "3f6a218c09527084c12d5fa58522bc8940dd38d8d4aca916a18f9ca99c24162d"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijksdl/ios/ijksdl_aout_ios_audiounit.m",
+      "kind": "file",
+      "bytes": 4088,
+      "sha256": "5795568f98a30c4f01e7cec005a7af83e01634e17cb5cd170c85064bd30fb208"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijksdl/ios/ijksdl_ios.h",
+      "kind": "file",
+      "bytes": 2172,
+      "sha256": "7ff64c38e7729c695bcd190fe1e9c02e71dfef43b28b86d02438b74228961278"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijksdl/ios/ijksdl_thread_ios.h",
+      "kind": "file",
+      "bytes": 923,
+      "sha256": "1d2f67639115e0d21310275cbf788831249926ab7be10ccf8147afc89a9b1d04"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijksdl/ios/ijksdl_thread_ios.m",
+      "kind": "file",
+      "bytes": 1521,
+      "sha256": "03e7a180294cc3126ff86074fda4420f742feff5479ace52a0d1b8ed796f845c"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijksdl/ios/ijksdl_vout_ios_gles2.h",
+      "kind": "file",
+      "bytes": 1086,
+      "sha256": "e38bf2ade6411abf14fe97b879036740ed36a3396ba90fb269565a1a7bf15ad2"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijksdl/ios/ijksdl_vout_ios_gles2.m",
+      "kind": "file",
+      "bytes": 4760,
+      "sha256": "9b9c66fc895ff6d64a8d37c116c77ad60e4cf9da558d01b432aa0c997911fef8"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijksdl/ios/ijksdl_vout_overlay_videotoolbox.h",
+      "kind": "file",
+      "bytes": 1458,
+      "sha256": "f8029e6b366600e1a09c01fd29d43c25ce5b7d8045ac973ac42a9489976bb912"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer/ijkmedia/ijksdl/ios/ijksdl_vout_overlay_videotoolbox.m",
+      "kind": "file",
+      "bytes": 5651,
+      "sha256": "97587bd523111b48dbe32e242b76c74a141683c00516d7386fb49494e8c6676e"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer.xcodeproj/project.pbxproj",
+      "kind": "file",
+      "bytes": 131300,
+      "sha256": "c13626e864834bc875f44c108171b0da74bc6179b161a3f96fba731016e96589"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer.xcodeproj/project.xcworkspace/contents.xcworkspacedata",
+      "kind": "file",
+      "bytes": 135,
+      "sha256": "7f3b00b5c3fdb45242d7b87e1e5c4e25d1fa8129a16c94295ecc4e8ea2235c5f"
+    },
+    {
+      "path": "ios/IJKMediaPlayer/IJKMediaPlayer.xcodeproj/xcshareddata/xcschemes/IJKMediaFrameworkWithSSL.xcscheme",
+      "kind": "file",
+      "bytes": 2973,
+      "sha256": "27e4a8702e4e93b73f7bfc76f9c61c7fd0ad201ddf3c8b77552db25a037748dc"
+    },
+    {
+      "path": "ios/IJKMediaPodDemo/.gitignore",
+      "kind": "file",
+      "bytes": 46,
+      "sha256": "7797f71e74636cb05f0abf09dd13eb504f9bfc579e832e11969dbcd2dff8725c"
+    },
+    {
+      "path": "ios/IJKMediaPodDemo/IJKMediaPodDemo/AppDelegate.h",
+      "kind": "file",
+      "bytes": 286,
+      "sha256": "79eca63a9b4da09e4ecec496bad83e0465b7ed57d733959c9657165c8504b01a"
+    },
+    {
+      "path": "ios/IJKMediaPodDemo/IJKMediaPodDemo/AppDelegate.m",
+      "kind": "file",
+      "bytes": 2040,
+      "sha256": "8412a0a185fcf2d9ce05113d803e2fea7b4b5abaa179fb09aeb797f742b30bf4"
+    },
+    {
+      "path": "ios/IJKMediaPodDemo/IJKMediaPodDemo/Base.lproj/LaunchScreen.xib",
+      "kind": "file",
+      "bytes": 3712,
+      "sha256": "666b1b463ada8cea4360589e514ffd517f61d9fe8e36f480d7a9f17e8761e1da"
+    },
+    {
+      "path": "ios/IJKMediaPodDemo/IJKMediaPodDemo/Base.lproj/Main.storyboard",
+      "kind": "file",
+      "bytes": 1575,
+      "sha256": "d75504b229bce9f7e9588d697347766c55b6bc522c434a964a5209430674559f"
+    },
+    {
+      "path": "ios/IJKMediaPodDemo/IJKMediaPodDemo/Images.xcassets/AppIcon.appiconset/Contents.json",
+      "kind": "file",
+      "bytes": 1077,
+      "sha256": "4d01550b98d59b29cb234605dfd80c3e51882c11e3543316c34c4fc491b251ee"
+    },
+    {
+      "path": "ios/IJKMediaPodDemo/IJKMediaPodDemo/Info.plist",
+      "kind": "file",
+      "bytes": 1511,
+      "sha256": "af32d4a201415d9a1ef2dcfb87819ab0ea6f0c7e71a2cd401410fd5d0cd69589"
+    },
+    {
+      "path": "ios/IJKMediaPodDemo/IJKMediaPodDemo/ViewController.h",
+      "kind": "file",
+      "bytes": 224,
+      "sha256": "8ec6f710e78e00e37c52797bf0d3acc81c759d7594cc3665415a6c0c83c10616"
+    },
+    {
+      "path": "ios/IJKMediaPodDemo/IJKMediaPodDemo/ViewController.m",
+      "kind": "file",
+      "bytes": 686,
+      "sha256": "0876c55918f381aebce74f3fa1dafc14690848980241039be1a2bd06320ea636"
+    },
+    {
+      "path": "ios/IJKMediaPodDemo/IJKMediaPodDemo/main.m",
+      "kind": "file",
+      "bytes": 343,
+      "sha256": "a82ee6b9f4cccd14408c908e40a174cbc3b713e935bc07c204fa8f77e59ae644"
+    },
+    {
+      "path": "ios/IJKMediaPodDemo/IJKMediaPodDemo.xcodeproj/project.pbxproj",
+      "kind": "file",
+      "bytes": 19312,
+      "sha256": "9f31e25e0dbcf8d6f4d7057b08b9fb9c95154c253d0472b9b7d60c2f8199e6f3"
+    },
+    {
+      "path": "ios/IJKMediaPodDemo/IJKMediaPodDemo.xcodeproj/project.xcworkspace/contents.xcworkspacedata",
+      "kind": "file",
+      "bytes": 160,
+      "sha256": "699767f011f7c8a46ce66fc04f893528308cf312f2012951fa533d5385a47f6e"
+    },
+    {
+      "path": "ios/IJKMediaPodDemo/IJKMediaPodDemoTests/IJKMediaPodDemoTests.m",
+      "kind": "file",
+      "bytes": 892,
+      "sha256": "f0ea0e8bb93ddd2fd71163a392869c925065efecb3ff3bc0603aaadb3ec3300b"
+    },
+    {
+      "path": "ios/IJKMediaPodDemo/IJKMediaPodDemoTests/Info.plist",
+      "kind": "file",
+      "bytes": 749,
+      "sha256": "aab70a74d64965afffbfcaa06ce4c6a91a2c1b80460b291bde7a0910b60da4bd"
+    },
+    {
+      "path": "ios/IJKMediaPodDemo/Podfile",
+      "kind": "file",
+      "bytes": 180,
+      "sha256": "1c5710e73b151f719a79c1f089c38cbf667f60642e1c38a97a12bd531d961720"
+    },
+    {
+      "path": "ios/compile-ffmpeg.sh",
+      "kind": "file",
+      "bytes": 5095,
+      "sha256": "45b36bd098a491b4483444da2f7f8a265419099b205dcad4db91d21e60113f76"
+    },
+    {
+      "path": "ios/compile-openssl.sh",
+      "kind": "file",
+      "bytes": 2852,
+      "sha256": "423c27faac4c9eb18f2391118fe5dedfe20ae93b0fe2a73da4d81d5bc777e304"
+    },
+    {
+      "path": "ios/tools/avconfig.h",
+      "kind": "file",
+      "bytes": 1418,
+      "sha256": "ff6891d46b5310ceaa7713432abef264a77044ddbb9fc84bde0b330568e74b8d"
+    },
+    {
+      "path": "ios/tools/config.h",
+      "kind": "file",
+      "bytes": 1406,
+      "sha256": "2bfe19fe49670fa8a017daece0b6a406824708e60ea5874ee42737e8e9f29b91"
+    },
+    {
+      "path": "ios/tools/do-compile-ffmpeg.sh",
+      "kind": "file",
+      "bytes": 8059,
+      "sha256": "54c45072f4dd85b71a3c1b20208a2e5fdeee0f4b9fc4d6d2b192e13357f3b879"
+    },
+    {
+      "path": "ios/tools/do-compile-openssl.sh",
+      "kind": "file",
+      "bytes": 5137,
+      "sha256": "60025cf60fbb2b22be1d3b058951a2658050d7db38e4df099ffeee79aac8e591"
+    },
+    {
+      "path": "ios/tools/ffversion.h",
+      "kind": "file",
+      "bytes": 1325,
+      "sha256": "c7382d10bc93512ae5aa15180e4e5808702e6017f6d6fa81cc46b5ed1573bbb6"
+    },
+    {
+      "path": "patches/ffmpeg5/0001-ijk-hooks.patch",
+      "kind": "file",
+      "bytes": 39394,
+      "sha256": "6062ec0deb99d5c9d0a5bd118c014158d1f79f4c5de75074047f8047c601ba31"
+    },
+    {
+      "path": "patches/ffmpeg5/0002-mpjpeg-eof.patch",
+      "kind": "file",
+      "bytes": 16574,
+      "sha256": "d77ab7d3d1f174b522c2ec5a5d25cd5ac8df86a83510b0c1a7b1425fb29fdc6f"
+    },
+    {
+      "path": "patches/ffmpeg5/0003-hevc-parameter-updates.patch",
+      "kind": "file",
+      "bytes": 19080,
+      "sha256": "84d1dd4b6e7fb4ec9f89dedb806bb39a192ad9dad23007b9a17e048ea902ab4b"
+    },
+    {
+      "path": "patches/ffmpeg5/0004-tls-peer-identity.patch",
+      "kind": "file",
+      "bytes": 6196,
+      "sha256": "f58a6276309bc5147458e01503f326756614a8077cb361e302f2098bc90270eb"
+    },
+    {
+      "path": "patches/ffmpeg5/0005-mov-hevc-seek-replay.patch",
+      "kind": "file",
+      "bytes": 19526,
+      "sha256": "c61a4aa9eb776f8af4d352d5ea8fbef18f3bd663015c07280acd9279f2185a5f"
+    },
+    {
+      "path": "patches/ffmpeg5/README.md",
+      "kind": "file",
+      "bytes": 11952,
+      "sha256": "9e50cf4a151ae8b25f666b7465b56fea2db74ab7a8617ddb75eaf1bc3bd5e754"
+    },
+    {
+      "path": "tests/ffmpeg5/README-audio-ready-clock.md",
+      "kind": "file",
+      "bytes": 987,
+      "sha256": "73d8bcc84e4636b2a3d669f022fff61a2f7b2f5efb741a00bf5ab4ed56683d74"
+    },
+    {
+      "path": "tests/ffmpeg5/README-initializer.md",
+      "kind": "file",
+      "bytes": 1905,
+      "sha256": "e7a348bc9d0c5ba4164fce16600dfb973877034806874ea730dae3c7c06f3295"
+    },
+    {
+      "path": "tests/ffmpeg5/README-native-artifacts.md",
+      "kind": "file",
+      "bytes": 1989,
+      "sha256": "69c76131311783b46007d1f2d2b6097554e80f7ec07f092b3c4d6ab4a3937c04"
+    },
+    {
+      "path": "tests/ffmpeg5/README.md",
+      "kind": "file",
+      "bytes": 2980,
+      "sha256": "4d174b13a1db8b9ff7958ec497dca15ffb76c477eced3e8702aed36b05e364c4"
+    },
+    {
+      "path": "tests/ffmpeg5/audio-submission/README.md",
+      "kind": "file",
+      "bytes": 7314,
+      "sha256": "569724158e1414997a18348a08d83b2d8ef5e9e6cf1cc11ed401968ad6c3d805"
+    },
+    {
+      "path": "tests/ffmpeg5/audio-submission/close/probe.c",
+      "kind": "file",
+      "bytes": 3532,
+      "sha256": "fd73526ac671e5694f805d170b36868c25d24e69b1bd0548e50289200904ae87"
+    },
+    {
+      "path": "tests/ffmpeg5/audio-submission/close/run_close.py",
+      "kind": "file",
+      "bytes": 4190,
+      "sha256": "44de84f99095e2b002b71835f77d2c84b6dc56d81206a18cd61e132c000bdfd1"
+    },
+    {
+      "path": "tests/ffmpeg5/audio-submission/run_extract.py",
+      "kind": "file",
+      "bytes": 5005,
+      "sha256": "90c1970e8e3582b8c8a9948011123ea09d23370ab822bb8d860645e3408449af"
+    },
+    {
+      "path": "tests/ffmpeg5/audio-submission/test.c",
+      "kind": "file",
+      "bytes": 23460,
+      "sha256": "c55d354e74a645e4df6bf0b509abd17cfa5d350a6c95a90ab7e3c19245dc7b35"
+    },
+    {
+      "path": "tests/ffmpeg5/check_native_outputs.py",
+      "kind": "file",
+      "bytes": 10165,
+      "sha256": "08f76611a84add38fcd28e6075db00a7e217649e04fe3c87445d87b35b671a95"
+    },
+    {
+      "path": "tests/ffmpeg5/native-fixtures/readelf-program-16k.txt",
+      "kind": "file",
+      "bytes": 427,
+      "sha256": "f2a191001439a6ab8b29d8278a5c286610b8f109281e41a1a4ce43fe5389be7b"
+    },
+    {
+      "path": "tests/ffmpeg5/pause-clock/README.md",
+      "kind": "file",
+      "bytes": 4229,
+      "sha256": "48fe7483306e655c8f30279d446db26de9293c6b333140b2888b21570a9e1513"
+    },
+    {
+      "path": "tests/ffmpeg5/pause-clock/cases.c",
+      "kind": "file",
+      "bytes": 10441,
+      "sha256": "1aa53df60fdb3606fd33a2c9c8ba0ee19344ff2145f3b0f938ace9b703e7aafa"
+    },
+    {
+      "path": "tests/ffmpeg5/pause-clock/harness.h",
+      "kind": "file",
+      "bytes": 4182,
+      "sha256": "fc2d20d04c3046985203f253bf627832405824fa63dcb596aa6013589bf84058"
+    },
+    {
+      "path": "tests/ffmpeg5/pause-clock/run.py",
+      "kind": "file",
+      "bytes": 6901,
+      "sha256": "402e2451ffbd5bef54154366b7c1dd135120c6099bd7c8ad8d9f15d93d937cba"
+    },
+    {
+      "path": "tests/ffmpeg5/pause-clock/setup.c",
+      "kind": "file",
+      "bytes": 2694,
+      "sha256": "d78c0b4a7079b4f5267e455e055d1d2583f4b8f99aebce283cc0b17ef9db952a"
+    },
+    {
+      "path": "tests/ffmpeg5/run-host.sh",
+      "kind": "file",
+      "bytes": 3560,
+      "sha256": "5e385c631d480ebdac1dd73db3fd66f8b7beb395a7914cc237fdaed5fb15d921"
+    },
+    {
+      "path": "tests/ffmpeg5/test_audio_ready_clock.py",
+      "kind": "file",
+      "bytes": 9382,
+      "sha256": "fc34fd9f8e93641d40d4c3632469d15cb12ff432692d4661740f7eeb3354c158"
+    },
+    {
+      "path": "tests/ffmpeg5/test_core.c",
+      "kind": "file",
+      "bytes": 13259,
+      "sha256": "34dc2ffa7ec2b43fba00f4a574adbfbb62b52be7259c550714330d3b31412aec"
+    },
+    {
+      "path": "tests/ffmpeg5/test_dict.c",
+      "kind": "file",
+      "bytes": 1079,
+      "sha256": "d1bd8eb083c3e3fc0053a13a567fda27a73a0311510eb7b51a6124adcea15fb4"
+    },
+    {
+      "path": "tests/ffmpeg5/test_initializer.py",
+      "kind": "file",
+      "bytes": 4727,
+      "sha256": "e4222a52d67452dc5b694762def9330849078e177d3f92a829107a11ce458b9b"
+    },
+    {
+      "path": "tests/ffmpeg5/test_las_io.c",
+      "kind": "file",
+      "bytes": 2457,
+      "sha256": "106a8b5655274612a54ff351c1cc81d9da9ec895f71003b578c6a4cc8e8fe57c"
+    },
+    {
+      "path": "tests/ffmpeg5/test_native_outputs.py",
+      "kind": "file",
+      "bytes": 3599,
+      "sha256": "cae628eb44e0c4e409d7ec0a860ebdb8bff83ebafea3c8bd94cf28fd1f632642"
+    },
+    {
+      "path": "tools/.gitignore",
+      "kind": "file",
+      "bytes": 1137,
+      "sha256": "12ec106592b8077cc0304968786bdb780c0dff1752781899e7bf38d97a02fd1f"
+    },
+    {
+      "path": "tools/copyrighter/CRContext.py",
+      "kind": "file",
+      "bytes": 3033,
+      "sha256": "dc5c600331d46b512e1f7399cb639c54e8fc4f51bc738f56f2de305be476d7b8"
+    },
+    {
+      "path": "tools/copyrighter/CRCopyright.py",
+      "kind": "file",
+      "bytes": 3084,
+      "sha256": "9b641bba807b284109e34711300f6fce2e9bc78facc30e9e927b1490f9a8f275"
+    },
+    {
+      "path": "tools/copyrighter/CRFile.py",
+      "kind": "file",
+      "bytes": 4633,
+      "sha256": "e1ec082ee51ffe67cf2754d0591f1995837d088c5dc03f591a0269a6714e687e"
+    },
+    {
+      "path": "tools/copyrighter/__init__.py",
+      "kind": "file",
+      "bytes": 664,
+      "sha256": "63d8dd13553ca309766d97515782e8bd6a0bf2ed4d4362a34627f8023910322c"
+    },
+    {
+      "path": "tools/copyrighter/__main__.py",
+      "kind": "file",
+      "bytes": 1106,
+      "sha256": "d63e51fe52d975de0f8ce12de98f67150e18e606ff7fd53a53a8f6b7d89de960"
+    },
+    {
+      "path": "tools/pull-repo-base.sh",
+      "kind": "file",
+      "bytes": 330,
+      "sha256": "cac3e1a8dea1da0a7df2dc8f45ab2c33453b1d6d36d0e167102198c850e6b978"
+    },
+    {
+      "path": "tools/pull-repo-ref.sh",
+      "kind": "file",
+      "bytes": 371,
+      "sha256": "c58a1f375de54dd3cf30c2831d3fe8d6c2b1866b970ac25285be43d8a0d23b8a"
+    },
+    {
+      "path": "tools/setup-as-commiter.sh",
+      "kind": "file",
+      "bytes": 228,
+      "sha256": "37297b3909d2ae91ce0477cba6037e829d75857dfe4267ec942805eec9b26177"
+    },
+    {
+      "path": "tools/sync-mirrors.sh",
+      "kind": "file",
+      "bytes": 167,
+      "sha256": "dcd1b15f0c42f16693aad0f046ed751c403e2654cd4af5c0ea4e3a1fdc155a56"
+    },
+    {
+      "path": "version.sh",
+      "kind": "file",
+      "bytes": 2942,
+      "sha256": "966a4166a1351b94e021e03025fd2e4cfcb18c1df7c5bd25951a290c032f60d4"
+    }
+  ]
+}

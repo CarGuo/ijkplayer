@@ -59,8 +59,9 @@ void ijkmp_android_set_surface_l(JNIEnv *env, IjkMediaPlayer *mp, jobject androi
     if (!mp || !mp->ffplayer || !mp->ffplayer->vout)
         return;
 
-    SDL_VoutAndroid_SetAndroidSurface(env, mp->ffplayer->vout, android_surface);
-    ffpipeline_set_surface(env, mp->ffplayer->pipeline, android_surface);
+    // One transaction retains/validates and publishes both Surface halves.
+    if (ffpipeline_set_surface(env, mp->ffplayer->pipeline, android_surface) < 0)
+        ALOGE("%s: Surface update failed; previous Surface preserved\n", __func__);
 }
 
 void ijkmp_android_set_surface(JNIEnv *env, IjkMediaPlayer *mp, jobject android_surface)

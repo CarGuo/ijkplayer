@@ -16,15 +16,19 @@ typedef struct IJKFF_Pipenode_Opaque {
     SDL_mutex *acodec_mutex;
     SDL_cond *acodec_cond;
     int input_packet_count;
+    bool input_eos_queued, output_eos_seen;
+    int off_buf_out;
+    double last_queued_pts;
     void *acodec, *weak_vout, *pipeline;
 } IJKFF_Pipenode_Opaque;
 typedef struct IJKFF_Pipenode { IJKFF_Pipenode_Opaque *opaque; } IJKFF_Pipenode;
 static uint8_t flush_data;
-static int codec_flushes;
+static int codec_flushes, codec_flush_result;
 static bool ffp_is_flush_packet(const AVPacket *pkt) { return pkt->data == &flush_data; }
 static bool SDL_AMediaCodec_isStarted(void *codec) { (void)codec; return true; }
 static void SDL_VoutAndroid_invalidateAllBuffers(void *vout) { (void)vout; }
-static void SDL_AMediaCodec_flush(void *codec) { (void)codec; ++codec_flushes; }
+#define SDL_AMEDIA_OK 0
+static int SDL_AMediaCodec_flush(void *codec) { (void)codec; ++codec_flushes; return codec_flush_result; }
 static void ffpipeline_set_surface_need_reconfigure_l(void *pipeline, bool value)
 { (void)pipeline; assert(value); }
 #include "../ffamc_input.h"
@@ -131,6 +135,17 @@ static void test_eof(const char *path, bool threaded, bool filtered)
     if (filtered)
         assert(ijk_amc_create_bsf(&opaque.bsfc, opaque.codecpar, is.video_st->time_base) == 0);
 
+    if (!filtered) {
+        AVPacket config = {0};
+        assert(av_packet_new_side_data(&config, AV_PKT_DATA_STRINGS_METADATA, 1));
+        queue_packet(&t, &config, 0);
+        av_packet_unref(&config);
+        assert(prepare_input_packet(&node, threaded) == 0);
+        assert(t.decoder.packet_pending && t.decoder.pkt.side_data_elems);
+        assert(t.decoder.pkt_temp.size == 0 && !t.decoder.finished);
+        // The feeder skips configuration-only output without queueing EOS.
+        t.decoder.packet_pending = 0;
+    }
     queue_packet(&t, &key, 100);
     queue_eof(&t, 1);
     // A sentinel after EOF makes a dropped EOF fail immediately, not hang.
@@ -141,8 +156,15 @@ static void test_eof(const char *path, bool threaded, bool filtered)
     assert(prepare_input_packet(&node, threaded) == 0);
     assert(t.decoder.packet_pending && !t.decoder.pkt_temp.data && !t.decoder.pkt_temp.size);
     assert(t.queue.nb_packets == 1);
-    // Emulate the feeder's finished transition, then seek to a new serial.
-    t.decoder.packet_pending = 0;
+    // Latched compressed EOF remains pending while hardware drains. Neither
+    // another prepare nor a pending flush request may consume the sentinel.
+    opaque.input_eos_queued = opaque.output_eos_seen = true;
+    opaque.off_buf_out = 1;
+    assert(prepare_input_packet(&node, threaded) == 0);
+    assert(t.decoder.packet_pending && !t.decoder.pkt_temp.data && t.queue.nb_packets == 1);
+    opaque.acodec_flush_request = true;
+    assert(prepare_input_packet(&node, threaded) == 0);
+    assert(t.decoder.packet_pending && t.queue.nb_packets == 1);
     t.decoder.finished = t.decoder.pkt_serial;
     av_packet_move_ref(&t.queue.packets[1], &t.queue.packets[0]);
     t.queue.packets[0] = (AVPacket){ .data = &flush_data };
@@ -154,10 +176,23 @@ static void test_eof(const char *path, bool threaded, bool filtered)
     assert(prepare_input_packet(&node, threaded) == 0);
     assert(t.decoder.pkt_serial == 2 && t.decoder.pkt_temp.pts == 200);
     assert(t.decoder.finished == 0 && codec_flushes == 1);
+    assert(!opaque.input_eos_queued && !opaque.output_eos_seen && !opaque.off_buf_out);
+    assert(opaque.last_queued_pts == AV_NOPTS_VALUE);
     t.decoder.packet_pending = 0;
     assert(prepare_input_packet(&node, threaded) == 0);
     assert(t.decoder.packet_pending && !t.decoder.pkt_temp.data && !t.decoder.pkt_temp.size);
     assert(!t.queue.nb_packets && t.decoder.pkt_serial == 2);
+
+    // A codec flush failure must stop the feeder without declaring EOF or
+    // leaving acodec_mutex held (threaded mode).
+    t.queue.packets[0] = (AVPacket){ .data = &flush_data };
+    t.queue.serial = t.queue.serials[0] = 3;
+    t.queue.nb_packets = 1;
+    opaque.input_packet_count = 1;
+    codec_flush_result = -1;
+    assert(prepare_input_packet(&node, threaded) == AVERROR_EXTERNAL);
+    codec_flush_result = 0;
+    assert(t.decoder.finished != 3);
 
     av_packet_unref(&opaque.filtered_packet);
     av_bsf_free(&opaque.bsfc);

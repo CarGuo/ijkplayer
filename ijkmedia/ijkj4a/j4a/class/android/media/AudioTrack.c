@@ -37,6 +37,7 @@ typedef struct J4AC_android_media_AudioTrack {
     jmethodID method_write;
     jmethodID method_setStereoVolume;
     jmethodID method_getAudioSessionId;
+    jmethodID method_getPlaybackHeadPosition;
     jmethodID method_getPlaybackParams;
     jmethodID method_setPlaybackParams;
     jmethodID method_getStreamType;
@@ -234,6 +235,21 @@ jint J4AC_android_media_AudioTrack__getAudioSessionId(JNIEnv *env, jobject thiz)
 jint J4AC_android_media_AudioTrack__getAudioSessionId__catchAll(JNIEnv *env, jobject thiz)
 {
     jint ret_value = J4AC_android_media_AudioTrack__getAudioSessionId(env, thiz);
+    if (J4A_ExceptionCheck__catchAll(env)) {
+        return 0;
+    }
+
+    return ret_value;
+}
+
+jint J4AC_android_media_AudioTrack__getPlaybackHeadPosition(JNIEnv *env, jobject thiz)
+{
+    return (*env)->CallIntMethod(env, thiz, class_J4AC_android_media_AudioTrack.method_getPlaybackHeadPosition);
+}
+
+jint J4AC_android_media_AudioTrack__getPlaybackHeadPosition__catchAll(JNIEnv *env, jobject thiz)
+{
+    jint ret_value = J4AC_android_media_AudioTrack__getPlaybackHeadPosition(env, thiz);
     if (J4A_ExceptionCheck__catchAll(env)) {
         return 0;
     }
@@ -452,6 +468,12 @@ int J4A_loadClass__J4AC_android_media_AudioTrack(JNIEnv *env)
     sign     = "()I";
     class_J4AC_android_media_AudioTrack.method_getAudioSessionId = J4A_GetMethodID__catchAll(env, class_id, name, sign);
     if (class_J4AC_android_media_AudioTrack.method_getAudioSessionId == NULL)
+        goto fail;
+
+    name     = "getPlaybackHeadPosition";
+    sign     = "()I";
+    class_J4AC_android_media_AudioTrack.method_getPlaybackHeadPosition = J4A_GetMethodID__catchAll(env, class_id, name, sign);
+    if (class_J4AC_android_media_AudioTrack.method_getPlaybackHeadPosition == NULL)
         goto fail;
 
     if (J4A_GetSystemAndroidApiLevel(env) >= 23) {

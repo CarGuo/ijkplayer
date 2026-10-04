@@ -20,6 +20,7 @@ public class AudioTrack {
 
     public int setStereoVolume(float leftGain, float rightGain);
     public int getAudioSessionId();
+    public int getPlaybackHeadPosition();
 
     @MinApi(23)
     public PlaybackParams getPlaybackParams();

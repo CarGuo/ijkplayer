@@ -148,7 +148,13 @@ float SDL_SpeedSamplerAdd(SDL_SpeedSampler *sampler, int enable_log, const char 
     if (sampler->count < 2)
         return 0;
 
-    float samples_per_second = 1000.0f * (sampler->count - 1) / (current - sampler->samples[sampler->first_index]);
+    Uint64 elapsed = current - sampler->samples[sampler->first_index];
+    // A burst may fit within one coarse millisecond tick. Like a one-sample
+    // window, it has no measurable rate yet; retain the samples until time advances.
+    if (elapsed == 0)
+        return 0;
+
+    float samples_per_second = 1000.0f * (sampler->count - 1) / elapsed;
 
     if (enable_log && (sampler->last_log_time + 1000 < current || sampler->last_log_time > current)) {
         sampler->last_log_time = current;

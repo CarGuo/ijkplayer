@@ -20,7 +20,8 @@
 APP_OPTIM := release
 APP_PLATFORM := android-21
 APP_ABI := x86_64
-NDK_TOOLCHAIN_VERSION=4.9
+# The FFmpeg 5 build uses the LLVM toolchain supplied by NDK r22b.
+NDK_TOOLCHAIN_VERSION := clang
 APP_PIE := false
 
 APP_STL := c++_static

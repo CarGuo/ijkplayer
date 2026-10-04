@@ -1,0 +1,144 @@
+{
+  "revision": "v0.8.8-carguo-35-gd5c0b4eb-platformrate-r3",
+  "FFmpegPublishedCommit": "ff87490262107e004f6a16765484e36e1973d705",
+  "compiledFFmpegCommit": "0cb0a06ef3d2b8e2814cb0e60be99d7986e1bde1",
+  "sourceReceiptSha256": "428efebfbad4bbb0520bf978027dd2561bc57dfd8f5b17a6e89e36e86b53155b",
+  "nativeManifestSha256": "6442ea25cc98444800d55de10172b230eb18f4ea603139c9ba73f6f359da7d52",
+  "physicalScope": {
+    "device": "Pixel 8",
+    "api": 35,
+    "pageSizeBytes": 4096,
+    "ABI": "arm64-v8a",
+    "rates": [
+      0.25,
+      0.5,
+      1,
+      2,
+      3
+    ],
+    "MuxHLS": "PASS",
+    "transitions": "2/2 PASS",
+    "Tail7": "7/7 PASS",
+    "Widget3": "3/3 PASS",
+    "Apple": "Unavailable DNS source; historical overall core run6/7 remains failed"
+  },
+  "ABIs": [
+    {
+      "abi": "arm64-v8a",
+      "libraries": [
+        {
+          "name": "libijkffmpeg.so",
+          "bytes": 11815360,
+          "sha256": "913ad7b65ccdd133f0ae5890d7d1c7b44338dafdc87cfc0634fc771b68cd0488",
+          "machine": 183,
+          "loadAlignments": [
+            16384,
+            16384,
+            16384,
+            16384
+          ]
+        },
+        {
+          "name": "libijkplayer.so",
+          "bytes": 558352,
+          "sha256": "ea4de7d69282ab707a5b51cfb4c13d244230a54988a90a0c214e08a01fb8e9b4",
+          "machine": 183,
+          "loadAlignments": [
+            16384,
+            16384,
+            16384
+          ]
+        },
+        {
+          "name": "libijksdl.so",
+          "bytes": 373408,
+          "sha256": "3011a2548ed6e8077a369591312df50949f115a979091b5aa441713099ad08ed",
+          "machine": 183,
+          "loadAlignments": [
+            16384,
+            16384,
+            16384
+          ]
+        }
+      ]
+    },
+    {
+      "abi": "armeabi-v7a",
+      "libraries": [
+        {
+          "name": "libijkffmpeg.so",
+          "bytes": 10932464,
+          "sha256": "6c069c7306830f4e6e0af4eaedcde1b25a12ff1e890b8b689737dd570aa7066e",
+          "machine": 40,
+          "loadAlignments": [
+            4096,
+            4096,
+            4096,
+            4096
+          ]
+        },
+        {
+          "name": "libijkplayer.so",
+          "bytes": 377704,
+          "sha256": "d74e7f4a186fe9100225f882363f880ff04468af7ffceb09e2cfcf62f8fcafcd",
+          "machine": 40,
+          "loadAlignments": [
+            4096,
+            4096,
+            4096
+          ]
+        },
+        {
+          "name": "libijksdl.so",
+          "bytes": 321648,
+          "sha256": "7af1c13e25894003be32f138839794b8f1c4513744d582596ec3f6edae0355f6",
+          "machine": 40,
+          "loadAlignments": [
+            4096,
+            4096,
+            4096
+          ]
+        }
+      ]
+    },
+    {
+      "abi": "x86_64",
+      "libraries": [
+        {
+          "name": "libijkffmpeg.so",
+          "bytes": 16231176,
+          "sha256": "7cb7407ba2e632c965e343ecfb99f0192977d230d05e7e000fc8c3cc652f8abb",
+          "machine": 62,
+          "loadAlignments": [
+            16384,
+            16384,
+            16384,
+            16384
+          ]
+        },
+        {
+          "name": "libijkplayer.so",
+          "bytes": 603984,
+          "sha256": "31a930b0bf6555b20bb0a9608c21e33ef209f4cc690636d8bcbd6c258f75ca68",
+          "machine": 62,
+          "loadAlignments": [
+            16384,
+            16384,
+            16384
+          ]
+        },
+        {
+          "name": "libijksdl.so",
+          "bytes": 455632,
+          "sha256": "c4ea1c1d297ed3416f0aee95ee9ff3bb8c72b4e47c8290852dfc95189c976cf5",
+          "machine": 62,
+          "loadAlignments": [
+            16384,
+            16384,
+            16384
+          ]
+        }
+      ]
+    }
+  ]
+}

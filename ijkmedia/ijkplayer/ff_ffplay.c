@@ -1057,6 +1057,7 @@ static void stream_close(FFPlayer *ffp)
     SDL_DestroyCond(is->video_accurate_seek_cond);
     SDL_DestroyCond(is->continue_read_thread);
     SDL_DestroyMutex(is->accurate_seek_mutex);
+    SDL_DestroyMutex(is->eof_clock.mutex);
     SDL_DestroyMutex(is->play_mutex);
 #if !CONFIG_AVFILTER
     sws_freeContext(is->img_convert_ctx);
@@ -1081,6 +1082,9 @@ static void stream_close(FFPlayer *ffp)
         av_freep(&ffp->get_img_info);
     }
     av_free(is->filename);
+    /* All playback workers have joined. Do not leak an automatic VIDEO mode
+     * into a later prepare on this same FFPlayer. */
+    ffp->av_sync_type = is->requested_av_sync_type;
     av_free(is);
     ffp->is = NULL;
 }
@@ -1100,6 +1104,19 @@ static void video_display2(FFPlayer *ffp)
 
 static double get_clock(Clock *c)
 {
+    if (c->source_aout) {
+        SDL_AudioPlaybackSnapshot position;
+        SDL_AoutGetPlaybackPosition(c->source_aout, &position);
+        if (!position.valid || position.generation != *c->queue_serial)
+            return NAN;
+        double value = c->paused && c->serial == *c->queue_serial ? c->pts : position.pts;
+        if (isfinite(value) && __sync_bool_compare_and_swap(&c->source_head_logged, 0, 1))
+            ALOGI("IJK_HEAD_CLOCK_V1 generation=%d epoch=%" PRIu64
+                  " played=%" PRIu64 " accepted=%" PRIu64 " pts=%.9f",
+                  position.generation, position.epoch, position.played_frames,
+                  position.accepted_frames, value);
+        return value;
+    }
     if (*c->queue_serial != c->serial)
         return NAN;
     if (c->paused) {
@@ -1132,6 +1149,8 @@ static void set_clock_speed(Clock *c, double speed)
 
 static void init_clock(Clock *c, int *queue_serial)
 {
+    c->source_aout = NULL;
+    c->source_head_logged = 0;
     c->speed = 1.0;
     c->paused = 0;
     c->queue_serial = queue_serial;
@@ -1146,7 +1165,9 @@ static void sync_clock_to_slave(Clock *c, Clock *slave)
         set_clock(c, slave_clock, slave->serial);
 }
 
-static int get_master_sync_type(VideoState *is) {
+#include "ff_eof_clock.h"
+
+static int get_default_master_sync_type(VideoState *is) {
     if (is->av_sync_type == AV_SYNC_VIDEO_MASTER) {
         if (is->video_st)
             return AV_SYNC_VIDEO_MASTER;
@@ -1162,12 +1183,38 @@ static int get_master_sync_type(VideoState *is) {
     }
 }
 
+static int get_master_sync_type(VideoState *is)
+{
+    if (is->av_sync_type == AV_SYNC_AUDIO_MASTER && is->video_st) {
+        EOFClockView tail = eof_clock_view(is);
+        if (!tail.seek_pending &&
+            ((is->audio_st && tail.audio_drained) || (!is->audio_st && tail.demux_eof)))
+            return AV_SYNC_VIDEO_MASTER;
+    }
+    return get_default_master_sync_type(is);
+}
+
 /* get the current master clock value */
 static double get_master_clock(VideoState *is)
 {
     double val;
 
-    switch (get_master_sync_type(is)) {
+    if (is->av_sync_type == AV_SYNC_AUDIO_MASTER ||
+        (is->requested_av_sync_type == AV_SYNC_AUDIO_MASTER &&
+         is->av_sync_type == AV_SYNC_VIDEO_MASTER && !is->audio_st)) {
+        EOFClockView tail = eof_clock_view(is);
+        if (is->audio_st && tail.audio_drained) {
+            if (is->video_st && isfinite(tail.video_clock))
+                return isfinite(tail.audio_end) ? FFMAX(tail.audio_end, tail.video_clock) : tail.video_clock;
+            /* An unavailable terminal PTS must not revive an older clock. */
+            return tail.audio_end;
+        } else if (is->audio_st && tail.audio_terminal) {
+            return tail.audio_clock;
+        } else if (!is->audio_st && is->video_st && tail.demux_eof) {
+            return tail.video_clock;
+        }
+    }
+    switch (get_default_master_sync_type(is)) {
         case AV_SYNC_VIDEO_MASTER:
             val = get_clock(&is->vidclk);
             break;
@@ -1199,6 +1246,7 @@ static void check_external_clock_speed(VideoState *is) {
 static void stream_seek(VideoState *is, int64_t pos, int64_t rel, int seek_by_bytes)
 {
     if (!is->seek_req) {
+        eof_clock_seek(is, 1);
         is->seek_pos = pos;
         is->seek_rel = rel;
         is->seek_flags &= ~AVSEEK_FLAG_BYTE;
@@ -1210,11 +1258,28 @@ static void stream_seek(VideoState *is, int64_t pos, int64_t rel, int seek_by_by
 }
 
 /* pause or resume the video */
+static double video_update_platform_rate_l(VideoState *is);
+
 static void stream_toggle_pause_l(FFPlayer *ffp, int pause_on)
 {
     VideoState *is = ffp->is;
+    double platform_pause_duration = 0;
+    /* Consume an acknowledged paused change even if the video owner has not
+     * run since its notification. The caller already holds play_mutex. */
+    if (is->paused && !pause_on)
+        video_update_platform_rate_l(is);
+    if (is->platform_rate_mode && is->audio_st && is->paused && !pause_on) {
+        SDL_LockMutex(is->eof_clock.mutex);
+        if (is->eof_clock.paused)
+            platform_pause_duration = FFMAX(0.0, av_gettime_relative() / 1000000.0 - is->eof_clock.pause_at);
+        SDL_UnlockMutex(is->eof_clock.mutex);
+    }
+    eof_clock_pause(is, pause_on);
     if (is->paused && !pause_on) {
-        is->frame_timer += av_gettime_relative() / 1000000.0 - is->vidclk.last_updated;
+        if (is->platform_rate_mode && is->audio_st)
+            is->frame_timer += platform_pause_duration;
+        else
+            is->frame_timer += av_gettime_relative() / 1000000.0 - is->vidclk.last_updated;
 
 #ifdef FFP_MERGE
         if (is->read_pause_return != AVERROR(ENOSYS)) {
@@ -1229,6 +1294,17 @@ static void stream_toggle_pause_l(FFPlayer *ffp, int pause_on)
     if (is->step && (is->pause_req || is->buffering_on)) {
         is->paused = is->vidclk.paused = is->extclk.paused = pause_on;
     } else {
+        if (pause_on && !is->audclk.paused && is->audio_st) {
+            /* Freeze the clock being exposed, not the previous write's anchor.
+             * Terminal audio uses its existing submitted interval. */
+            EOFClockView tail = eof_clock_view(is);
+            double audio_clock = is->audclk.source_aout ? tail.audio_pause_pts :
+                (tail.audio_terminal ?
+                 (tail.audio_drained ? tail.audio_end : tail.audio_clock) :
+                 get_clock(&is->audclk));
+            int audio_serial = is->audclk.source_aout ? tail.audio_pause_serial : is->audclk.serial;
+            set_clock(&is->audclk, audio_clock, audio_serial);
+        }
         is->paused = is->audclk.paused = is->vidclk.paused = is->extclk.paused = pause_on;
         SDL_AoutPauseAudio(ffp->aout, pause_on);
     }
@@ -1276,27 +1352,62 @@ static void step_to_next_frame_l(FFPlayer *ffp)
         stream_toggle_pause_l(ffp, 0);
 }
 
-static double compute_target_delay(FFPlayer *ffp, double delay, VideoState *is)
+/* Only the video owner mutates its clock/frame timer. Rate data is an applied
+ * snapshot, never the pending public request; pause uses the existing anchor. */
+static double video_update_platform_rate_l(VideoState *is)
+{
+    if (!is->platform_rate_mode || !is->audio_st) return 1.0;
+    SDL_LockMutex(is->eof_clock.mutex);
+    double rate = is->eof_clock.video_applied_rate;
+    double applied_at = is->eof_clock.video_applied_at;
+    double pause_at = is->eof_clock.pause_at;
+    SDL_UnlockMutex(is->eof_clock.mutex);
+    if (rate != is->vidclk.speed) {
+        double now = av_gettime_relative() / 1000000.0;
+        double boundary = is->paused ? pause_at : FFMIN(now, FFMAX(applied_at, is->frame_timer));
+        is->frame_timer = ffp_rate_timer_rebase(is->frame_timer, is->vidclk.speed, rate, boundary);
+        if (!is->paused) {
+            boundary = FFMIN(now, FFMAX(applied_at, is->vidclk.last_updated));
+            double value = *is->vidclk.queue_serial != is->vidclk.serial ? NAN :
+                is->vidclk.pts_drift + boundary - (boundary - is->vidclk.last_updated) * (1.0 - is->vidclk.speed);
+            set_clock_at(&is->vidclk, value, is->vidclk.serial, boundary);
+        }
+        is->vidclk.speed = rate;
+    }
+    return rate;
+}
+
+static double video_update_platform_rate(VideoState *is)
+{
+    SDL_LockMutex(is->play_mutex);
+    double rate = video_update_platform_rate_l(is);
+    SDL_UnlockMutex(is->play_mutex);
+    return rate;
+}
+
+static double compute_target_delay(FFPlayer *ffp, double delay, VideoState *is, double rate)
 {
     double sync_threshold, diff = 0;
+    delay = ffp_rate_wall_duration(delay, rate);
 
     /* update delay to follow master synchronisation source */
     if (get_master_sync_type(is) != AV_SYNC_VIDEO_MASTER) {
         /* if video is slave, we try to correct big delays by
            duplicating or deleting a frame */
         diff = get_clock(&is->vidclk) - get_master_clock(is);
+        double wall_diff = ffp_rate_wall_duration(diff, rate);
 
         /* skip or repeat frame. We take into account the
            delay to compute the threshold. I still don't know
            if it is the best guess */
         sync_threshold = FFMAX(AV_SYNC_THRESHOLD_MIN, FFMIN(AV_SYNC_THRESHOLD_MAX, delay));
         /* -- by bbcallen: replace is->max_frame_duration with AV_NOSYNC_THRESHOLD */
-        if (!isnan(diff) && fabs(diff) < AV_NOSYNC_THRESHOLD) {
-            if (diff <= -sync_threshold)
-                delay = FFMAX(0, delay + diff);
-            else if (diff >= sync_threshold && delay > AV_SYNC_FRAMEDUP_THRESHOLD)
-                delay = delay + diff;
-            else if (diff >= sync_threshold)
+        if (!isnan(wall_diff) && fabs(wall_diff) < AV_NOSYNC_THRESHOLD) {
+            if (wall_diff <= -sync_threshold)
+                delay = FFMAX(0, delay + wall_diff);
+            else if (wall_diff >= sync_threshold && delay > AV_SYNC_FRAMEDUP_THRESHOLD)
+                delay = delay + wall_diff;
+            else if (wall_diff >= sync_threshold)
                 delay = 2 * delay;
         }
     }
@@ -1336,7 +1447,7 @@ static void video_refresh(FFPlayer *opaque, double *remaining_time)
 {
     FFPlayer *ffp = opaque;
     VideoState *is = ffp->is;
-    double time;
+    double time, playback_rate = 1.0;
 
     Frame *sp, *sp2;
 
@@ -1354,6 +1465,7 @@ static void video_refresh(FFPlayer *opaque, double *remaining_time)
 
     if (is->video_st) {
 retry:
+        playback_rate = video_update_platform_rate(is);
         if (frame_queue_nb_remaining(&is->pictq) == 0) {
             // nothing to do, no picture to display in the queue
         } else {
@@ -1377,7 +1489,7 @@ retry:
 
             /* compute nominal last_duration */
             last_duration = vp_duration(is, lastvp, vp);
-            delay = compute_target_delay(ffp, last_duration, is);
+            delay = compute_target_delay(ffp, last_duration, is, playback_rate);
 
             time= av_gettime_relative()/1000000.0;
             if (isnan(is->frame_timer) || time < is->frame_timer)
@@ -1398,12 +1510,17 @@ retry:
 
             if (frame_queue_nb_remaining(&is->pictq) > 1) {
                 Frame *nextvp = frame_queue_peek_next(&is->pictq);
-                duration = vp_duration(is, vp, nextvp);
+                duration = ffp_rate_wall_duration(vp_duration(is, vp, nextvp), playback_rate);
                 if(!is->step && (ffp->framedrop > 0 || (ffp->framedrop && get_master_sync_type(is) != AV_SYNC_VIDEO_MASTER)) && time > is->frame_timer + duration) {
                     frame_queue_next(&is->pictq);
                     goto retry;
                 }
             }
+
+            /* Publish only the frame retained for presentation, not a late
+             * frame discarded by the branch above. Pixel display may follow. */
+            if (isfinite(vp->pts))
+                eof_clock_video_presented(is, vp->pts, vp->duration, vp->serial);
 
             if (is->subtitle_st) {
                 while (frame_queue_nb_remaining(&is->subpq) > 0) {
@@ -1884,7 +2001,7 @@ static int configure_video_filters(FFPlayer *ffp, AVFilterGraph *graph, VideoSta
     }
 
 #ifdef FFP_AVFILTER_PLAYBACK_RATE
-    if (fabsf(ffp->pf_playback_rate) > 0.00001 &&
+    if ((!is->platform_rate_mode || !is->audio_st) && fabsf(ffp->pf_playback_rate) > 0.00001 &&
         fabsf(ffp->pf_playback_rate - 1.0f) > 0.00001) {
         char setpts_buf[256];
         float rate = 1.0f / ffp->pf_playback_rate;
@@ -1975,7 +2092,7 @@ static int configure_audio_filters(FFPlayer *ffp, const char *afilters, int forc
         snprintf(afilters_args, sizeof(afilters_args), "%s", afilters);
 
 #ifdef FFP_AVFILTER_PLAYBACK_RATE
-    if (fabsf(ffp->pf_playback_rate) > 0.00001 &&
+    if (!is->platform_rate_mode && fabsf(ffp->pf_playback_rate) > 0.00001 &&
         fabsf(ffp->pf_playback_rate - 1.0f) > 0.00001) {
         if (afilters_args[0])
             av_strlcatf(afilters_args, sizeof(afilters_args), ",");
@@ -2029,6 +2146,9 @@ static int audio_thread(void *arg)
         ffp_audio_statistic_l(ffp);
         if ((got_frame = decoder_decode_frame(ffp, &is->auddec, frame, NULL)) < 0)
             goto the_end;
+
+        if (!got_frame)
+            eof_clock_audio_finished(is, is->auddec.pkt_serial);
 
         if (got_frame) {
                 tb = (AVRational){1, frame->sample_rate};
@@ -2477,6 +2597,19 @@ static int synchronize_audio(VideoState *is, int nb_samples)
     return wanted_nb_samples;
 }
 
+/* Deliberately narrow experimental scope: no output-time resampling or
+ * compensation. Format/rematrix conversion is allowed only with zero delay
+ * and exactly preserved frame count. */
+static int audio_head_clock_samples_supported(int source_rate, int target_rate,
+                                              int source_samples, int wanted_samples,
+                                              int output_samples, int64_t delay_before,
+                                              int64_t delay_after)
+{
+    return source_rate > 0 && source_rate == target_rate && source_samples > 0 &&
+        wanted_samples == source_samples && output_samples == source_samples &&
+        delay_before == 0 && delay_after == 0;
+}
+
 /**
  * Decode one audio frame and return its uncompressed size.
  *
@@ -2496,6 +2629,7 @@ static int audio_decode_frame(FFPlayer *ffp)
     int translate_time = 1;
 #endif
 
+    is->audio_clock_unsupported = 0;
     if (is->paused || is->step)
         return -1;
 
@@ -2522,7 +2656,7 @@ reload:
             av_usleep (1000);
         }
 #endif
-        if (!(af = frame_queue_peek_readable(&is->sampq)))
+        if (!(af = audio_frame_queue_peek_readable(is)))
             return -1;
         frame_queue_next(&is->sampq);
     } while (af->serial != is->audioq.serial);
@@ -2535,6 +2669,12 @@ reload:
         (af->frame->channel_layout && af->frame->channels == av_get_channel_layout_nb_channels(af->frame->channel_layout)) ?
         af->frame->channel_layout : av_get_default_channel_layout(af->frame->channels);
     wanted_nb_samples = synchronize_audio(is, af->frame->nb_samples);
+    if (is->audclk.source_aout &&
+        !audio_head_clock_samples_supported(af->frame->sample_rate, is->audio_tgt.freq,
+            af->frame->nb_samples, wanted_nb_samples, af->frame->nb_samples, 0, 0)) {
+        is->audio_clock_unsupported = 1;
+        return AVERROR(ENOSYS);
+    }
 
     if (af->frame->format        != is->audio_src.fmt            ||
         dec_channel_layout       != is->audio_src.channel_layout ||
@@ -2594,7 +2734,21 @@ reload:
 
         if (!is->audio_buf1)
             return AVERROR(ENOMEM);
+        if (is->audclk.source_aout &&
+            !audio_head_clock_samples_supported(af->frame->sample_rate, is->audio_tgt.freq,
+                af->frame->nb_samples, wanted_nb_samples, af->frame->nb_samples,
+                swr_get_delay(is->swr_ctx, is->audio_tgt.freq), 0)) {
+            is->audio_clock_unsupported = 1;
+            return AVERROR(ENOSYS);
+        }
         len2 = swr_convert(is->swr_ctx, out, out_count, in, af->frame->nb_samples);
+        if (is->audclk.source_aout && len2 >= 0 &&
+            !audio_head_clock_samples_supported(af->frame->sample_rate, is->audio_tgt.freq,
+                af->frame->nb_samples, wanted_nb_samples, len2, 0,
+                swr_get_delay(is->swr_ctx, is->audio_tgt.freq))) {
+            is->audio_clock_unsupported = 1;
+            return AVERROR(ENOSYS);
+        }
         if (len2 < 0) {
             av_log(NULL, AV_LOG_ERROR, "swr_convert() failed\n");
             return -1;
@@ -2608,7 +2762,7 @@ reload:
         int bytes_per_sample = av_get_bytes_per_sample(is->audio_tgt.fmt);
         resampled_data_size = len2 * is->audio_tgt.channels * bytes_per_sample;
 #if defined(__ANDROID__)
-        if (ffp->soundtouch_enable && ffp->pf_playback_rate != 1.0f && !is->abort_request) {
+        if (ffp->soundtouch_enable && !is->platform_rate_mode && ffp->pf_playback_rate != 1.0f && !is->abort_request) {
             av_fast_malloc(&is->audio_new_buf, &is->audio_new_buf_size, out_size * translate_time);
             for (int i = 0; i < (resampled_data_size / 2); i++)
             {
@@ -2657,19 +2811,45 @@ reload:
 }
 
 /* prepare a new audio buffer */
-static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
+static void sdl_audio_callback_internal(void *opaque, Uint8 *stream, int len,
+                                        SDL_AudioSubmission *submission)
 {
     FFPlayer *ffp = opaque;
     VideoState *is = ffp->is;
     int audio_size, len1;
+    int real_pcm_delivered = 0;
+    int copied_serial = -1;
+    Uint8 *buffer_start = stream;
+    int requested_len = len;
+    double delivered_latency = NAN;
     if (!ffp || !is) {
         memset(stream, 0, len);
         return;
     }
 
+    if (submission) {
+        submission->token = 0;
+        SDL_LockMutex(is->audioq.mutex);
+        submission->generation = is->audioq.serial;
+        SDL_UnlockMutex(is->audioq.mutex);
+    }
     ffp->audio_callback_time = av_gettime_relative();
+    int head_mode = submission && is->audclk.source_aout;
+    if (head_mode) {
+        submission->output_bytes = 0;
+        submission->real_pcm = 0;
+        submission->clock_unsupported = 0;
+        submission->pts_start = submission->pts_end = NAN;
+        submission->output_epoch = submission->first_frame = submission->end_frame = 0;
+        if ((!is->platform_rate_mode && ffp->pf_playback_rate != 1.0f) ||
+            is->av_sync_type != AV_SYNC_AUDIO_MASTER) {
+            submission->clock_unsupported = 1;
+            memset(stream, 0, len);
+            return;
+        }
+    }
 
-    if (ffp->pf_playback_rate_changed) {
+    if (!is->platform_rate_mode && ffp->pf_playback_rate_changed) {
         ffp->pf_playback_rate_changed = 0;
 #if defined(__ANDROID__)
         if (!ffp->soundtouch_enable) {
@@ -2685,8 +2865,17 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
     }
 
     while (len > 0) {
+        if (submission && is->abort_request) {
+            memset(stream, 0, len);
+            break;
+        }
         if (is->audio_buf_index >= is->audio_buf_size) {
            audio_size = audio_decode_frame(ffp);
+           if (head_mode && is->audio_clock_unsupported) {
+               submission->clock_unsupported = 1;
+               memset(stream, 0, len);
+               break;
+           }
            if (audio_size < 0) {
                 /* if error, just output silence */
                is->audio_buf = NULL;
@@ -2698,7 +2887,13 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
            }
            is->audio_buf_index = 0;
         }
-        if (is->auddec.pkt_serial != is->audioq.serial) {
+        int packet_serial = is->auddec.pkt_serial;
+        if (packet_serial != is->audioq.serial) {
+            /* Even a silence-only callback can own obsolete decoder PCM.
+             * Preserve the rejected generation so the backend cancels/flushes
+             * it instead of treating a normal seek flush as an output error. */
+            if (submission)
+                submission->generation = packet_serial;
             is->audio_buf_index = is->audio_buf_size;
             memset(stream, 0, len);
             // stream += len;
@@ -2706,9 +2901,23 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
             SDL_AoutFlushAudio(ffp->aout);
             break;
         }
+        if (submission && is->audio_buf && real_pcm_delivered &&
+            copied_serial != is->audio_clock_serial) {
+            /* A committed seek can land between chunks of one callback.
+             * Discard only the obsolete prefix, then refill from the new
+             * frame at its still-unconsumed index. Keep callback ownership. */
+            stream = buffer_start;
+            len = requested_len;
+            real_pcm_delivered = 0;
+        }
         len1 = is->audio_buf_size - is->audio_buf_index;
         if (len1 > len)
             len1 = len;
+        if (is->audio_buf && len1 > 0) {
+            eof_clock_audio_busy(is, 1);
+            real_pcm_delivered = 1;
+            copied_serial = is->audio_clock_serial;
+        }
         if (!is->muted && is->audio_buf && is->audio_volume == SDL_MIX_MAXVOLUME)
             memcpy(stream, (uint8_t *)is->audio_buf + is->audio_buf_index, len1);
         else {
@@ -2716,16 +2925,31 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
             if (!is->muted && is->audio_buf)
                 SDL_MixAudio(stream, (uint8_t *)is->audio_buf + is->audio_buf_index, len1, is->audio_volume);
         }
+        if (head_mode) {
+            submission->output_bytes = len1;
+            submission->real_pcm = is->audio_buf != NULL;
+            if (is->audio_buf) {
+                submission->pts_start = is->audio_clock -
+                    (double)(is->audio_buf_size - is->audio_buf_index) / is->audio_tgt.bytes_per_sec;
+                submission->pts_end = submission->pts_start +
+                    (double)len1 / is->audio_tgt.bytes_per_sec;
+            }
+        }
         len -= len1;
         stream += len1;
         is->audio_buf_index += len1;
+        if (head_mode)
+            break; /* one homogeneous, whole-frame segment; retain the suffix */
     }
-    is->audio_write_buf_size = is->audio_buf_size - is->audio_buf_index;
-    /* Let's assume the audio driver that is used by SDL has two periods. */
-    if (!isnan(is->audio_clock)) {
-        set_clock_at(&is->audclk, is->audio_clock - (double)(is->audio_write_buf_size) / is->audio_tgt.bytes_per_sec - SDL_AoutGetLatencySeconds(ffp->aout), is->audio_clock_serial, ffp->audio_callback_time / 1000000.0);
+    is->audio_write_buf_size = is->audio_buf ? is->audio_buf_size - is->audio_buf_index : 0;
+#if !defined(__ANDROID__)
+    /* Preserve the callback-entry clock anchor on other platforms. */
+    if (real_pcm_delivered && !isnan(is->audio_clock)) {
+        delivered_latency = SDL_AoutGetLatencySeconds(ffp->aout);
+        set_clock_at(&is->audclk, is->audio_clock - (double)(is->audio_write_buf_size) / is->audio_tgt.bytes_per_sec - delivered_latency, is->audio_clock_serial, ffp->audio_callback_time / 1000000.0);
         sync_clock_to_slave(&is->extclk, &is->audclk);
     }
+#endif
     if (!ffp->first_audio_frame_rendered) {
         ffp->first_audio_frame_rendered = 1;
         ffp_notify_msg1(ffp, FFP_MSG_AUDIO_RENDERING_START);
@@ -2747,6 +2971,91 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
             SDL_Delay(20);
         }
     }
+#if defined(__ANDROID__)
+    if (!submission && !is->abort_request && real_pcm_delivered && !isnan(is->audio_clock)) {
+        /* Decoding may wait for a slow codec startup. Anchor the delivered PCM
+         * after it is ready, including the manual-start wait and latency query,
+         * rather than charging that wait to the media playback position.
+         * Keep audio_callback_time as the callback-entry timestamp. */
+        double audio_latency = delivered_latency = SDL_AoutGetLatencySeconds(ffp->aout);
+        double audio_ready_time = av_gettime_relative() / 1000000.0;
+        set_clock_at(&is->audclk, is->audio_clock - (double)is->audio_write_buf_size / is->audio_tgt.bytes_per_sec - audio_latency,
+                     is->audio_clock_serial, audio_ready_time);
+        sync_clock_to_slave(&is->extclk, &is->audclk);
+    }
+#endif
+    if (!is->abort_request && real_pcm_delivered) {
+        double end = is->audio_clock -
+            (double)is->audio_write_buf_size / is->audio_tgt.bytes_per_sec;
+        if (submission) {
+            eof_clock_audio_stage(is, end, copied_serial,
+                                  is->audio_write_buf_size > 0, submission);
+        } else {
+            double latency = isfinite(delivered_latency) ? delivered_latency : SDL_AoutGetLatencySeconds(ffp->aout);
+            double now = av_gettime_relative() / 1000000.0;
+            eof_clock_audio_delivered(is, end, is->audio_clock_serial,
+                                     is->audio_write_buf_size > 0, latency, now);
+        }
+    }
+    eof_clock_audio_busy(is, 0);
+}
+
+static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
+{
+    sdl_audio_callback_internal(opaque, stream, len, NULL);
+}
+
+static void sdl_audio_submit_callback(void *opaque, Uint8 *stream, int len,
+                                      SDL_AudioSubmission *submission)
+{
+    sdl_audio_callback_internal(opaque, stream, len, submission);
+}
+
+static int sdl_audio_submission_callback(void *opaque,
+                                         const SDL_AudioSubmission *submission,
+                                         int action, int error)
+{
+    FFPlayer *ffp = opaque;
+    VideoState *is = ffp->is;
+    double accepted_end = NAN;
+    SDL_AudioPlaybackSnapshot position = { 0 };
+    if (is->audclk.source_aout)
+        SDL_AoutGetPlaybackPosition(is->audclk.source_aout, &position);
+    double latency = action == SDL_AUDIO_SUBMIT_COMMIT && submission->token ?
+        SDL_AoutGetLatencySeconds(ffp->aout) : 0;
+    /* Serialize a successful ACK with pause/resume, including its EOF model.
+     * The latency query above holds no playback/queue/backend mutex. */
+    if (action == SDL_AUDIO_SUBMIT_COMMIT)
+        SDL_LockMutex(is->play_mutex);
+    double now = av_gettime_relative() / 1000000.0;
+    int result = eof_clock_audio_submission(is, submission, action,
+        submission->clock_unsupported ? AVERROR(ENOSYS) : (error ? AVERROR(EIO) : 0),
+        latency, now, &accepted_end, is->audclk.source_aout ? &position : NULL);
+    if (result == SDL_AUDIO_SUBMIT_READY && action == SDL_AUDIO_SUBMIT_COMMIT &&
+        submission->token && !isnan(accepted_end) &&
+        (!is->audclk.paused || is->audclk.serial != submission->generation ||
+         !isfinite(is->audclk.pts))) {
+        /* Same-generation paused ACKs still commit ownership and deadlines.
+         * A first timestamp or a new seek generation may initialize the clock. */
+        double anchor = is->audclk.source_aout ? position.pts : accepted_end - latency;
+        if (!is->audclk.source_aout ||
+            (position.valid && position.generation == submission->generation &&
+             position.epoch == submission->output_epoch))
+            set_clock_at(&is->audclk, anchor, submission->generation, now);
+        sync_clock_to_slave(&is->extclk, &is->audclk);
+    }
+    if (action == SDL_AUDIO_SUBMIT_COMMIT)
+        SDL_UnlockMutex(is->play_mutex);
+    if (action == SDL_AUDIO_SUBMIT_FAIL || action == SDL_AUDIO_SUBMIT_DEVICE_FAIL)
+        SDL_CondSignal(is->continue_read_thread);
+    return result;
+}
+
+static int sdl_audio_rate_applied(void *opaque, const SDL_AudioRateApplied *applied)
+{
+    FFPlayer *ffp = opaque;
+    return ffp && ffp->is && !ffp->is->abort_request ?
+        eof_clock_rate_applied(ffp->is, applied) : 0;
 }
 
 static int audio_open(FFPlayer *opaque, int64_t wanted_channel_layout, int wanted_nb_channels, int wanted_sample_rate, struct AudioParams *audio_hw_params)
@@ -2784,6 +3093,12 @@ static int audio_open(FFPlayer *opaque, int64_t wanted_channel_layout, int wante
     wanted_spec.silence = 0;
     wanted_spec.samples = FFMAX(SDL_AUDIO_MIN_BUFFER_SIZE, 2 << av_log2(wanted_spec.freq / SDL_AoutGetAudioPerSecondCallBacks(ffp->aout)));
     wanted_spec.callback = sdl_audio_callback;
+    wanted_spec.callback_submit = sdl_audio_submit_callback;
+    wanted_spec.submission = sdl_audio_submission_callback;
+    wanted_spec.rate_applied = is->platform_rate_mode ? sdl_audio_rate_applied : NULL;
+    if (is->platform_rate_mode)
+        SDL_AoutRequestPlatformRate(ffp->aout, ffp->pf_playback_rate, ffp->soundtouch_enable,
+            SDL_AUDIO_RATE_SPEED | SDL_AUDIO_RATE_PITCH_POLICY);
     wanted_spec.userdata = opaque;
     while (SDL_AoutOpenAudio(ffp->aout, &wanted_spec, &spec) < 0) {
         /* avoid infinity loop on exit. --by bbcallen */
@@ -3124,6 +3439,7 @@ static int read_thread(void *arg)
     is->last_audio_stream = is->audio_stream = -1;
     is->last_subtitle_stream = is->subtitle_stream = -1;
     is->eof = 0;
+    eof_clock_demux(is, 0);
 
     ic = avformat_alloc_context();
     if (!ic) {
@@ -3309,7 +3625,9 @@ static int read_thread(void *arg)
 
     /* open the streams */
     if (st_index[AVMEDIA_TYPE_AUDIO] >= 0) {
-        stream_component_open(ffp, st_index[AVMEDIA_TYPE_AUDIO]);
+        is->platform_rate_mode = is->platform_rate_capable;
+        if (stream_component_open(ffp, st_index[AVMEDIA_TYPE_AUDIO]) < 0)
+            is->platform_rate_mode = 0;
     } else {
         ffp->av_sync_type = AV_SYNC_VIDEO_MASTER;
         is->av_sync_type  = ffp->av_sync_type;
@@ -3384,6 +3702,12 @@ static int read_thread(void *arg)
     for (;;) {
         if (is->abort_request)
             break;
+        int audio_output_error = eof_clock_audio_output_error(is);
+        if (audio_output_error) {
+            last_error = audio_output_error;
+            ret = audio_output_error;
+            goto fail;
+        }
 #ifdef FFP_MERGE
         if (is->paused != is->last_paused) {
             is->last_paused = is->paused;
@@ -3448,6 +3772,9 @@ static int read_thread(void *arg)
             is->seek_req = 0;
             is->queue_attachments_req = 1;
             is->eof = 0;
+            if (ret >= 0)
+                eof_clock_demux(is, 0);
+            eof_clock_seek(is, 0);
 #ifdef FFP_MERGE
             if (is->paused)
                 step_to_next_frame(is);
@@ -3514,7 +3841,7 @@ static int read_thread(void *arg)
             continue;
         }
         if ((!is->paused || completed) &&
-            (!is->audio_st || (is->auddec.finished == is->audioq.serial && frame_queue_nb_remaining(&is->sampq) == 0)) &&
+            (!is->audio_st || audio_tail_drained(is)) &&
             (!is->video_st || (is->viddec.finished == is->videoq.serial && frame_queue_nb_remaining(&is->pictq) == 0))) {
             if (ffp->loop != 1 && (!ffp->loop || --ffp->loop)) {
                 stream_seek(is, ffp->start_time != AV_NOPTS_VALUE ? ffp->start_time : 0, 0, 0);
@@ -3576,6 +3903,7 @@ static int read_thread(void *arg)
                 if (is->subtitle_stream >= 0)
                     packet_queue_put_nullpacket(&is->subtitleq, is->subtitle_stream);
                 is->eof = 1;
+                eof_clock_demux(is, 1);
             }
             if (pb_error) {
                 if (is->video_stream >= 0)
@@ -3585,6 +3913,7 @@ static int read_thread(void *arg)
                 if (is->subtitle_stream >= 0)
                     packet_queue_put_nullpacket(&is->subtitleq, is->subtitle_stream);
                 is->eof = 1;
+                eof_clock_demux(is, 1);
                 ffp->error = pb_error;
                 av_log(ffp, AV_LOG_ERROR, "av_read_frame error: %s\n", ffp_get_error_string(ffp->error));
                 // break;
@@ -3602,6 +3931,7 @@ static int read_thread(void *arg)
             continue;
         } else {
             is->eof = 0;
+            eof_clock_demux(is, 0);
         }
 
         if (pkt->flags & AV_PKT_FLAG_DISCONTINUITY) {
@@ -3682,6 +4012,12 @@ static VideoState *stream_open(FFPlayer *ffp, const char *filename, IJK_AVInputF
     is = av_mallocz(sizeof(VideoState));
     if (!is)
         return NULL;
+    /* Capability is immutable for this VideoState. Platform tempo consumes
+     * unchanged PCM, preserving every existing head-to-media mapping. */
+    is->platform_rate_capable = ffp->aout && ffp->aout->func_get_playback_position &&
+        SDL_AoutSupportsPlatformRate(ffp->aout);
+    /* Capture policy before the read thread applies its no-audio fallback. */
+    is->requested_av_sync_type = ffp->av_sync_type;
     is->filename = av_strdup(filename);
     if (!is->filename)
         goto fail;
@@ -3689,7 +4025,7 @@ static VideoState *stream_open(FFPlayer *ffp, const char *filename, IJK_AVInputF
     is->ytop    = 0;
     is->xleft   = 0;
 #if defined(__ANDROID__)
-    if (ffp->soundtouch_enable) {
+    if (ffp->soundtouch_enable && !is->platform_rate_capable) {
         is->handle = ijk_soundtouch_create();
     }
 #endif
@@ -3724,6 +4060,9 @@ static VideoState *stream_open(FFPlayer *ffp, const char *filename, IJK_AVInputF
 
     init_clock(&is->vidclk, &is->videoq.serial);
     init_clock(&is->audclk, &is->audioq.serial);
+    /* Immutable for this VideoState, published before workers start. Reopening
+     * the device changes only mutex-protected backend state. */
+    is->audclk.source_aout = ffp->aout && ffp->aout->func_get_playback_position ? ffp->aout : NULL;
     init_clock(&is->extclk, &is->extclk.serial);
     is->audio_clock_serial = -1;
     if (ffp->startup_volume < 0)
@@ -3738,11 +4077,21 @@ static VideoState *stream_open(FFPlayer *ffp, const char *filename, IJK_AVInputF
 
     is->play_mutex = SDL_CreateMutex();
     is->accurate_seek_mutex = SDL_CreateMutex();
+    is->eof_clock.mutex = SDL_CreateMutex();
+    is->eof_clock.audio_finished_serial = is->eof_clock.audio_serial = is->eof_clock.video_serial = -1;
+    is->eof_clock.audio_end = is->eof_clock.video_pts = is->eof_clock.video_end = NAN;
+    is->eof_clock.video_applied_rate = 1.0;
+    is->eof_clock.applied_rate_generation = -1;
+    is->eof_clock.audio_pause_pts = NAN;
+    is->eof_clock.audio_pause_serial = -1;
     ffp->is = is;
+    if (!is->eof_clock.mutex)
+        goto fail;
     is->pause_req = !ffp->start_on_prepared;
 
     is->video_refresh_tid = SDL_CreateThreadEx(&is->_video_refresh_tid, video_refresh_thread, ffp, "ff_vout");
     if (!is->video_refresh_tid) {
+        SDL_DestroyMutex(is->eof_clock.mutex);
         av_freep(&ffp->is);
         return NULL;
     }
@@ -4212,6 +4561,11 @@ void ffp_set_option_int(FFPlayer *ffp, int opt_category, const char *name, int64
 
     AVDictionary **dict = ffp_get_opt_dict(ffp, opt_category);
     av_dict_set_int(dict, name, value, 0);
+    /* This option normally configures the next prepare. The capable platform
+     * route explicitly supports the public GSY live pitch-policy request. */
+    if (opt_category == FFP_OPT_CATEGORY_PLAYER && name && !strcmp(name, "soundtouch") &&
+        ffp->is && ffp->is->platform_rate_mode && ffp->is->audio_st)
+        SDL_AoutRequestPlatformRate(ffp->aout, 1.0f, value != 0, SDL_AUDIO_RATE_PITCH_POLICY);
 }
 
 void ffp_set_option_intptr(FFPlayer *ffp, int opt_category, const char *name, uintptr_t value)
@@ -4481,7 +4835,29 @@ long ffp_get_current_position_l(FFPlayer *ffp)
         start_diff = fftime_to_milliseconds(start_time);
 
     int64_t pos = 0;
-    double pos_ms = get_master_clock(is) * 1000;
+    SDL_LockMutex(is->play_mutex);
+    double position_clock = get_master_clock(is);
+    if (is->audio_st && is->audclk.paused &&
+        get_default_master_sync_type(is) == AV_SYNC_AUDIO_MASTER) {
+        EOFClockView tail = eof_clock_view(is);
+        /* A late ACK can change the terminal interval while pause is active.
+         * Keep its drain accounting, but expose the captured paused position.
+         * Unknown terminal PTS and drained A/V handoff retain their semantics. */
+        if (!tail.audio_drained &&
+            (!tail.audio_terminal || isfinite(tail.audio_clock)))
+            position_clock = get_clock(&is->audclk);
+    }
+    /* Preserve the public paused position for the automatic video-only
+     * fallback: historically it is the last vidclk PTS, not elapsed time
+     * inside that frame. This also applies to completion's automatic pause.
+     * Keep the EOF master interval intact for drain, scheduling and resume;
+     * get_clock still rejects a stale queue serial after a seek. */
+    if (is->requested_av_sync_type == AV_SYNC_AUDIO_MASTER &&
+        is->av_sync_type == AV_SYNC_VIDEO_MASTER &&
+        !is->audio_st && is->video_st && is->vidclk.paused)
+        position_clock = get_clock(&is->vidclk);
+    SDL_UnlockMutex(is->play_mutex);
+    double pos_ms = position_clock * 1000;
     /* Clocks are NaN until a timestamp is available (also after a queue serial
      * change). Never convert a non-finite or out-of-range double to int64_t.
      * The upper bound is exclusive: (double)INT64_MAX rounds up to 2^63. */
@@ -4841,6 +5217,8 @@ void ffp_set_playback_rate(FFPlayer *ffp, float rate)
     av_log(ffp, AV_LOG_INFO, "Playback rate: %f\n", rate);
     ffp->pf_playback_rate = rate;
     ffp->pf_playback_rate_changed = 1;
+    if (ffp->is && ffp->is->platform_rate_mode && ffp->is->audio_st)
+        SDL_AoutRequestPlatformRate(ffp->aout, rate, 0, SDL_AUDIO_RATE_SPEED);
 }
 
 void ffp_set_playback_volume(FFPlayer *ffp, float volume)

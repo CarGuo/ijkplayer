@@ -32,6 +32,8 @@
 #include "ijkplayer/ff_ffplay.h"
 #include "ijkplayer/ff_ffplay_debug.h"
 #include "ffamc_ffmpeg.h"
+#include "libavutil/time.h"
+#include "ffamc_visible_size.h"
 #include "ffamc_packet_queue.h"
 #include "mpeg4_esds.h"
 #include "ffpipeline_android.h"
@@ -80,6 +82,20 @@ typedef struct IJKFF_Pipenode_Opaque {
     AVBSFContext             *bsfc;
     AVPacket                  filtered_packet; // owns pkt_temp's data
     bool                      bsf_pending;
+    bool                      real_output_seen; // monotonic for this node
+    bool                      terminal_error_notified; // output-owner only, monotonic
+    bool                      input_eos_queued; // feeder-owned, reset on flush
+    bool                      output_eos_seen; // protected by acodec_mutex
+    int                       output_eos_serial;
+
+    AVCodecParameters        *hevc_next_codecpar; // feeder-owned
+    AVCodecParameters        *hevc_active_csd; // canonical configured CSD
+    AVCodecParameters        *hevc_next_csd; // staged Annex B CSD; preserve active BSF state
+    bool                      hevc_boundary_pending; // acodec_mutex
+    bool                      hevc_boundary_drained; // acodec_mutex
+    int                       hevc_boundary_serial;
+    int64_t                   hevc_drain_idle_since_us;
+    bool                      hevc_packet_checked; // feeder cursor, reset for each new filtered AU
 
     SDL_Thread               _enqueue_thread;
     SDL_Thread               *enqueue_thread;
@@ -114,14 +130,10 @@ typedef struct IJKFF_Pipenode_Opaque {
     volatile bool             abort;
 } IJKFF_Pipenode_Opaque;
 
-static bool should_fallback_to_ffplay(FFPlayer *ffp)
-{
-    if (!ffp || !ffp->is)
-        return false;
-    if (!ffp->mediacodec_auto_fallback || ffp->mediacodec_auto_fallback_triggered)
-        return false;
-    return !ffp->is->viddec.queue->abort_request && !ffp->is->viddec.first_frame_decoded;
-}
+static void cancel_hevc_generation_l(IJKFF_Pipenode_Opaque *opaque);
+
+#include "ffamc_eos_policy.h"
+#include "ffamc_error_policy.h"
 
 static int fallback_to_ffplay_decoder(IJKFF_Pipenode *node)
 {
@@ -212,6 +224,10 @@ static int recreate_format_l(JNIEnv *env, IJKFF_Pipenode *node)
     }
     if (opaque->bsfc)
         csd_par = opaque->bsfc->par_out;
+    if (opaque->hevc_active_csd)
+        csd_par = opaque->hevc_active_csd;
+    if (opaque->hevc_next_csd)
+        csd_par = opaque->hevc_next_csd;
 
     ALOGI("AMediaFormat: %s, %dx%d\n", opaque->mcc.mime_type, opaque->codecpar->width, opaque->codecpar->height);
     SDL_AMediaFormat_deleteP(&opaque->output_aformat);
@@ -262,14 +278,15 @@ static int reconfigure_codec_l(JNIEnv *env, IJKFF_Pipenode *node, jobject new_su
     jobject                prev_jsurface = NULL;
 
     prev_jsurface = opaque->jsurface;
-    if (new_surface) {
-        opaque->jsurface = (*env)->NewGlobalRef(env, new_surface);
-        if (J4A_ExceptionCheck__catchAll(env) || !opaque->jsurface)
-            goto fail;
-    } else {
-        opaque->jsurface = NULL;
+    jobject retained_surface = new_surface ? (*env)->NewGlobalRef(env, new_surface) : NULL;
+    // Always clear a pending JNI exception, including when NewGlobalRef is NULL.
+    bool reference_error = J4A_ExceptionCheck__catchAll(env);
+    if (reference_error || (new_surface && !retained_surface)) {
+        J4A_DeleteGlobalRef__p(env, &retained_surface);
+        ret = AVERROR_EXTERNAL;
+        goto fail; // original Surface reference and codec remain owned/intact
     }
-
+    opaque->jsurface = retained_surface;
     SDL_JNI_DeleteGlobalRefP(env, &prev_jsurface);
 
     if (!opaque->acodec) {
@@ -318,6 +335,16 @@ static int reconfigure_codec_l(JNIEnv *env, IJKFF_Pipenode *node, jobject new_su
         goto fail;
     }
 
+    // Old codec indices and EOS state cannot survive start/recreation.
+    // Surface lifecycle cancels old codec drain, not staged authoritative CSD.
+    opaque->hevc_boundary_pending = false;
+    opaque->hevc_boundary_drained = false;
+    opaque->hevc_drain_idle_since_us = 0;
+    opaque->input_packet_count = 0;
+    opaque->input_eos_queued = false;
+    opaque->output_eos_seen = false;
+    opaque->off_buf_out = 0;
+    opaque->last_queued_pts = AV_NOPTS_VALUE;
     opaque->acodec_first_dequeue_output_request = true;
     ALOGI("%s:new acodec: %p\n", __func__, opaque->acodec);
     SDL_VoutAndroid_setAMediaCodec(opaque->weak_vout, opaque->acodec);
@@ -382,6 +409,11 @@ static int configure_codec_l(JNIEnv *env, IJKFF_Pipenode *node, jobject new_surf
         goto fail;
     }
 
+    // Old codec indices and EOS state cannot survive start/recreation.
+    opaque->input_eos_queued = false;
+    opaque->output_eos_seen = false;
+    opaque->off_buf_out = 0;
+    opaque->last_queued_pts = AV_NOPTS_VALUE;
     opaque->acodec_first_dequeue_output_request = true;
     ALOGI("%s:new acodec: %p\n", __func__, opaque->acodec);
     SDL_VoutAndroid_setAMediaCodec(opaque->weak_vout, opaque->acodec);
@@ -430,10 +462,15 @@ static int amc_fill_frame(
     *got_frame = 1;
     return 0;
 fail:
+    if (!(buffer_info->flags & AMEDIACODEC__BUFFER_FLAG_FAKE_FRAME) &&
+        acodec_serial == SDL_AMediaCodec_getSerial(opaque->acodec))
+        SDL_AMediaCodec_releaseOutputBuffer(opaque->acodec, output_buffer_index, false);
     *got_frame = 0;
     return -1;
 }
 
+#include "ffamc_eos.h"
+#include "ffamc_generation.h"
 #include "ffamc_input.h"
 
 static int feed_input_buffer2(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, int *enqueue_count)
@@ -463,56 +500,80 @@ static int feed_input_buffer2(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs,
     if (ret < 0)
         goto fail;
 
-    if (d->pkt_temp.data) {
-        // reconfigure surface if surface changed
-        // NULL surface cause no display
-        if (ffpipeline_is_surface_need_reconfigure_l(pipeline)) {
-            jobject new_surface = NULL;
+    // reconfigure surface if surface changed
+    // NULL surface cause no display
+    if (ffpipeline_is_surface_need_reconfigure_l(pipeline)) {
+        jobject new_surface = NULL;
 
-            // request reconfigure before lock, or never get mutex
-            ffpipeline_lock_surface(pipeline);
-            ffpipeline_set_surface_need_reconfigure_l(pipeline, false);
-            new_surface = ffpipeline_get_surface_as_global_ref_l(env, pipeline);
-            ffpipeline_unlock_surface(pipeline);
+        // request reconfigure before lock, or never get mutex
+        ffpipeline_lock_surface(pipeline);
+        ffpipeline_set_surface_need_reconfigure_l(pipeline, false);
+        new_surface = ffpipeline_get_surface_as_global_ref_l(env, pipeline);
+        ffpipeline_unlock_surface(pipeline);
 
-            if (!opaque->aformat_need_recreate &&
-                (opaque->jsurface == new_surface ||
-                (opaque->jsurface && new_surface && (*env)->IsSameObject(env, new_surface, opaque->jsurface)))) {
-                ALOGI("%s: same surface, reuse previous surface\n", __func__);
-                J4A_DeleteGlobalRef__p(env, &new_surface);
-            } else {
-                if (d->queue->abort_request) {
-                    ret = ACODEC_EXIT;
+        if (!opaque->aformat_need_recreate &&
+            (opaque->jsurface == new_surface ||
+            (opaque->jsurface && new_surface && (*env)->IsSameObject(env, new_surface, opaque->jsurface)))) {
+            ALOGI("%s: same surface, reuse previous surface\n", __func__);
+            J4A_DeleteGlobalRef__p(env, &new_surface);
+        } else {
+            if (d->queue->abort_request) {
+                ret = ACODEC_EXIT;
+                goto fail;
+            }
+
+            if (opaque->aformat_need_recreate) {
+                ALOGI("%s: recreate aformat\n", __func__);
+                ret = recreate_format_l(env, node);
+                if (ret) {
+                    ALOGE("amc: recreate_format_l failed\n");
                     goto fail;
                 }
+                opaque->aformat_need_recreate = false;
+            }
 
-                if (opaque->aformat_need_recreate) {
-                    ALOGI("%s: recreate aformat\n", __func__);
-                    ret = recreate_format_l(env, node);
-                    if (ret) {
-                        ALOGE("amc: recreate_format_l failed\n");
-                        goto fail;
-                    }
-                    opaque->aformat_need_recreate = false;
-                }
+            ret = reconfigure_codec_l(env, node, new_surface);
 
-                ret = reconfigure_codec_l(env, node, new_surface);
+            J4A_DeleteGlobalRef__p(env, &new_surface);
 
-                J4A_DeleteGlobalRef__p(env, &new_surface);
+            if (ret != 0) {
+                ALOGE("%s: reconfigure_codec failed\n", __func__);
+                ret = -1;
+                goto fail;
+            }
 
-                if (ret != 0) {
-                    ALOGE("%s: reconfigure_codec failed\n", __func__);
-                    ret = -1;
-                    goto fail;
-                }
-
-                if (q->abort_request || opaque->acodec_flush_request) {
-                    ret = 0;
-                    goto fail;
-                }
+            if (q->abort_request || opaque->acodec_flush_request) {
+                ret = 0;
+                goto fail;
             }
         }
+    }
 
+    if (codec_input_is_eof(d) && !d->pkt_temp.data && !opaque->bsf_pending)
+        return feed_codec_eos(node, timeUs, false, enqueue_count);
+
+    // prepare_input_packet has already processed packet side data. A
+    // configuration-only packet has no access-unit bytes to submit.
+    if (d->pkt_temp.size <= 0) {
+        ret = advance_hevc_generation(env, node, false, timeUs, enqueue_count);
+        if (ret < 0)
+            goto fail;
+        if (ret > 0)
+            return 0;
+        d->packet_pending = 0;
+        return 0;
+    }
+
+    if (d->pkt_temp.data) {
+
+
+        // Surface replacement/removal has priority over a pending drain;
+        // successful recreation intentionally cancels old-surface ownership.
+        ret = advance_hevc_generation(env, node, false, timeUs, enqueue_count);
+        if (ret < 0)
+            goto fail;
+        if (ret > 0)
+            return 0;
         queue_flags = 0;
         input_buffer_index = SDL_AMediaCodec_dequeueInputBuffer(opaque->acodec, timeUs);
         if (input_buffer_index == AMEDIACODEC__UNKNOWN_ERROR) {
@@ -572,11 +633,8 @@ static int feed_input_buffer2(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs,
             if (d->pkt_temp.size <= 0)
                 d->packet_pending = 0;
         } else {
-            // FIXME: detect if decode finished
-            // if (!got_frame) {
-                d->packet_pending = 0;
-                d->finished = d->pkt_serial;
-            // }
+            // Side-data/configuration packets are not end-of-stream.
+            d->packet_pending = 0;
         }
     }
 
@@ -611,64 +669,81 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
     if (ret < 0)
         goto fail;
 
-    if (d->pkt_temp.data) {
-        // reconfigure surface if surface changed
-        // NULL surface cause no display
-        if (ffpipeline_is_surface_need_reconfigure_l(pipeline)) {
-            jobject new_surface = NULL;
+    // reconfigure surface if surface changed
+    // NULL surface cause no display
+    if (ffpipeline_is_surface_need_reconfigure_l(pipeline)) {
+        jobject new_surface = NULL;
 
-            // request reconfigure before lock, or never get mutex
-            ffpipeline_lock_surface(pipeline);
-            ffpipeline_set_surface_need_reconfigure_l(pipeline, false);
-            new_surface = ffpipeline_get_surface_as_global_ref_l(env, pipeline);
-            ffpipeline_unlock_surface(pipeline);
+        // request reconfigure before lock, or never get mutex
+        ffpipeline_lock_surface(pipeline);
+        ffpipeline_set_surface_need_reconfigure_l(pipeline, false);
+        new_surface = ffpipeline_get_surface_as_global_ref_l(env, pipeline);
+        ffpipeline_unlock_surface(pipeline);
 
-            if (!opaque->aformat_need_recreate &&
-                (opaque->jsurface == new_surface ||
-                (opaque->jsurface && new_surface && (*env)->IsSameObject(env, new_surface, opaque->jsurface)))) {
-                ALOGI("%s: same surface, reuse previous surface\n", __func__);
-                J4A_DeleteGlobalRef__p(env, &new_surface);
-            } else {
-                if (opaque->aformat_need_recreate) {
-                    ALOGI("%s: recreate aformat\n", __func__);
-                    ret = recreate_format_l(env, node);
-                    if (ret) {
-                        ALOGE("amc: recreate_format_l failed\n");
-                        goto fail;
-                    }
-                    opaque->aformat_need_recreate = false;
-                }
-
-                opaque->acodec_reconfigure_request = true;
-                SDL_LockMutex(opaque->acodec_mutex);
-                ret = reconfigure_codec_l(env, node, new_surface);
-                opaque->acodec_reconfigure_request = false;
-                SDL_CondSignal(opaque->acodec_cond);
-                SDL_UnlockMutex(opaque->acodec_mutex);
-
-                J4A_DeleteGlobalRef__p(env, &new_surface);
-
-                if (ret != 0) {
-                    ALOGE("%s: reconfigure_codec failed\n", __func__);
-                    ret = -1;
+        if (!opaque->aformat_need_recreate &&
+            (opaque->jsurface == new_surface ||
+            (opaque->jsurface && new_surface && (*env)->IsSameObject(env, new_surface, opaque->jsurface)))) {
+            ALOGI("%s: same surface, reuse previous surface\n", __func__);
+            J4A_DeleteGlobalRef__p(env, &new_surface);
+        } else {
+            if (opaque->aformat_need_recreate) {
+                ALOGI("%s: recreate aformat\n", __func__);
+                ret = recreate_format_l(env, node);
+                if (ret) {
+                    ALOGE("amc: recreate_format_l failed\n");
                     goto fail;
                 }
+                opaque->aformat_need_recreate = false;
+            }
 
-                SDL_LockMutex(opaque->acodec_first_dequeue_output_mutex);
-                while (!q->abort_request && !opaque->abort &&
-                    !opaque->acodec_reconfigure_request &&
-                    !opaque->acodec_flush_request &&
-                    opaque->acodec_first_dequeue_output_request) {
-                    SDL_CondWaitTimeout(opaque->acodec_first_dequeue_output_cond, opaque->acodec_first_dequeue_output_mutex, 100);
-                }
-                SDL_UnlockMutex(opaque->acodec_first_dequeue_output_mutex);
+            opaque->acodec_reconfigure_request = true;
+            SDL_LockMutex(opaque->acodec_mutex);
+            ret = reconfigure_codec_l(env, node, new_surface);
+            opaque->acodec_reconfigure_request = false;
+            SDL_CondSignal(opaque->acodec_cond);
+            SDL_UnlockMutex(opaque->acodec_mutex);
 
-                if (q->abort_request || opaque->acodec_reconfigure_request || opaque->acodec_flush_request) {
-                    ret = 0;
-                    goto fail;
-                }
+            J4A_DeleteGlobalRef__p(env, &new_surface);
+
+            if (ret != 0) {
+                ALOGE("%s: reconfigure_codec failed\n", __func__);
+                ret = -1;
+                goto fail;
+            }
+
+            SDL_LockMutex(opaque->acodec_first_dequeue_output_mutex);
+            while (!q->abort_request && !opaque->abort &&
+                !opaque->acodec_reconfigure_request &&
+                !opaque->acodec_flush_request &&
+                opaque->acodec_first_dequeue_output_request) {
+                SDL_CondWaitTimeout(opaque->acodec_first_dequeue_output_cond, opaque->acodec_first_dequeue_output_mutex, 100);
+            }
+            SDL_UnlockMutex(opaque->acodec_first_dequeue_output_mutex);
+
+            if (q->abort_request || opaque->acodec_reconfigure_request || opaque->acodec_flush_request) {
+                ret = 0;
+                goto fail;
             }
         }
+    }
+
+    if (codec_input_is_eof(d) && !d->pkt_temp.data && !opaque->bsf_pending)
+        return feed_codec_eos(node, timeUs, true, enqueue_count);
+
+    // prepare_input_packet has already processed packet side data. A
+    // configuration-only packet has no access-unit bytes to submit.
+    if (d->pkt_temp.size <= 0) {
+        ret = advance_hevc_generation(env, node, true, timeUs, enqueue_count);
+        if (ret < 0)
+            goto fail;
+        if (ret > 0)
+            return 0;
+        d->packet_pending = 0;
+        return 0;
+    }
+
+    if (d->pkt_temp.data) {
+
 
 #if 0
         // no need to decode without surface
@@ -678,6 +753,13 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
         }
 #endif
 
+        // Surface replacement/removal has priority over a pending drain;
+        // successful recreation intentionally cancels old-surface ownership.
+        ret = advance_hevc_generation(env, node, true, timeUs, enqueue_count);
+        if (ret < 0)
+            goto fail;
+        if (ret > 0)
+            return 0;
         queue_flags = 0;
         input_buffer_index = SDL_AMediaCodec_dequeueInputBuffer(opaque->acodec, timeUs);
         if (input_buffer_index == AMEDIACODEC__UNKNOWN_ERROR) {
@@ -737,11 +819,8 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
             if (d->pkt_temp.size <= 0)
                 d->packet_pending = 0;
         } else {
-            // FIXME: detect if decode finished
-            // if (!got_frame) {
-                d->packet_pending = 0;
-                d->finished = d->pkt_serial;
-            // }
+            // Side-data/configuration packets are not end-of-stream.
+            d->packet_pending = 0;
         }
     }
 
@@ -828,8 +907,12 @@ static int drain_output_buffer_l(JNIEnv *env, IJKFF_Pipenode *node, int64_t time
 
     if (JNI_OK != SDL_JNI_SetupThreadEnv(&env)) {
         ALOGE("%s:create: SetupThreadEnv failed\n", __func__);
+        ret = AVERROR_EXTERNAL;
         goto fail;
     }
+
+    if (opaque->output_eos_seen)
+        return drain_codec_eos(node, frame, got_frame, true);
 
     output_buffer_index = SDL_AMediaCodecFake_dequeueOutputBuffer(opaque->acodec, &bufferInfo, timeUs);
     if (output_buffer_index == AMEDIACODEC__INFO_OUTPUT_BUFFERS_CHANGED) {
@@ -856,12 +939,20 @@ static int drain_output_buffer_l(JNIEnv *env, IJKFF_Pipenode *node, int64_t time
 
             SDL_AMediaFormat_getInt32(opaque->output_aformat, "stride",         &stride);
             SDL_AMediaFormat_getInt32(opaque->output_aformat, "slice-height",   &slice_height);
-            SDL_AMediaFormat_getInt32(opaque->output_aformat, "crop-left",      &crop_left);
-            SDL_AMediaFormat_getInt32(opaque->output_aformat, "crop-top",       &crop_top);
-            SDL_AMediaFormat_getInt32(opaque->output_aformat, "crop-right",     &crop_right);
-            SDL_AMediaFormat_getInt32(opaque->output_aformat, "crop-bottom",    &crop_bottom);
+            int crop_mask = 0;
+            if (SDL_AMediaFormat_getInt32(opaque->output_aformat, "crop-left", &crop_left)) crop_mask |= 1;
+            if (SDL_AMediaFormat_getInt32(opaque->output_aformat, "crop-top", &crop_top)) crop_mask |= 2;
+            if (SDL_AMediaFormat_getInt32(opaque->output_aformat, "crop-right", &crop_right)) crop_mask |= 4;
+            if (SDL_AMediaFormat_getInt32(opaque->output_aformat, "crop-bottom", &crop_bottom)) crop_mask |= 8;
+            if (opaque->codecpar->codec_id == AV_CODEC_ID_HEVC &&
+                ijk_amc_visible_size(width, height, crop_mask,
+                    crop_left, crop_top, crop_right, crop_bottom,
+                    opaque->frame_rotate_degrees,
+                    &opaque->frame_width, &opaque->frame_height) < 0)
+                return AVERROR_INVALIDDATA;
 
-            // TI decoder could crash after reconfigure
+            // Preserve the historical non-HEVC/TI workaround. HEVC frame sizes
+            // above flow through normal per-frame size notifications.
             // ffp_notify_msg3(ffp, FFP_MSG_VIDEO_SIZE_CHANGED, width, height);
             // opaque->frame_width  = width;
             // opaque->frame_height = height;
@@ -887,6 +978,12 @@ static int drain_output_buffer_l(JNIEnv *env, IJKFF_Pipenode *node, int64_t time
         ret = AVERROR_EXTERNAL;
         goto fail;
     } else if (output_buffer_index >= 0) {
+        int consumed = receive_codec_eos(node, output_buffer_index, &bufferInfo);
+        if (consumed < 0)
+            return consumed;
+        if (consumed)
+            return 0;
+        record_codec_output(node, &bufferInfo);
         ffp->stat.vdps = SDL_SpeedSamplerAdd(&opaque->sampler, FFP_SHOW_VDPS_MEDIACODEC, "vdps[MediaCodec]");
 
         if (dequeue_count)
@@ -980,8 +1077,6 @@ static int drain_output_buffer_l(JNIEnv *env, IJKFF_Pipenode *node, int64_t time
 done:
     if (opaque->decoder->queue->abort_request)
         ret = -1;
-    else
-        ret = 0;
 fail:
     return ret;
 }
@@ -990,6 +1085,7 @@ static int drain_output_buffer2_l(JNIEnv *env, IJKFF_Pipenode *node, int64_t tim
 {
     IJKFF_Pipenode_Opaque *opaque         = node->opaque;
     FFPlayer              *ffp            = opaque->ffp;
+    int ret = 0;
     SDL_AMediaCodecBufferInfo bufferInfo;
     ssize_t          output_buffer_index  = 0;
 
@@ -998,8 +1094,11 @@ static int drain_output_buffer2_l(JNIEnv *env, IJKFF_Pipenode *node, int64_t tim
 
     if (JNI_OK != SDL_JNI_SetupThreadEnv(&env)) {
         ALOGE("%s:create: SetupThreadEnv failed\n", __func__);
-        return ACODEC_EXIT;
+        return AVERROR_EXTERNAL;
     }
+
+    if (opaque->output_eos_seen)
+        return drain_codec_eos(node, frame, got_frame, false);
 
     output_buffer_index = SDL_AMediaCodecFake_dequeueOutputBuffer(opaque->acodec, &bufferInfo, timeUs);
     if (output_buffer_index == AMEDIACODEC__INFO_OUTPUT_BUFFERS_CHANGED) {
@@ -1026,12 +1125,20 @@ static int drain_output_buffer2_l(JNIEnv *env, IJKFF_Pipenode *node, int64_t tim
 
             SDL_AMediaFormat_getInt32(opaque->output_aformat, "stride",         &stride);
             SDL_AMediaFormat_getInt32(opaque->output_aformat, "slice-height",   &slice_height);
-            SDL_AMediaFormat_getInt32(opaque->output_aformat, "crop-left",      &crop_left);
-            SDL_AMediaFormat_getInt32(opaque->output_aformat, "crop-top",       &crop_top);
-            SDL_AMediaFormat_getInt32(opaque->output_aformat, "crop-right",     &crop_right);
-            SDL_AMediaFormat_getInt32(opaque->output_aformat, "crop-bottom",    &crop_bottom);
+            int crop_mask = 0;
+            if (SDL_AMediaFormat_getInt32(opaque->output_aformat, "crop-left", &crop_left)) crop_mask |= 1;
+            if (SDL_AMediaFormat_getInt32(opaque->output_aformat, "crop-top", &crop_top)) crop_mask |= 2;
+            if (SDL_AMediaFormat_getInt32(opaque->output_aformat, "crop-right", &crop_right)) crop_mask |= 4;
+            if (SDL_AMediaFormat_getInt32(opaque->output_aformat, "crop-bottom", &crop_bottom)) crop_mask |= 8;
+            if (opaque->codecpar->codec_id == AV_CODEC_ID_HEVC &&
+                ijk_amc_visible_size(width, height, crop_mask,
+                    crop_left, crop_top, crop_right, crop_bottom,
+                    opaque->frame_rotate_degrees,
+                    &opaque->frame_width, &opaque->frame_height) < 0)
+                return AVERROR_INVALIDDATA;
 
-            // TI decoder could crash after reconfigure
+            // Preserve the historical non-HEVC/TI workaround. HEVC frame sizes
+            // above flow through normal per-frame size notifications.
             // ffp_notify_msg3(ffp, FFP_MSG_VIDEO_SIZE_CHANGED, width, height);
             // opaque->frame_width  = width;
             // opaque->frame_height = height;
@@ -1055,8 +1162,14 @@ static int drain_output_buffer2_l(JNIEnv *env, IJKFF_Pipenode *node, int64_t tim
         return 0;
         // continue;
     } else if (output_buffer_index < 0) {
-        return ACODEC_EXIT;
+        return AVERROR_EXTERNAL;
     } else if (output_buffer_index >= 0) {
+        int consumed = receive_codec_eos(node, output_buffer_index, &bufferInfo);
+        if (consumed < 0)
+            return consumed;
+        if (consumed)
+            return 0;
+        record_codec_output(node, &bufferInfo);
         ffp->stat.vdps = SDL_SpeedSamplerAdd(&opaque->sampler, FFP_SHOW_VDPS_MEDIACODEC, "vdps[MediaCodec]");
 
         if (dequeue_count)
@@ -1087,7 +1200,7 @@ static int drain_output_buffer2_l(JNIEnv *env, IJKFF_Pipenode *node, int64_t tim
                 buf_out = &opaque->amc_buf_out[opaque->off_buf_out - 1];
                 /* new picture is the most aged, send now */
                 if (pts < buf_out->pts) {
-                    amc_fill_frame(node, frame, got_frame, output_buffer_index, SDL_AMediaCodec_getSerial(opaque->acodec), &bufferInfo);
+                    ret = amc_fill_frame(node, frame, got_frame, output_buffer_index, SDL_AMediaCodec_getSerial(opaque->acodec), &bufferInfo);
                     opaque->last_queued_pts = pts;
                     // ALOGD("pts = %f", pts);
                 } else {
@@ -1097,7 +1210,7 @@ static int drain_output_buffer2_l(JNIEnv *env, IJKFF_Pipenode *node, int64_t tim
                     for (i = opaque->off_buf_out - 1; i >= 0; i--) {
                         buf_out = &opaque->amc_buf_out[i];
                         if (pts > buf_out->pts) {
-                            amc_fill_frame(node, frame, got_frame, buf_out->port, buf_out->acodec_serial, &buf_out->info);
+                            ret = amc_fill_frame(node, frame, got_frame, buf_out->port, buf_out->acodec_serial, &buf_out->info);
                             opaque->last_queued_pts = buf_out->pts;
                             // ALOGD("pts = %f", buf_out->pts);
                             /* replace for sort later */
@@ -1120,11 +1233,11 @@ static int drain_output_buffer2_l(JNIEnv *env, IJKFF_Pipenode *node, int64_t tim
                 }
             }
         } else {
-            amc_fill_frame(node, frame, got_frame, output_buffer_index, SDL_AMediaCodec_getSerial(opaque->acodec), &bufferInfo);
+            ret = amc_fill_frame(node, frame, got_frame, output_buffer_index, SDL_AMediaCodec_getSerial(opaque->acodec), &bufferInfo);
         }
     }
 
-    return 0;
+    return ret < 0 ? AVERROR_EXTERNAL : ret;
 }
 
 static int drain_output_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, int *dequeue_count, AVFrame *frame, int *got_frame)
@@ -1142,6 +1255,8 @@ static int drain_output_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs
         // TODO: invalid picture here?
         // let feed_input_buffer() get mutex
         SDL_CondWaitTimeout(opaque->acodec_cond, opaque->acodec_mutex, 100);
+        SDL_UnlockMutex(opaque->acodec_mutex);
+        return 0;
     }
 
     ret = drain_output_buffer_l(env, node, timeUs, dequeue_count, frame, got_frame);
@@ -1170,6 +1285,9 @@ static void func_destroy(IJKFF_Pipenode *node)
     av_packet_unref(&opaque->filtered_packet);
     av_bsf_free(&opaque->bsfc);
 
+    avcodec_parameters_free(&opaque->hevc_next_codecpar);
+    avcodec_parameters_free(&opaque->hevc_next_csd);
+    avcodec_parameters_free(&opaque->hevc_active_csd);
     avcodec_parameters_free(&opaque->codecpar);
 
     JNIEnv *env = NULL;
@@ -1266,12 +1384,15 @@ static int func_run_sync_loop(IJKFF_Pipenode *node) {
 
     if (JNI_OK != SDL_JNI_SetupThreadEnv(&env)) {
         ALOGE("%s: SetupThreadEnv failed\n", __func__);
-        return -1;
+        ret = AVERROR_EXTERNAL;
+        goto fail;
     }
 
     frame = av_frame_alloc();
-    if (!frame)
+    if (!frame) {
+        ret = AVERROR(ENOMEM);
         goto fail;
+    }
 
     while (!q->abort_request) {
         ret = drain_output_buffer2(env, node, AMC_SYNC_OUTPUT_TIMEOUT_US, &dequeue_count, frame, frame_rate);
@@ -1298,9 +1419,11 @@ fail:
     SDL_AMediaCodec_stop(opaque->acodec);
     SDL_AMediaCodec_decreaseReferenceP(&opaque->acodec);
     ALOGI("MediaCodec: %s: exit: %d", __func__, ret);
-    if (ret < 0 && should_fallback_to_ffplay(ffp)) {
+    if (ret < 0 && ret != AVERROR_EXIT && !is->abort_request &&
+        should_fallback_to_ffplay(node)) {
         return fallback_to_ffplay_decoder(node);
     }
+    notify_codec_terminal_error(node, ret);
     return ret;
 }
 
@@ -1327,12 +1450,15 @@ static int func_run_sync(IJKFF_Pipenode *node)
 
     if (JNI_OK != SDL_JNI_SetupThreadEnv(&env)) {
         ALOGE("%s: SetupThreadEnv failed\n", __func__);
-        return -1;
+        ret = AVERROR_EXTERNAL;
+        goto fail;
     }
 
     frame = av_frame_alloc();
-    if (!frame)
+    if (!frame) {
+        ret = AVERROR(ENOMEM);
         goto fail;
+    }
 
     opaque->enqueue_thread = SDL_CreateThreadEx(&opaque->_enqueue_thread, enqueue_thread_func, node, "amediacodec_input_thread");
     if (!opaque->enqueue_thread) {
@@ -1352,7 +1478,6 @@ static int func_run_sync(IJKFF_Pipenode *node)
             SDL_UnlockMutex(opaque->acodec_first_dequeue_output_mutex);
         }
         if (ret != 0) {
-            ret = -1;
             if (got_frame && frame->opaque)
                 SDL_VoutAndroid_releaseBufferProxyP(opaque->weak_vout, (SDL_AMediaCodecBufferProxy **)&frame->opaque, false);
             goto fail;
@@ -1391,6 +1516,8 @@ static int func_run_sync(IJKFF_Pipenode *node)
                     SDL_VoutAndroid_releaseBufferProxyP(opaque->weak_vout, (SDL_AMediaCodecBufferProxy **)&frame->opaque, false);
             }
             av_frame_unref(frame);
+            if (ret < 0)
+                goto fail;
         }
     }
 
@@ -1420,9 +1547,11 @@ fail:
     SDL_AMediaCodec_stop(opaque->acodec);
     SDL_AMediaCodec_decreaseReferenceP(&opaque->acodec);
     ALOGI("MediaCodec: %s: exit: %d", __func__, ret);
-    if (ret < 0 && should_fallback_to_ffplay(ffp)) {
+    if (ret < 0 && ret != AVERROR_EXIT && !is->abort_request &&
+        should_fallback_to_ffplay(node)) {
         return fallback_to_ffplay_decoder(node);
     }
+    notify_codec_terminal_error(node, ret);
     return ret;
 }
 

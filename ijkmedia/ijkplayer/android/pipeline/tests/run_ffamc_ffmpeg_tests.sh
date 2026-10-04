@@ -61,3 +61,5 @@ done
 "$output_dir/ffamc_hevc_parameter_update_test" \
     "$output_dir/hevc-signhide-1.mp4" "$output_dir/hevc-signhide-0.mp4" \
     --muxed "$output_dir/hevc-inband-update.mp4"
+
+"$test_dir/run_ffamc_eos_tests.sh" "$output_dir"

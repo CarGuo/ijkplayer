@@ -205,7 +205,31 @@ typedef struct AudioParams {
     int bytes_per_sec;
 } AudioParams;
 
+typedef struct EOFClockState {
+    SDL_mutex *mutex;
+    int audio_finished_serial, audio_serial, audio_pending, audio_callback_busy;
+    double audio_end, audio_deadline;
+    double audio_pause_pts;
+    int audio_pause_serial;
+    /* A real buffer copied by the callback is not submitted until the backend
+     * acknowledges the entire write. Only the audio thread creates tokens. */
+    uint64_t audio_submit_next_token, audio_submit_token;
+    int audio_submit_pending, audio_submit_serial, audio_submit_buffer_pending;
+    double audio_submit_end;
+    uint64_t audio_output_epoch, audio_output_end_frame;
+    int audio_output_error, audio_output_error_serial;
+    int video_serial;
+    double video_pts, video_end, video_updated;
+    double video_applied_rate, video_applied_at;
+    uint64_t applied_rate_sequence, applied_rate_epoch;
+    int applied_rate_generation;
+    int demux_eof, seek_pending, paused;
+    double pause_at, last_resume_at;
+} EOFClockState;
+
 typedef struct Clock {
+    SDL_Aout *source_aout; /* optional sampled audio device clock */
+    volatile int source_head_logged; /* atomic once per Clock lifetime */
     double pts;           /* clock base */
     double pts_drift;     /* clock base minus time at which we updated the clock */
     double last_updated;
@@ -280,6 +304,8 @@ typedef struct Decoder {
 } Decoder;
 
 typedef struct VideoState {
+    int platform_rate_capable; /* fixed backend capability */
+    int platform_rate_mode; /* selected with a usable audio stream before decoding */
     SDL_Thread *read_tid;
     SDL_Thread _read_tid;
     IJK_AVInputFormat *iformat;
@@ -298,6 +324,7 @@ typedef struct VideoState {
     AVFormatContext *ic;
     int realtime;
 
+    EOFClockState eof_clock;
     Clock audclk;
     Clock vidclk;
     Clock extclk;
@@ -313,9 +340,11 @@ typedef struct VideoState {
     int audio_stream;
 
     int av_sync_type;
+    int requested_av_sync_type; /* immutable from allocation until stream_close */
     void *handle;
     double audio_clock;
     int audio_clock_serial;
+    int audio_clock_unsupported;
     double audio_diff_cum; /* used for AV difference average computation */
     double audio_diff_avg_coef;
     double audio_diff_threshold;

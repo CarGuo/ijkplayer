@@ -23,6 +23,7 @@
  */
 
 #include "android_audiotrack.h"
+#include <limits.h>
 
 #include <assert.h>
 #include "j4au/class/android/media/AudioTrack.util.h"
@@ -143,6 +144,43 @@ void SDL_Android_AudioTrack_set_volume(JNIEnv *env, SDL_Android_AudioTrack *atra
     J4AC_AudioTrack__setStereoVolume__catchAll(env, atrack->thiz, left_volume, right_volume);
 }
 
+/* Public read-back at construction, before any playback worker starts.
+ * getMinBufferSize and the constructor use bytes; both read-backs use PCM frames. */
+static int SDL_Android_AudioTrack_buffer_bytes_checked(JNIEnv *env,
+    SDL_Android_AudioTrack *atrack, int sdk_int, int base_min_bytes, int requested_bytes)
+{
+    int channels = find_sdl_channel(atrack->spec.channel_config);
+    int sample_bytes = SDL_AUDIO_BITSIZE(find_sdl_format(atrack->spec.audio_format)) / 8;
+    int frame_bytes = channels * sample_bytes;
+    jclass clazz = NULL;
+    jint effective_frames = -1, capacity_frames = -1;
+    int result = -1;
+    if (frame_bytes <= 0 || requested_bytes <= 0 || requested_bytes % frame_bytes)
+        goto done;
+    clazz = (*env)->GetObjectClass(env, atrack->thiz);
+    if (J4A_ExceptionCheck__catchAll(env) || !clazz) goto done;
+    jmethodID get_size = (*env)->GetMethodID(env, clazz, "getBufferSizeInFrames", "()I");
+    if (J4A_ExceptionCheck__catchAll(env) || !get_size) goto done;
+    effective_frames = (*env)->CallIntMethod(env, atrack->thiz, get_size);
+    if (J4A_ExceptionCheck__catchAll(env)) goto done;
+    if (sdk_int >= 24) {
+        jmethodID get_capacity = (*env)->GetMethodID(env, clazz, "getBufferCapacityInFrames", "()I");
+        if (J4A_ExceptionCheck__catchAll(env) || !get_capacity) goto done;
+        capacity_frames = (*env)->CallIntMethod(env, atrack->thiz, get_capacity);
+        if (J4A_ExceptionCheck__catchAll(env)) goto done;
+    }
+    if (effective_frames < requested_bytes / frame_bytes || effective_frames > INT_MAX / frame_bytes ||
+        (sdk_int >= 24 && capacity_frames < effective_frames))
+        goto done;
+    result = effective_frames * frame_bytes;
+done:
+    ALOGI("IJK_PLATFORM_BUFFER sdk=%d sample_rate=%d frame_bytes=%d min_bytes=%d requested_bytes=%d requested_frames=%d effective_frames=%d capacity_frames=%d accepted=%d",
+        sdk_int, atrack->spec.sample_rate_in_hz, frame_bytes, base_min_bytes, requested_bytes,
+        frame_bytes > 0 ? requested_bytes / frame_bytes : -1, effective_frames, capacity_frames, result > 0);
+    if (clazz) (*env)->DeleteLocalRef(env, clazz);
+    return result;
+}
+
 SDL_Android_AudioTrack *SDL_Android_AudioTrack_new_from_spec(JNIEnv *env, SDL_Android_AudioTrack_Spec *spec)
 {
     assert(spec);
@@ -211,7 +249,14 @@ SDL_Android_AudioTrack *SDL_Android_AudioTrack_new_from_spec(JNIEnv *env, SDL_An
     }
 
     // for fast playback
-    min_buffer_size *= AUDIOTRACK_PLAYBACK_MAXSPEED;
+    int sdk_int = J4A_GetSystemAndroidApiLevel(env);
+    int base_min_buffer_size = min_buffer_size;
+    int capacity_factor = sdk_int >= 23 ? 8 : AUDIOTRACK_PLAYBACK_MAXSPEED;
+    if (min_buffer_size > INT_MAX / capacity_factor) {
+        free(atrack);
+        return NULL;
+    }
+    min_buffer_size *= capacity_factor;
 
     atrack->thiz = J4AC_AudioTrack__AudioTrack__asGlobalRef__catchAll(env, 
         atrack->spec.stream_type,
@@ -223,6 +268,17 @@ SDL_Android_AudioTrack *SDL_Android_AudioTrack_new_from_spec(JNIEnv *env, SDL_An
     if (!atrack->thiz) {
         free(atrack);
         return NULL;
+    }
+
+    if (sdk_int >= 23) {
+        int actual_bytes = SDL_Android_AudioTrack_buffer_bytes_checked(env, atrack,
+            sdk_int, base_min_buffer_size, min_buffer_size);
+        if (actual_bytes <= 0) {
+            SDL_Android_AudioTrack_free(env, atrack);
+            return NULL;
+        }
+        /* Keep staging and submitted-PCM accounting sized to the actual track. */
+        min_buffer_size = actual_bytes;
     }
 
     atrack->min_buffer_size = min_buffer_size;
@@ -365,4 +421,36 @@ void SDL_Android_AudioTrack_setSpeed(JNIEnv *env, SDL_Android_AudioTrack *atrack
         return;
 
     return;
+}
+
+/* Keep errors distinct from a valid unsigned playback head of zero. */
+int SDL_Android_AudioTrack_get_playback_head(JNIEnv *env, SDL_Android_AudioTrack *atrack, uint32_t *head)
+{
+    jint raw = J4AC_AudioTrack__getPlaybackHeadPosition(env, atrack->thiz);
+    if (J4A_ExceptionCheck__catchAll(env))
+        return -1;
+    *head = (uint32_t)raw;
+    return 0;
+}
+
+int SDL_Android_AudioTrack_pause_checked(JNIEnv *env, SDL_Android_AudioTrack *atrack)
+{
+    J4AC_AudioTrack__pause(env, atrack->thiz);
+    return J4A_ExceptionCheck__catchAll(env) ? -1 : 0;
+}
+
+int SDL_Android_AudioTrack_flush_checked(JNIEnv *env, SDL_Android_AudioTrack *atrack)
+{
+    uint32_t head;
+    J4AC_AudioTrack__flush(env, atrack->thiz);
+    if (J4A_ExceptionCheck__catchAll(env))
+        return -1;
+    return SDL_Android_AudioTrack_get_playback_head(env, atrack, &head) < 0 || head != 0 ? -1 : 0;
+}
+
+int SDL_Android_AudioTrack_set_rate_checked(JNIEnv *env, SDL_Android_AudioTrack *atrack,
+    float speed, int preserve_pitch, float *actual_speed, float *actual_pitch)
+{
+    return J4AC_android_media_AudioTrack__setParamsChecked(env, atrack->thiz,
+        speed, preserve_pitch, actual_speed, actual_pitch);
 }

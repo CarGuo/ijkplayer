@@ -9,7 +9,12 @@ checkout() {
   if [[ -e "$dir" ]]; then echo "Refusing to overwrite $dir" >&2; exit 1; fi
   # Resolve the moving discovery ref only for a new directory. Branch README
   # updates must not change the immutable source used by this build path.
-  git clone --depth 1 --no-checkout --branch "$ref" "$url" "$dir"
+  if [[ -n "$ref" ]]; then
+   git clone --depth 1 --no-checkout --branch "$ref" "$url" "$dir"
+  else
+   # Explicit local repositories/bundles need not advertise the discovery branch.
+   git clone --no-hardlinks --no-checkout "$url" "$dir"
+  fi
   if ! git -C "$dir" cat-file -e "$expected^{commit}" 2>/dev/null; then
    git -C "$dir" fetch --depth 1 origin "$expected"
   fi
@@ -20,9 +25,23 @@ checkout() {
  }
 }
 # The branch is the discovery ref; the immutable commit is the source identity.
-# This fork commit already contains all four patches. Never apply them a second time.
-checkout https://github.com/CarGuo/FFmpeg.git extra/ffmpeg5 ffmpeg-5.0 5d01026835e0fc18be967461df180432e85db0c7
-for patch_name in 0001-ijk-hooks.patch 0002-mpjpeg-eof.patch 0003-hevc-parameter-updates.patch 0004-tls-peer-identity.patch; do
+# The immutable five-patch source is published in the companion FFmpeg fork.
+# For offline recovery, point FFMPEG5_SOURCE_REPOSITORY at the delivered local
+# FFmpeg repository or bundle. Dependencies still require network or pinned caches.
+# All five patches are already present; never apply them a second time.
+FFMPEG_REPOSITORY=https://github.com/CarGuo/FFmpeg.git
+FFMPEG_REF=ffmpeg-5.0
+if [[ -n "${FFMPEG5_SOURCE_REPOSITORY:-}" ]]; then
+ if [[ ! -e "$FFMPEG5_SOURCE_REPOSITORY" ]]; then
+  echo "FFMPEG5_SOURCE_REPOSITORY must name an existing local repository or bundle" >&2
+  exit 1
+ fi
+ # Resolve before cloning, so relative paths and spaces are unambiguous.
+ FFMPEG_REPOSITORY="$(cd "$(dirname "$FFMPEG5_SOURCE_REPOSITORY")" && pwd)/$(basename "$FFMPEG5_SOURCE_REPOSITORY")"
+ FFMPEG_REF=
+fi
+checkout "$FFMPEG_REPOSITORY" extra/ffmpeg5 "$FFMPEG_REF" ff87490262107e004f6a16765484e36e1973d705
+for patch_name in 0001-ijk-hooks.patch 0002-mpjpeg-eof.patch 0003-hevc-parameter-updates.patch 0004-tls-peer-identity.patch 0005-mov-hevc-seek-replay.patch; do
 PATCH="$ROOT/patches/ffmpeg5/$patch_name"
 if git -C extra/ffmpeg5 apply --reverse --check "$PATCH"; then
  echo "Exact patch $patch_name is already applied"

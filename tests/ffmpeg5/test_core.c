@@ -233,6 +233,13 @@ static void test_playback_clock(void)
     AVStream audio = { 0 };
     ffp.is = &is;
     is.ic = &ic;
+    is.play_mutex = SDL_CreateMutex();
+    is.sampq.mutex = SDL_CreateMutex();
+    is.audioq.mutex = SDL_CreateMutex();
+    is.videoq.mutex = SDL_CreateMutex();
+    is.eof_clock.mutex = SDL_CreateMutex();
+    assert(is.play_mutex && is.sampq.mutex && is.audioq.mutex &&
+           is.videoq.mutex && is.eof_clock.mutex);
     ic.start_time = AV_NOPTS_VALUE;
     is.audio_st = &audio;
     is.av_sync_type = AV_SYNC_AUDIO_MASTER;
@@ -290,6 +297,11 @@ static void test_playback_clock(void)
     set_clock_at(&is.audclk, NAN, is.audioq.serial, 0);
     sync_clock_to_slave(&is.extclk, &is.audclk);
     assert(get_clock(&is.extclk) == 0.250);
+    SDL_DestroyMutex(is.eof_clock.mutex);
+    SDL_DestroyMutex(is.videoq.mutex);
+    SDL_DestroyMutex(is.audioq.mutex);
+    SDL_DestroyMutex(is.sampq.mutex);
+    SDL_DestroyMutex(is.play_mutex);
     puts("PASS playback clock: NaN/stale serial, finite/range safety, offsets, raw negative PTS, seek and sync");
 }
 

@@ -26,6 +26,7 @@
 #define IJKSDL__IJKSDL_AOUT_H
 
 #include "ijksdl_audio.h"
+#include "ijksdl_audio_playback.h"
 #include "ijksdl_class.h"
 #include "ijksdl_mutex.h"
 
@@ -44,6 +45,7 @@ struct SDL_Aout {
     void (*set_volume)(SDL_Aout *aout, float left, float right);
     void (*close_audio)(SDL_Aout *aout);
 
+    int (*func_get_playback_position)(SDL_Aout *aout, SDL_AudioPlaybackSnapshot *snapshot);
     double (*func_get_latency_seconds)(SDL_Aout *aout);
     void   (*func_set_default_latency_seconds)(SDL_Aout *aout, double latency);
 
@@ -51,6 +53,10 @@ struct SDL_Aout {
     void   (*func_set_playback_rate)(SDL_Aout *aout, float playbackRate);
     void   (*func_set_playback_volume)(SDL_Aout *aout, float playbackVolume);
     int    (*func_get_audio_persecond_callbacks)(SDL_Aout *aout);
+
+    /* Optional checked platform tempo, independent of software PCM transforms. */
+    int (*func_supports_platform_rate)(SDL_Aout *aout);
+    int (*func_request_platform_rate)(SDL_Aout *aout, float rate, int preserve_pitch, int fields);
 
     // Android only
     int    (*func_get_audio_session_id)(SDL_Aout *aout);
@@ -64,6 +70,7 @@ void SDL_AoutCloseAudio(SDL_Aout *aout);
 void SDL_AoutFree(SDL_Aout *aout);
 void SDL_AoutFreeP(SDL_Aout **paout);
 
+int SDL_AoutGetPlaybackPosition(SDL_Aout *aout, SDL_AudioPlaybackSnapshot *snapshot);
 double SDL_AoutGetLatencySeconds(SDL_Aout *aout);
 void   SDL_AoutSetDefaultLatencySeconds(SDL_Aout *aout, double latency);
 int    SDL_AoutGetAudioPerSecondCallBacks(SDL_Aout *aout);
@@ -71,6 +78,10 @@ int    SDL_AoutGetAudioPerSecondCallBacks(SDL_Aout *aout);
 // optional
 void   SDL_AoutSetPlaybackRate(SDL_Aout *aout, float playbackRate);
 void   SDL_AoutSetPlaybackVolume(SDL_Aout *aout, float volume);
+
+enum { SDL_AUDIO_RATE_SPEED = 1, SDL_AUDIO_RATE_PITCH_POLICY = 2 };
+int SDL_AoutSupportsPlatformRate(SDL_Aout *aout);
+int SDL_AoutRequestPlatformRate(SDL_Aout *aout, float rate, int preserve_pitch, int fields);
 
 // android only
 int    SDL_AoutGetAudioSessionId(SDL_Aout *aout);

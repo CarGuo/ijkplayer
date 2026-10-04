@@ -24,6 +24,7 @@
 
 #include "ijksdl_aout.h"
 #include <stdlib.h>
+#include <string.h>
 #include "ijkplayer/ff_ffplay_def.h"
 
 int SDL_AoutOpenAudio(SDL_Aout *aout, const SDL_AudioSpec *desired, SDL_AudioSpec *obtained)
@@ -132,4 +133,27 @@ int SDL_AoutGetAudioPerSecondCallBacks(SDL_Aout *aout)
         }
     }
     return SDL_AUDIO_MAX_CALLBACKS_PER_SEC;
+}
+
+int SDL_AoutGetPlaybackPosition(SDL_Aout *aout, SDL_AudioPlaybackSnapshot *snapshot)
+{
+    if (!snapshot)
+        return -1;
+    memset(snapshot, 0, sizeof(*snapshot));
+    snapshot->generation = -1;
+    snapshot->pts = NAN;
+    if (!aout || !aout->func_get_playback_position)
+        return -1;
+    return aout->func_get_playback_position(aout, snapshot);
+}
+
+int SDL_AoutSupportsPlatformRate(SDL_Aout *aout)
+{
+    return aout && aout->func_supports_platform_rate && aout->func_supports_platform_rate(aout);
+}
+
+int SDL_AoutRequestPlatformRate(SDL_Aout *aout, float rate, int preserve_pitch, int fields)
+{
+    return aout && aout->func_request_platform_rate ?
+        aout->func_request_platform_rate(aout, rate, preserve_pitch, fields) : -1;
 }

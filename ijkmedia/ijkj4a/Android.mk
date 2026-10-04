@@ -20,6 +20,8 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 #LOCAL_CFLAGS += -std=c99
+# Checked platform read-back must retain finite/NaN comparisons.
+LOCAL_CFLAGS += -fno-fast-math
 
 LOCAL_C_INCLUDES += $(LOCAL_PATH)
 LOCAL_C_INCLUDES += $(realpath $(LOCAL_PATH))

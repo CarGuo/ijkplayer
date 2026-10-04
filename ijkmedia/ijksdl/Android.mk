@@ -20,6 +20,9 @@
 LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
+# Device-head PCM clocks use NaN and isfinite for unavailable media timestamps.
+# APP_CFLAGS enables -ffast-math; preserve these guards for the SDL module.
+LOCAL_CFLAGS += -fno-fast-math
 #LOCAL_CFLAGS += -std=c99
 LOCAL_LDLIBS += -llog -landroid -lOpenSLES -lEGL -lGLESv2
 

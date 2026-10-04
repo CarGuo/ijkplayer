@@ -7,26 +7,52 @@
 - Upstream commit: `19feb712f5c1821d8a3fa1ad63c5bd2e3b9672eb`
 - FFmpeg 5 fork branch: https://github.com/CarGuo/FFmpeg/tree/ffmpeg-5.0
 - Pre-remediation FFmpeg 5 fork pin: `4a62cc600696982f189fbad6c6ea1593e909b814`
-- Repaired four-patch fork commit (current initializer pin): `5d01026835e0fc18be967461df180432e85db0c7`
+- Published four-patch fork commit (previous initializer pin): `5d01026835e0fc18be967461df180432e85db0c7`
+- Published recovery parent: `eeda3f84b84b95cbecc5604b343a9100ad656311`
+- Current published five-patch initializer pin: `ff87490262107e004f6a16765484e36e1973d705`
+- Recovered compiled-code checkpoint: `0cb0a06ef3d2b8e2814cb0e60be99d7986e1bde1` (same production code; updated publication docs)
 - Existing fork repository: https://github.com/CarGuo/FFmpeg
 - Existing fork tag: `ijk-n4.3-20260301-007`
 - Existing fork commit: `9e7c61dfc2b8f370a4851b9001bd6e37ce673903`
 - Existing fork base: `n4.3` (`8e12af29d1a3f95c9e952d78354e3c8b1c0431a8`)
 
-The normal Android setup is `./init-android-ffmpeg5.sh`; it checks out the
-pinned `CarGuo/FFmpeg` fork commit and reverse-checks all four required
-production patches. It never reapplies them. The current pin contains all four
-patches and has passed their reverse checks. The historical pre-remediation pin
-contains only the first two and is not the current build input. A fresh full
-initializer run with the new pin has not yet been rerun. See the
-[build and validation notes](../../doc/FFMPEG5.md) for the completed three-ABI
-build, bounded Android results and remaining acceptance failures.
+The Android setup is `./init-android-ffmpeg5.sh`; it checks out the exact
+pinned source and reverse-checks all five required production patches. It never
+reapplies them or resets an existing checkout. A different existing revision,
+a modified/missing required patch, or a non-repository target directory fails
+without overwriting it. In particular, the previous `extra/ffmpeg5` checkout
+is deliberately preserved; use a separate IJK workspace for fresh recovery.
+
+The current immutable pin is published in the default companion fork. It includes
+all five patches and current documentation; production FFmpeg source matches the
+recovered compiled-code checkpoint. Exact remote commit/tree/blob checks passed.
+A fresh end-to-end remote initializer run is a separate check and is not claimed
+by publication verification alone.
+
+To initialize from the delivered local source repository (or a standalone Git
+bundle containing the exact recovery commit), use an explicit override:
+
+```sh
+FFMPEG5_SOURCE_REPOSITORY=/absolute/path/to/FFmpeg ./init-android-ffmpeg5.sh
+# Alternatively:
+FFMPEG5_SOURCE_REPOSITORY=/absolute/path/to/FFmpeg.bundle ./init-android-ffmpeg5.sh
+```
+
+The override accepts an existing local path, not a replacement network URL.
+Relative paths are resolved from the IJK repository root. The exact commit and
+all five patch checks remain mandatory. The override only selects FFmpeg;
+OpenSSL, libyuv, and SoundTouch still use their published pins and require
+network access unless their pinned checkouts are already present. See
+[initializer tests](../../tests/ffmpeg5/README-initializer.md) for the bounded,
+network-disabled local recovery verification and preservation checks. See the
+[build and validation notes](../../doc/FFMPEG5.md) for Android build evidence
+and remaining acceptance limits.
 
 The patches remain available to reconstruct the same source changes from
 pristine upstream FFmpeg 5.1.10. The first two patches also contain their host
 regressions; HEVC tests are in the companion IJK tree and TLS tests are in the
 FFmpeg fork's `tests/ijk` directory. This alternative production-source
-reconstruction does not depend on a pre-modified checkout. Apply all four
+reconstruction does not depend on a pre-modified checkout. Apply all five
 patches, in order:
 
 ```sh
@@ -41,6 +67,8 @@ git apply --check /path/to/ijkplayer/patches/ffmpeg5/0003-hevc-parameter-updates
 git apply /path/to/ijkplayer/patches/ffmpeg5/0003-hevc-parameter-updates.patch
 git apply --check /path/to/ijkplayer/patches/ffmpeg5/0004-tls-peer-identity.patch
 git apply /path/to/ijkplayer/patches/ffmpeg5/0004-tls-peer-identity.patch
+git apply --check /path/to/ijkplayer/patches/ffmpeg5/0005-mov-hevc-seek-replay.patch
+git apply /path/to/ijkplayer/patches/ffmpeg5/0005-mov-hevc-seek-replay.patch
 ```
 
 ## Preservation inventory
@@ -158,3 +186,20 @@ checks. Unmodified-backend and unmodified-fallback negative controls failed as
 expected. The OpenSSL archive was not sanitizer-instrumented, and LeakSanitizer
 was not available. These results establish host behavior only; the new Android
 build and runtime tests remain pending.
+
+## 0005: MOV HEVC sample-description replay after seek
+
+`0005-mov-hevc-seek-replay.patch` replays the selected HEVC sample description
+through packet NEW_EXTRADATA after a seek, including reselection of non-target
+tracks in interleaved seek mode. The last-description state changes only after
+side-data allocation succeeds, permitting a failed allocation to be retried.
+Fragment-only, exhausted, and other excluded tracks are guarded.
+
+This patch contains the production `libavformat/mov.c` change. The pinned
+recovery commit also carries its newly reconstructed fixture generator, runner,
+guard checks and documentation in `tests/mov-hevc-seek/`. Applying production
+patches alone does not recreate those companion test files or the commit ID.
+The recovery tests cover 72 exact-YUV seek comparisons and 12 helper checks;
+these are bounded host results, not restored historical reports or Android
+vendor MediaCodec certification. Refer to the delivered source's
+`tests/mov-hevc-seek/README.md` for their scope and prerequisites.

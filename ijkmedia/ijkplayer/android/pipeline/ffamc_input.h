@@ -16,9 +16,19 @@ static int prepare_input_packet(IJKFF_Pipenode *node, bool threaded)
 
     if (d->packet_pending && d->queue->serial == d->pkt_serial)
         return 0;
+    opaque->hevc_packet_checked = false;
     av_packet_unref(&opaque->filtered_packet);
     memset(&d->pkt_temp, 0, sizeof(d->pkt_temp));
     if (d->queue->serial != d->pkt_serial) {
+        if (threaded) {
+            opaque->acodec_reconfigure_request = true;
+            SDL_LockMutex(opaque->acodec_mutex);
+            opaque->acodec_reconfigure_request = false;
+            SDL_CondSignal(opaque->acodec_cond);
+        }
+        cancel_hevc_generation_l(opaque);
+        if (threaded)
+            SDL_UnlockMutex(opaque->acodec_mutex);
         if (opaque->bsfc)
             av_bsf_flush(opaque->bsfc);
         opaque->bsf_pending = false;
@@ -30,6 +40,7 @@ static int prepare_input_packet(IJKFF_Pipenode *node, bool threaded)
         if (opaque->bsf_pending) {
             ret = av_bsf_receive_packet(opaque->bsfc, &opaque->filtered_packet);
             if (ret >= 0) {
+                opaque->hevc_packet_checked = false;
                 d->pkt_temp = opaque->filtered_packet;
                 d->packet_pending = 1;
                 return 0;
@@ -67,12 +78,24 @@ static int prepare_input_packet(IJKFF_Pipenode *node, bool threaded)
             if (SDL_AMediaCodec_isStarted(opaque->acodec) && opaque->input_packet_count > 0) {
                 // Flushing an empty codec fails on OMX.SEC.AVC.Decoder.
                 SDL_VoutAndroid_invalidateAllBuffers(opaque->weak_vout);
-                SDL_AMediaCodec_flush(opaque->acodec);
+                if (SDL_AMediaCodec_flush(opaque->acodec) != SDL_AMEDIA_OK) {
+                    if (threaded)
+                        SDL_UnlockMutex(opaque->acodec_mutex);
+                    av_packet_unref(&pkt);
+                    return AVERROR_EXTERNAL;
+                }
+                SDL_VoutAndroid_resetBufferReleaseError(opaque->weak_vout,
+                    SDL_AMediaCodec_getSerial(opaque->acodec));
                 opaque->input_packet_count = 0;
             }
             if (opaque->bsfc)
                 av_bsf_flush(opaque->bsfc);
             opaque->bsf_pending = false;
+            cancel_hevc_generation_l(opaque);
+            opaque->input_eos_queued = false;
+            opaque->output_eos_seen = false;
+            opaque->off_buf_out = 0;
+            opaque->last_queued_pts = AV_NOPTS_VALUE;
             opaque->acodec_flush_request = false;
             if (threaded) {
                 SDL_CondSignal(opaque->acodec_cond);

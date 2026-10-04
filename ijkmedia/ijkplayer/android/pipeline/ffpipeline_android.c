@@ -23,6 +23,7 @@
 
 #include "ffpipeline_android.h"
 #include <jni.h>
+#include <android/native_window_jni.h>
 #include "ffpipenode_android_mediacodec_vdec.h"
 #include "../../pipeline/ffpipenode_ffplay_vdec.h"
 #include "../../ff_ffplay.h"
@@ -205,40 +206,51 @@ void ffpipeline_set_vout(IJKFF_Pipeline* pipeline, SDL_Vout *vout)
     opaque->weak_vout = vout;
 }
 
-int ffpipeline_set_surface(JNIEnv *env, IJKFF_Pipeline* pipeline, jobject surface)
+int ffpipeline_set_surface_l(JNIEnv *env, IJKFF_Pipeline* pipeline, jobject surface)
 {
-    ALOGD("%s()\n", __func__);
     if (!check_ffpipeline(pipeline, __func__))
         return -1;
-
     IJKFF_Pipeline_Opaque *opaque = pipeline->opaque;
-    if (!opaque->surface_mutex)
+    if (!opaque->surface_mutex || !opaque->weak_vout)
         return -1;
+    jobject previous = opaque->jsurface;
+    if (surface == previous ||
+        (surface && previous && (*env)->IsSameObject(env, surface, previous)))
+        return 0;
 
-    ffpipeline_lock_surface(pipeline);
-    {
-        jobject prev_surface = opaque->jsurface;
-
-        if ((surface == prev_surface) ||
-            (surface && prev_surface && (*env)->IsSameObject(env, surface, prev_surface))) {
-            // same object, no need to reconfigure
-        } else {
-            SDL_VoutAndroid_setAMediaCodec(opaque->weak_vout, NULL);
-            if (surface) {
-                opaque->jsurface = (*env)->NewGlobalRef(env, surface);
-            } else {
-                opaque->jsurface = NULL;
-            }
-            opaque->is_surface_need_reconfigure = true;
-
-            if (prev_surface != NULL) {
-                SDL_JNI_DeleteGlobalRefP(env, &prev_surface);
-            }
-        }
+    // Prepare BOTH references before mutating either half of the Surface pair.
+    jobject retained = surface ? (*env)->NewGlobalRef(env, surface) : NULL;
+    bool reference_error = J4A_ExceptionCheck__catchAll(env);
+    if (reference_error || (surface && !retained)) {
+        J4A_DeleteGlobalRef__p(env, &retained);
+        return -1;
     }
-    ffpipeline_unlock_surface(pipeline);
-
+    ANativeWindow *window = surface ? ANativeWindow_fromSurface(env, surface) : NULL;
+    bool window_error = J4A_ExceptionCheck__catchAll(env);
+    if (window_error || (surface && !window)) {
+        if (window) ANativeWindow_release(window);
+        J4A_DeleteGlobalRef__p(env, &retained);
+        return -1;
+    }
+    // Caller owns surface_mutex throughout native-window invalidation, codec
+    // detach and request publication; generation commit cannot see a half-pair.
+    SDL_VoutAndroid_SetNativeWindow(opaque->weak_vout, window);
+    SDL_VoutAndroid_setAMediaCodec(opaque->weak_vout, NULL);
+    opaque->jsurface = retained;
+    opaque->is_surface_need_reconfigure = true;
+    if (window) ANativeWindow_release(window);
+    SDL_JNI_DeleteGlobalRefP(env, &previous);
     return 0;
+}
+
+int ffpipeline_set_surface(JNIEnv *env, IJKFF_Pipeline* pipeline, jobject surface)
+{
+    if (!check_ffpipeline(pipeline, __func__))
+        return -1;
+    ffpipeline_lock_surface(pipeline);
+    int ret = ffpipeline_set_surface_l(env, pipeline, surface);
+    ffpipeline_unlock_surface(pipeline);
+    return ret;
 }
 
 bool ffpipeline_is_surface_need_reconfigure_l(IJKFF_Pipeline* pipeline)

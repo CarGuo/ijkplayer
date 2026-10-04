@@ -1,0 +1,374 @@
+diff --git a/libavformat/mov.c b/libavformat/mov.c
+index 17e52fede5..41b45ce5eb 100644
+--- a/libavformat/mov.c
++++ b/libavformat/mov.c
+@@ -8662,12 +8662,11 @@ static int mov_change_extradata(MOVStreamContext *sc, AVPacket *pkt)
+     uint8_t *side, *extradata;
+     int extradata_size;
+ 
+-    /* Save the current index. */
+-    sc->last_stsd_index = sc->stsc_data[sc->stsc_index].id - 1;
++    int stsd_index = sc->stsc_data[sc->stsc_index].id - 1;
+ 
+     /* Notify the decoder that extradata changed. */
+-    extradata_size = sc->extradata_size[sc->last_stsd_index];
+-    extradata = sc->extradata[sc->last_stsd_index];
++    extradata_size = sc->extradata_size[stsd_index];
++    extradata = sc->extradata[stsd_index];
+     if (extradata_size > 0 && extradata) {
+         side = av_packet_new_side_data(pkt,
+                                        AV_PKT_DATA_NEW_EXTRADATA,
+@@ -8677,6 +8676,7 @@ static int mov_change_extradata(MOVStreamContext *sc, AVPacket *pkt)
+         memcpy(side, extradata, extradata_size);
+     }
+ 
++    sc->last_stsd_index = stsd_index;
+     return 0;
+ }
+ 
+@@ -8957,6 +8957,43 @@ static int can_seek_to_key_sample(AVStream *st, int sample, int64_t requested_pt
+     return 1;
+ }
+ 
++static void mov_seek_stsc(MOVStreamContext *sc, int sample)
++{
++    int time_sample = 0;
++    unsigned int i;
++
++    if (!sc->chunk_count)
++        return;
++    for (i = 0; i < sc->stsc_count; i++) {
++        int64_t next = time_sample + mov_get_stsc_samples(sc, i);
++        if (next > sample) {
++            sc->stsc_index = i;
++            sc->stsc_sample = sample - time_sample;
++            break;
++        }
++        av_assert0(next == (int)next);
++        time_sample = next;
++    }
++}
++
++static void mov_seek_hevc_extradata(AVStream *st, int seek_individually)
++{
++    MOVStreamContext *sc = st->priv_data;
++
++    /* Replay only descriptions selectable by mov_read_packet's stsc path.
++     * Fragment-only tracks use tfhd instead, and exhausted tracks have no
++     * next sample whose description could be selected. */
++    if (st->codecpar->codec_id != AV_CODEC_ID_HEVC || sc->stsd_count <= 1 ||
++        !sc->chunk_count || !sc->stsc_count || !sc->stsc_data ||
++        sc->current_sample < 0 || sc->current_sample >= ffstream(st)->nb_index_entries)
++        return;
++    /* The interleaved seek path advances sample cursors without visiting
++     * mov_seek_stream for every track. Re-select each track's description. */
++    if (!seek_individually)
++        mov_seek_stsc(sc, sc->current_sample);
++    sc->last_stsd_index = -1;
++}
++
+ static int mov_seek_stream(AVFormatContext *s, AVStream *st, int64_t timestamp, int flags)
+ {
+     MOVStreamContext *sc = st->priv_data;
+@@ -9002,19 +9039,7 @@ static int mov_seek_stream(AVFormatContext *s, AVStream *st, int64_t timestamp,
+     }
+ 
+     /* adjust stsd index */
+-    if (sc->chunk_count) {
+-        time_sample = 0;
+-        for (i = 0; i < sc->stsc_count; i++) {
+-            int64_t next = time_sample + mov_get_stsc_samples(sc, i);
+-            if (next > sc->current_sample) {
+-                sc->stsc_index = i;
+-                sc->stsc_sample = sc->current_sample - time_sample;
+-                break;
+-            }
+-            av_assert0(next == (int)next);
+-            time_sample = next;
+-        }
+-    }
++    mov_seek_stsc(sc, sc->current_sample);
+ 
+     return sample;
+ }
+@@ -9089,6 +9114,9 @@ static int mov_read_seek(AVFormatContext *s, int stream_index, int64_t sample_ti
+             mov_current_sample_inc(sc);
+         }
+     }
++    for (i = 0; i < s->nb_streams; i++)
++        mov_seek_hevc_extradata(s->streams[i], mc->seek_individually);
++
+     return 0;
+ }
+ 
+diff --git a/tests/mov-hevc-seek/README.md b/tests/mov-hevc-seek/README.md
+new file mode 100644
+index 0000000000..cc141b6e89
+--- /dev/null
++++ b/tests/mov-hevc-seek/README.md
+@@ -0,0 +1,33 @@
++# MOV HEVC seek replay regression (new reconstruction, 2026-10-02)
++
++Run `tests/mov-hevc-seek/run.sh /absolute/scratch/output` from any directory.
++Dependencies: POSIX shell, Python 3, C compiler, make, zlib development files,
++and a system `ffmpeg` with `libx265` encoding. The system encoder generates
++fixtures only; all tested demux, BSF, and decoder code comes from this checkout.
++
++The generator preserves separately encoded x265 hvc1 descriptions and their
++matching slice packets. In-band VPS/SPS/PPS emitted by x265 are verified
++against hvcC and removed for hvc1 conformance; VCL bytes are unchanged. All frames are IDR, with 64x64 and 96x64 coded pictures;
++12 samples use descriptions 1, 2, then 1. It builds normal indexed MOV sample
++tables and a second fixture with two tracks sharing those media extents.
++It does not mutate parameter-set syntax or pair slices with unrelated hvcC.
++
++The integration test first sequentially decodes the fixture with this checkout's
++HEVC BSF and decoder, then seeks repeatedly, flushes both, requires fresh
++NEW_EXTRADATA on every track, and compares dimensions and MD5 of every decoded
++YUV plane to that sequential reference. Both seek modes are tested, including
++non-target-track description reselection. This gives 72 exact-YUV seek checks,
++not 72 distinct media assets or an Android certification.
++
++A production-helper extraction test exercises eight exclusion guards (including
++fragment-only and exhausted tracks), both reselection modes, failed side-data
++allocation leaving the last description unchanged, and successful retry.
++Those 12 checks use minimal test types, not the complete demuxer environment.
++Both layers run ASan/UBSan. Leak detection defaults off because the recovery
++runner's ptrace environment rejects LeakSanitizer; no leak-pass claim is made.
++
++The fresh baseline negative control, built from eeda3f84's mov.c with the same
++libraries and test, fails at the NEW_EXTRADATA assertion. This is newly created
++evidence and does not restore or inherit the historical 120-check report.
++
++No Android vendor MediaCodec behavior or complete player integration is covered.
+diff --git a/tests/mov-hevc-seek/generate_fixture.py b/tests/mov-hevc-seek/generate_fixture.py
+new file mode 100644
+index 0000000000..6df918ba71
+--- /dev/null
++++ b/tests/mov-hevc-seek/generate_fixture.py
+@@ -0,0 +1,94 @@
++#!/usr/bin/env python3
++"""Build a regular two-description MP4 from independently valid x265 IDR streams.
++Each sample is its own chunk and its description is copied intact from its encoder
++output. In-band parameter-set NALs are removed for hvc1 conformance; slice bytes and
++hvcC syntax are never modified or mismatched.
++"""
++import pathlib, struct, subprocess, sys
++D=pathlib.Path(sys.argv[1]).resolve() if len(sys.argv)>1 else pathlib.Path(__file__).resolve().parent
++D.mkdir(parents=True, exist_ok=True)
++u=lambda x:struct.pack('>I',x)
++def box(t,p):return u(len(p)+8)+t+p
++def boxes(data):
++    p=0
++    while p<len(data):
++        n=struct.unpack_from('>I',data,p)[0]; assert n>=8 and p+n<=len(data)
++        yield data[p+4:p+8],data[p+8:p+n];p+=n
++    assert p==len(data)
++def child(data,t):return next(p for typ,p in boxes(data) if typ==t)
++def get(data,*path):
++    for t in path:data=child(data,t)
++    return data
++sources=[]
++for i,size in enumerate(['64x64','96x64']):
++    p=D/f'source-{i}.mp4'
++    subprocess.run(['ffmpeg','-v','error','-y','-f','lavfi','-i',f'testsrc2=size={size}:rate=1','-frames:v','4','-c:v','libx265','-threads','1','-x265-params','pools=none:frame-threads=1:keyint=1:min-keyint=1:repeat-headers=0:log-level=error','-tag:v','hvc1','-video_track_timescale','1024',str(p)],check=True)
++    data=p.read_bytes();stbl=get(data,b'moov',b'trak',b'mdia',b'minf',b'stbl')
++    entry=get(stbl,b'stsd')[8:]
++    hvcc=get(entry[86:],b'hvcC');assert (hvcc[21]&3)==3
++    hsets=set();q=23
++    for _ in range(hvcc[22]):
++        count=struct.unpack_from('>H',hvcc,q+1)[0];q+=3
++        for _ in range(count):
++            length=struct.unpack_from('>H',hvcc,q)[0];q+=2
++            hsets.add(hvcc[q:q+length]);q+=length
++    assert q==len(hvcc)
++    sz=get(stbl,b'stsz'); sizes=struct.unpack('>4I',sz[12:]); assert sz[4:8]==u(0)
++    mdat=get(data,b'mdat');assert sum(sizes)==len(mdat)
++    samples=[];off=0
++    for n in sizes:
++        sample=mdat[off:off+n];off+=n
++        # hvc1 stores parameter sets exclusively in hvcC. Verify each picture
++        # really is an independent IDR, not a CRA requiring earlier pictures.
++        q=0; types=[]; kept=[]
++        while q<len(sample):
++            length=struct.unpack_from('>I',sample,q)[0];q+=4
++            assert length>=2 and q+length<=len(sample)
++            typ=(sample[q]>>1)&63;types.append(typ)
++            if typ in (32,33,34):assert sample[q:q+length] in hsets
++            else:kept.append(u(length)+sample[q:q+length])
++            q+=length
++        assert q==len(sample) and any(t in (19,20) for t in types)
++        samples.append(b"".join(kept))
++
++    sources.append((data,get(stbl,b'stsd')[8:],samples))
++# Four samples for each description, with a return to description 1.
++samples=sources[0][2]+sources[1][2]+sources[0][2]
++ids=[1]*4+[2]*4+[1]*4
++ftyp=box(b'ftyp',get(sources[0][0],b'ftyp'));offset=len(ftyp)+8
++stbl=box(b'stsd',b'\0'*4+u(2)+sources[0][1]+sources[1][1])
++stbl+=box(b'stts',b'\0'*4+u(1)+u(len(samples))+u(1024))
++stbl+=box(b'stsc',b'\0'*4+u(3)+b''.join(u(first)+u(1)+u(idx) for first,idx in [(1,1),(5,2),(9,1)]))
++stbl+=box(b'stsz',b'\0'*8+u(len(samples))+b''.join(u(len(s)) for s in samples))
++offsets=[]
++for s in samples:offsets.append(offset);offset+=len(s)
++stbl+=box(b'stco',b'\0'*4+u(len(samples))+b''.join(u(o) for o in offsets))
++# All encoder frames are IDR and independently decodable; absent stss means all sync.
++def rewrite(data):
++    out=b''
++    for t,p in boxes(data):
++        if t==b'stbl':p=stbl
++        elif t in (b'moov',b'trak',b'mdia',b'minf'):p=rewrite(p)
++        elif t==b'edts':continue
++        elif t==b'mvhd':p=p[:16]+u(12000)+p[20:]
++        elif t==b'tkhd':p=p[:20]+u(12000)+p[24:]
++        elif t==b'mdhd':p=p[:16]+u(12288)+p[20:]
++        out+=box(t,p)
++    return out
++out=ftyp+box(b'mdat',b''.join(samples))+rewrite(box(b'moov',get(sources[0][0],b'moov')))
++(D/'two-descriptions.mp4').write_bytes(out)
++print('Created two-descriptions.mp4: 12 IDR samples, description sequence 1/2/1')
++
++# Duplicate the video track with a distinct track ID. Shared media bytes are
++# legal; this exercises reselecting a non-target track on interleaved seeks.
++moov=get(out,b'moov');parts=[]
++for t,p in boxes(moov):
++    if t==b'mvhd':p=p[:-4]+u(3)
++    parts.append(box(t,p))
++    if t==b'trak':
++        twin=b''
++        for tt,pp in boxes(p):
++            if tt==b'tkhd':pp=pp[:12]+u(2)+pp[16:]
++            twin+=box(tt,pp)
++        parts.append(box(t,twin))
++(D/'two-tracks.mp4').write_bytes(ftyp+box(b'mdat',b''.join(samples))+box(b'moov',b''.join(parts)))
+diff --git a/tests/mov-hevc-seek/run.sh b/tests/mov-hevc-seek/run.sh
+new file mode 100755
+index 0000000000..cc1e195c3c
+--- /dev/null
++++ b/tests/mov-hevc-seek/run.sh
+@@ -0,0 +1,27 @@
++#!/bin/sh
++set -eu
++HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
++SOURCE=$(CDPATH= cd -- "$HERE/../.." && pwd)
++WORK=${1:-$(mktemp -d)}
++mkdir -p "$WORK"
++WORK=$(CDPATH= cd -- "$WORK" && pwd)
++# LeakSanitizer is unavailable in some ptrace-based runners. ASan/UBSan remain on.
++export ASAN_OPTIONS=${ASAN_OPTIONS:-detect_leaks=0}
++mkdir -p "$WORK/build"
++cd "$WORK/build"
++"$SOURCE/configure" --disable-everything --disable-programs --disable-doc \
++ --disable-x86asm --disable-avdevice --disable-avfilter --disable-swscale \
++ --disable-swresample --enable-demuxer=mov --enable-protocol=file \
++ --enable-decoder=hevc --enable-parser=hevc --enable-bsf=hevc_mp4toannexb \
++ --extra-cflags='-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer' \
++ --extra-ldflags='-fsanitize=address,undefined' > configure.log 2>&1
++make -j"${JOBS:-4}" > build.log 2>&1
++python3 "$HERE/generate_fixture.py" "$WORK"
++cc -fsanitize=address,undefined -I"$SOURCE" -I. "$HERE/test_seek.c" \
++ libavformat/libavformat.a libavcodec/libavcodec.a libavutil/libavutil.a \
++ -lm -lpthread -lz -o "$WORK/test_seek"
++for fixture in two-descriptions two-tracks; do
++ for mode in 1 0; do "$WORK/test_seek" "$WORK/$fixture.mp4" "$mode"; done
++done
++python3 "$HERE/test_guards.py" "$SOURCE" "$WORK"
++printf 'Evidence directory: %s\n' "$WORK"
+diff --git a/tests/mov-hevc-seek/test_guards.py b/tests/mov-hevc-seek/test_guards.py
+new file mode 100644
+index 0000000000..345a441e81
+--- /dev/null
++++ b/tests/mov-hevc-seek/test_guards.py
+@@ -0,0 +1,49 @@
++#!/usr/bin/env python3
++"""Extract exact production helpers; exercise guards and allocation failure."""
++import pathlib,subprocess,sys
++D=pathlib.Path(__file__).resolve().parent
++source=pathlib.Path(sys.argv[1]).resolve() if len(sys.argv)>1 else (D/'../../source/FFmpeg').resolve()
++if len(sys.argv)>2:D=pathlib.Path(sys.argv[2]).resolve()
++s=(source/'libavformat/mov.c').read_text()
++def fn(name):
++    start=s.rfind('\nstatic ',0,s.index(name+'('))+1
++    p=s.index('{',start);depth=1;q=p+1
++    while depth:
++        depth+=(s[q]=='{')-(s[q]=='}');q+=1
++    return s[start:q]+'\n'
++pre='''#include <stdint.h>
++#include <stdlib.h>
++#include <string.h>
++#include <assert.h>
++#include <errno.h>
++#include <stdio.h>
++#define av_assert0 assert
++#define AVERROR(x) (-(x))
++#define AV_CODEC_ID_HEVC 173
++#define AV_PKT_DATA_NEW_EXTRADATA 1
++typedef struct {unsigned first,count,id;} Entry;
++typedef struct {unsigned chunk_count,stsc_count,stsc_index;int stsc_sample,stsd_count,current_sample,last_stsd_index;Entry *stsc_data;int *extradata_size;uint8_t **extradata;} MOVStreamContext;
++typedef struct {int codec_id;} Params;
++typedef struct {int nb_index_entries;MOVStreamContext *priv_data;Params *codecpar;} AVStream;
++#define ffstream(s) (s)
++typedef struct {uint8_t data[64];} AVPacket;
++static int fail_alloc;
++static uint8_t *av_packet_new_side_data(AVPacket *p,int t,int n){return fail_alloc?NULL:p->data;}
++'''
++post='''int main(void){
++Entry entries[]={{1,1,1},{5,1,2},{9,1,1}};
++int sizes[]={3,3};uint8_t a[]={1,2,3},b[]={4,5,6};uint8_t *extra[]={a,b};
++MOVStreamContext valid={.chunk_count=12,.stsc_count=3,.stsc_index=2,.stsc_sample=2,.stsd_count=2,.current_sample=5,.last_stsd_index=1,.stsc_data=entries,.extradata_size=sizes,.extradata=extra};
++Params par={AV_CODEC_ID_HEVC};MOVStreamContext sc=valid;AVStream st={12,&sc,&par};int count=0;
++#define GUARD(change) do {sc=valid;par.codec_id=AV_CODEC_ID_HEVC;change;mov_seek_hevc_extradata(&st,0);assert(sc.last_stsd_index==1);assert(sc.stsc_index==2);count++;}while(0)
++GUARD(par.codec_id=27);GUARD(sc.stsd_count=1);GUARD(sc.chunk_count=0);GUARD(sc.stsc_count=0);GUARD(sc.stsc_data=NULL);GUARD(sc.current_sample=-1);GUARD(sc.current_sample=12);GUARD(sc.current_sample=20);
++sc=valid;mov_seek_hevc_extradata(&st,0);assert(sc.last_stsd_index==-1&&sc.stsc_index==1&&sc.stsc_sample==1);count++;
++sc=valid;mov_seek_hevc_extradata(&st,1);assert(sc.last_stsd_index==-1&&sc.stsc_index==2&&sc.stsc_sample==2);count++;
++sc=valid;sc.stsc_index=1;sc.last_stsd_index=0;AVPacket pkt;fail_alloc=1;assert(mov_change_extradata(&sc,&pkt)==-ENOMEM&&sc.last_stsd_index==0);count++;
++fail_alloc=0;assert(mov_change_extradata(&sc,&pkt)==0&&sc.last_stsd_index==1&&!memcmp(pkt.data,b,3));count++;
++printf("PASS %d helper guard/reselection/allocation checks\\n",count);return 0;
++}
++'''
++(D/'guards.generated.c').write_text(pre+''.join(fn(n) for n in ['mov_stsc_index_valid','mov_get_stsc_samples','mov_seek_stsc','mov_seek_hevc_extradata','mov_change_extradata'])+post)
++subprocess.run(['cc','-g','-fsanitize=address,undefined','-o',str(D/'test_guards'),str(D/'guards.generated.c')],check=True)
++subprocess.run([str(D/'test_guards')],check=True)
+diff --git a/tests/mov-hevc-seek/test_seek.c b/tests/mov-hevc-seek/test_seek.c
+new file mode 100644
+index 0000000000..61b977ed46
+--- /dev/null
++++ b/tests/mov-hevc-seek/test_seek.c
+@@ -0,0 +1,38 @@
++/* New regression for the reconstructed MOV seek replay change. */
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include "libavformat/avformat.h"
++#include "libavcodec/avcodec.h"
++#include "libavcodec/bsf.h"
++#include "libavutil/md5.h"
++#include "libavutil/pixdesc.h"
++#include "libavutil/error.h"
++#define CHECK(x) do { int rc=(x); if(rc<0){char b[128];av_strerror(rc,b,sizeof b);fprintf(stderr,"line %d: %s: %s\n",__LINE__,#x,b);exit(1);} }while(0)
++#define REQUIRE(x) do {if(!(x)){fprintf(stderr,"line %d: %s\n",__LINE__,#x);exit(1);}}while(0)
++typedef struct Digest {int w,h;unsigned char md5[16];} Digest;
++static Digest decode(AVBSFContext *b,AVCodecContext *c,AVPacket *p){
++    AVPacket *o=av_packet_alloc();AVFrame *f=av_frame_alloc();struct AVMD5 *md=av_md5_alloc();Digest d;
++    CHECK(av_bsf_send_packet(b,p));CHECK(av_bsf_receive_packet(b,o));CHECK(avcodec_send_packet(c,o));CHECK(avcodec_receive_frame(c,f));
++    d.w=f->width;d.h=f->height;REQUIRE(f->format==AV_PIX_FMT_YUV420P);av_md5_init(md);
++    for(int plane=0;plane<3;plane++){int w=plane?(f->width+1)/2:f->width;int h=plane?(f->height+1)/2:f->height;for(int y=0;y<h;y++)av_md5_update(md,f->data[plane]+y*f->linesize[plane],w);}
++    av_md5_final(md,d.md5);av_free(md);av_packet_free(&o);av_frame_free(&f);return d;
++}
++int main(int argc,char **argv){
++    REQUIRE(argc==3);AVFormatContext *s=NULL;AVDictionary *opts=NULL;AVBSFContext *b[2]={0};AVCodecContext *c[2]={0};AVPacket *p=av_packet_alloc();Digest expected[2][12];int seen[2]={0},checks=0;
++    av_dict_set(&opts,"seek_streams_individually",argv[2],0);CHECK(avformat_open_input(&s,argv[1],NULL,&opts));av_dict_free(&opts);REQUIRE(s->nb_streams>=1&&s->nb_streams<=2);
++    for(unsigned k=0;k<s->nb_streams;k++){CHECK(av_bsf_alloc(av_bsf_get_by_name("hevc_mp4toannexb"),&b[k]));CHECK(avcodec_parameters_copy(b[k]->par_in,s->streams[k]->codecpar));b[k]->time_base_in=s->streams[k]->time_base;CHECK(av_bsf_init(b[k]));c[k]=avcodec_alloc_context3(avcodec_find_decoder(AV_CODEC_ID_HEVC));CHECK(avcodec_parameters_to_context(c[k],b[k]->par_out));c[k]->thread_count=1;CHECK(avcodec_open2(c[k],NULL,NULL));}
++    while(av_read_frame(s,p)>=0){int k=p->stream_index;REQUIRE(seen[k]<12);expected[k][seen[k]++]=decode(b[k],c[k],p);av_packet_unref(p);}
++    for(unsigned k=0;k<s->nb_streams;k++){REQUIRE(seen[k]==12);for(int n=0;n<12;n++)REQUIRE(expected[k][n].w==((n>=4&&n<8)?96:64));}
++    int sequence[]={5,5,6,4,1,9,7,7,0,11,4,8};
++    for(unsigned j=0;j<sizeof(sequence)/sizeof(*sequence);j++){
++        int target=sequence[j];CHECK(av_seek_frame(s,0,av_rescale_q(target,(AVRational){1,1},s->streams[0]->time_base),AVSEEK_FLAG_BACKWARD));
++        for(unsigned k=0;k<s->nb_streams;k++){av_bsf_flush(b[k]);avcodec_flush_buffers(c[k]);seen[k]=0;}
++        for(unsigned k=0;k<s->nb_streams;k++){
++            CHECK(av_read_frame(s,p));int track=p->stream_index;REQUIRE(!seen[track]++);size_t size=0;const unsigned char *side=av_packet_get_side_data(p,AV_PKT_DATA_NEW_EXTRADATA,&size);REQUIRE(side&&size>0);
++            int n=av_rescale_q(p->pts,s->streams[track]->time_base,(AVRational){1,1});REQUIRE(n==target);Digest got=decode(b[track],c[track],p);REQUIRE(got.w==expected[track][n].w&&got.h==expected[track][n].h&&!memcmp(got.md5,expected[track][n].md5,16));checks++;av_packet_unref(p);
++        }
++    }
++    printf("PASS seek_individually=%s streams=%u exact-YUV seek checks=%d\n",argv[2],s->nb_streams,checks);
++    for(unsigned k=0;k<s->nb_streams;k++){av_bsf_free(&b[k]);avcodec_free_context(&c[k]);}avformat_close_input(&s);av_packet_free(&p);return 0;
++}

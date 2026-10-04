@@ -38,6 +38,8 @@ IJKFF_Pipeline *ffpipeline_create_from_android(FFPlayer *ffp);
 void    ffpipeline_set_vout(IJKFF_Pipeline* pipeline, SDL_Vout *vout);
 
 int     ffpipeline_set_surface(JNIEnv *env, IJKFF_Pipeline* pipeline, jobject surface);
+/* Caller holds the pipeline surface mutex across native-window mutation. */
+int     ffpipeline_set_surface_l(JNIEnv *env, IJKFF_Pipeline* pipeline, jobject surface);
 
 int     ffpipeline_lock_surface(IJKFF_Pipeline* pipeline);
 int     ffpipeline_unlock_surface(IJKFF_Pipeline* pipeline);

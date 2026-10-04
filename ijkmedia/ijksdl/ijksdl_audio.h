@@ -77,6 +77,51 @@ typedef uint16_t SDL_AudioFormat;
 typedef void (*SDL_AudioCallback) (void *userdata, Uint8 * stream,
                                    int len);
 
+/* Optional transactional submission, used only by backends that acknowledge
+ * a complete output buffer. The backend treats token/generation as opaque. */
+typedef struct SDL_AudioSubmission {
+    uint64_t token;
+    int generation;
+    /* Optional homogeneous segment for a device-head clock. Backend fills the
+     * output coordinates only after positive, whole-frame write acceptance. */
+    int output_bytes, real_pcm, clock_unsupported;
+    double pts_start, pts_end;
+    uint64_t output_epoch, first_frame, end_frame;
+} SDL_AudioSubmission;
+
+enum {
+    SDL_AUDIO_SUBMIT_CHECK,
+    SDL_AUDIO_SUBMIT_COMMIT,
+    SDL_AUDIO_SUBMIT_CANCEL,
+    SDL_AUDIO_SUBMIT_FAIL,
+    SDL_AUDIO_SUBMIT_DEVICE_FAIL
+};
+enum {
+    SDL_AUDIO_SUBMIT_READY,
+    SDL_AUDIO_SUBMIT_WAIT,
+    SDL_AUDIO_SUBMIT_STALE,
+    SDL_AUDIO_SUBMIT_ABORT,
+    SDL_AUDIO_SUBMIT_FAILED,
+    SDL_AUDIO_SUBMIT_DRAINED
+};
+typedef void (*SDL_AudioSubmitCallback)(void *userdata, Uint8 *stream, int len,
+                                      SDL_AudioSubmission *submission);
+typedef int (*SDL_AudioSubmissionCallback)(void *userdata,
+                                         const SDL_AudioSubmission *submission,
+                                         int action, int error);
+
+/* Successful platform control result, separate from requested parameters.
+ * Monotonic seconds bracket JNI application/read-back, not a hardware instant. */
+typedef struct SDL_AudioRateApplied {
+    uint64_t sequence, output_epoch;
+    int generation, preserve_pitch;
+    float speed, pitch;
+    double apply_before, apply_after, observed_at;
+    uint32_t head_before, head_after;
+} SDL_AudioRateApplied;
+typedef int (*SDL_AudioRateAppliedCallback)(void *userdata,
+                                            const SDL_AudioRateApplied *applied);
+
 typedef struct SDL_AudioSpec
 {
     int freq;                   /**< DSP frequency -- samples per second */
@@ -88,6 +133,9 @@ typedef struct SDL_AudioSpec
     Uint32 size;                /**< Audio buffer size in bytes (calculated) */
     SDL_AudioCallback callback;
     void *userdata;
+    SDL_AudioSubmitCallback callback_submit;
+    SDL_AudioSubmissionCallback submission;
+    SDL_AudioRateAppliedCallback rate_applied;
 } SDL_AudioSpec;
 
 void SDL_CalculateAudioSpec(SDL_AudioSpec * spec);

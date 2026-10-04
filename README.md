@@ -1,72 +1,23 @@
 # ijkplayer
 
-## `ffmpeg-5.0` 分支：FFmpeg 5.1.10 Android 迁移候选
+## `ffmpeg-5.0`：FFmpeg 5.1.10 Android 集成
 
-本分支的实际版本是 **FFmpeg 5.1.10**，`ffmpeg-5.0` 是迁移系列的分支名。
-请从下面的新入口开始；旧的 `init-android.sh` 仍指向 **FFmpeg 4.3**，
-不能用于构建本分支的 FFmpeg 5 候选。
+使用 `init-android-ffmpeg5.sh`，不要使用仍指向 FFmpeg 4.3 的旧初始化入口。
+[完整构建与升级说明](doc/FFMPEG5.md) 包含固定源码、NDK r22b、
+`module-lite-more.sh`、OpenSSL 3.5.9，以及三个 ABI 的成套替换要求。
 
-- [完整构建说明、固定源码版本与验证边界](doc/FFMPEG5.md)
-- [配套 FFmpeg 源码分支](https://github.com/CarGuo/FFmpeg/tree/ffmpeg-5.0)
-- [GSYVideoPlayer 配套分支、九库校验与验证说明](https://github.com/CarGuo/GSYVideoPlayer/blob/ffmpeg-5.0/doc/ffmpeg-5.0.md)
+当前 FFmpeg 固定为已发布提交 [ff87490262107e004f6a16765484e36e1973d705](https://github.com/CarGuo/FFmpeg/commit/ff87490262107e004f6a16765484e36e1973d705)。
+本分支包含恢复后的 EOS/时钟修复及 `platformrate-r3` 公共倍速集成。
+Pixel 8 / API 35 / 4 KiB 真机上，Mux HTTPS-HLS、0.25× / 0.5× / 1× / 2× / 3×
+实际进度与完成时间、倍速切换和暂停/seek/重播、Tail7 七项以及 GSY Widget3 三项通过。
+Apple 测试地址在该环境无法解析，保留原始失败记录，按不可用测试源排除。
 
-### FFmpeg 5 快速开始
-
-已验证的构建环境为 Linux x86_64 + Android NDK r22b（`22.1.7171670`）。
-另需 Bash、Git、Perl、GNU Make、`sha256sum`，以及用于 x86_64 汇编的 NASM 或 YASM。
-使用新的工作目录，避免与旧 FFmpeg 4 构建产物混用：
-
-```sh
-git clone --branch ffmpeg-5.0 https://github.com/CarGuo/ijkplayer.git ijkplayer-ffmpeg5
-cd ijkplayer-ffmpeg5
-./init-android-ffmpeg5.sh
-export ANDROID_NDK=/absolute/path/to/android-ndk-r22b
-export FFMPEG5_SOURCE="$PWD/extra/ffmpeg5"
-export OPENSSL_SOURCE="$PWD/extra/openssl-3.5.9"
-(
-  set -e
-  for abi in arm64 armv7a x86_64; do
-    android/contrib/compile-ffmpeg5.sh "$abi"
-    (cd android && ./compile-ijk.sh "$abi")
-  done
-)
-```
-
-当前修复源码加入 HEVC 参数集更新缓存、TLS 域名／IP 身份校验，并升级到
-OpenSSL 3.5.9。初始化脚本已固定到已发布的四补丁提交
-[`5d01026835e0fc18be967461df180432e85db0c7`](https://github.com/CarGuo/FFmpeg/commit/5d01026835e0fc18be967461df180432e85db0c7)，
-四补丁反向校验通过；新 pin 的完整全新初始化尚未重跑。
-
-三个 ABI 的新九库已构建完成，独立静态检查 73/73 通过。
-Android 11/API 30、x86_64、4 KB 模拟器上，核心 21/21、TLS 7/7、
-网络语义 4/4、H.264 与普通 HEVC 的同步／异步 MediaCodec 检查通过；
-RTSP／RTMP／MJPEG 八项协议用例的普通与严格中断两轮均为 8/8。
-严格中断验证包含回调及重新创建播放器，不代表自动重连。
-
-三帧 HEVC 参数更新样本的同步检查通过，但首次渲染回调晚于完成回调；
-异步检查因未观察到首次渲染而失败，尚不能确认 Android 画面更新正确。
-扩展编码矩阵也未整体通过。新 16 KB 运行仅完成加载／注册清单，
-核心播放被 Surface 前置条件超时阻塞。新版长期稳定性、真实 ARM 设备及最终
-GSY AAR／APK 尚无完整验收通过结论；旧九库运行记录仍是历史证据，不能套用。
-新二进制发布及完整发布验收仍未完成，详见完整说明。
-
-新初始化脚本会为全新目录检出固定的 FFmpeg 提交；即使远端分支新增文档提交，
-也不会自动换用其他源码版本。已有目录若版本不符，会保留原目录并报错。
-OpenSSL 使用独立的 `extra/openssl-3.5.9` 源码目录及按内容寻址的缓存；
-可用 `OPENSSL_ONLY=1 android/contrib/compile-ffmpeg5.sh arm64` 单独验证依赖构建。
-构建明确使用 `config/module-lite-more.sh`；三个 ABI 分别对应 arm64-v8a、
-armeabi-v7a、x86_64。替换时请保持每个 ABI 的 FFmpeg／player／SDL 三库成套。
-原九库哈希及
-[可选版本标记复现步骤](doc/FFMPEG5.md#optional-reproduction-of-the-tested-candidate)
-属于历史候选；新版 HEVC／TLS／OpenSSL 输入不能仅靠版本标记复现旧哈希。
-请同时保留真实源码提交、依赖及构建清单。
-
-这是有明确验证范围的迁移候选：新 16 KB 核心播放及参数更新异步渲染仍未验收通过，
-旧候选的硬解旋转缺口也不能由新 4 KB 结果替代；未完成真实 ARM 设备兼容认证。修复后的 `tls_verify=1` 校验证书链及域名／IP，
-Android 需显式提供可信 CA 文件；默认及显式 `tls_verify=0` 仍不认证服务器。
-OpenSSL 3.5 默认拒绝旧 TLS 1.0／1.1 和弱密钥，旧设备兼容要求仍待确认。
-不要把构建成功或旧 4 KB 环境通过等同于全部设备、16 KB 场景或 TLS 安全验收。
-详见[验证结果与限制](doc/FFMPEG5.md#checks-and-limits)。
+[九库身份与验证范围](doc/platformrate-r3-native.json) 和
+[GSY 配套交付说明](https://github.com/CarGuo/GSYVideoPlayer/blob/ffmpeg-5.0/doc/ffmpeg-5.0.md)
+给出准确产物信息。64 位 ELF 的 16 KiB 对齐不等于 16 KiB 真机验收；
+ARMv7 / x86_64 此次只有构建与静态检查。API <23 的旧 AudioTrack 非 1× 限制保留，
+不能由这一台设备的结果推断所有设备、音高选项或长期播放都已覆盖。
+旧构建标签不冒充新发布提交；编译源码哈希和发布映射见完整说明。
 
 ## 旧 FFmpeg 4.3 链路说明（保留参考，不是 FFmpeg 5 构建入口）
 

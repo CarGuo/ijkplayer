@@ -207,7 +207,7 @@ cp config_components.h "$OUT/include/config_components.h"
  else
   echo 'ffmpeg_source_dirty=false'
  fi
- for patch_name in 0001-ijk-hooks.patch 0002-mpjpeg-eof.patch 0003-hevc-parameter-updates.patch 0004-tls-peer-identity.patch; do
+ for patch_name in 0001-ijk-hooks.patch 0002-mpjpeg-eof.patch 0003-hevc-parameter-updates.patch 0004-tls-peer-identity.patch 0005-mov-hevc-seek-replay.patch; do
   echo "patch_${patch_name}_sha256=$(sha256sum "$ROOT/patches/ffmpeg5/$patch_name" | cut -d' ' -f1)"
  done
  echo "ffmpeg_config_sha256=$(sha256sum config.h config_components.h | sha256sum | cut -d' ' -f1)"

@@ -18,9 +18,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 APP_OPTIM := release
-APP_PLATFORM := android-9
+APP_PLATFORM := android-16
 APP_ABI := armeabi-v7a
-NDK_TOOLCHAIN_VERSION=4.9
+# The FFmpeg 5 build uses the LLVM toolchain supplied by NDK r22b.
+NDK_TOOLCHAIN_VERSION := clang
 APP_PIE := false
 
 APP_STL := c++_static
