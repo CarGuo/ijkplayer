@@ -3407,6 +3407,164 @@ static int stream_should_pause_read(const VideoState *is)
     return is->pause_req && !is->step;
 }
 
+/* This policy is deliberately opt-in: RTSP also serves seekable recordings.
+ * It bounds compressed queues, not camera/network/decoder/display latency.
+ * Explicit pause, seek, stepping and non-1x playback retain their semantics. */
+static int rtsp_live_buffer_enabled(const FFPlayer *ffp)
+{
+    const VideoState *is = ffp->is;
+    return ffp->rtsp_live_max_buffer_ms > 0 && is && is->ic &&
+        is->ic->iformat && !strcmp(is->ic->iformat->name, "rtsp") &&
+        is->ic->duration <= 0 && !is->pause_req && !is->step &&
+        !is->seek_req && ffp->pf_playback_rate == 1.0f;
+}
+
+static int rtsp_live_buffer_option_valid(int value)
+{
+    /* Sub-frame caps repeatedly flush before the two-packet buffering gate
+     * can open. Very low frame-rate sources may require a larger value. */
+    return value == 0 || (value >= 500 && value <= 60000);
+}
+
+static int64_t rtsp_live_packet_ts(const AVPacket *pkt)
+{
+    return pkt->dts != AV_NOPTS_VALUE ? pkt->dts : pkt->pts;
+}
+
+static int rtsp_live_update_high_water_mark(FFPlayer *ffp)
+{
+    int enabled = rtsp_live_buffer_enabled(ffp);
+    if (enabled)
+        ffp->dcc.current_high_water_mark_in_ms = FFMIN(
+            ffp->dcc.current_high_water_mark_in_ms,
+            FFMAX(1, ffp->rtsp_live_max_buffer_ms / 2));
+    return enabled;
+}
+
+/* Caller is the only producer; queue consumers still need their real locks. */
+static int rtsp_live_queue_over_limit(FFPlayer *ffp, const AVPacket *pkt)
+{
+    VideoState *is = ffp->is;
+    PacketQueue *queue = pkt->stream_index == is->audio_stream ? &is->audioq :
+                         pkt->stream_index == is->video_stream ? &is->videoq : NULL;
+    int64_t head_ts = AV_NOPTS_VALUE;
+    int64_t tail_ts = rtsp_live_packet_ts(pkt);
+    int head_has_dts = 0;
+    int64_t bytes;
+    SDL_LockMutex(is->audioq.mutex);
+    SDL_LockMutex(is->videoq.mutex);
+    SDL_LockMutex(is->subtitleq.mutex);
+    bytes = (int64_t)is->audioq.size + is->videoq.size + is->subtitleq.size;
+    if (queue && tail_ts != AV_NOPTS_VALUE) {
+        for (MyAVPacketList *p = queue->first_pkt; p; p = p->next) {
+            if (p->pkt.data == flush_pkt.data || !p->pkt.size)
+                continue;
+            head_ts = rtsp_live_packet_ts(&p->pkt);
+            if (head_ts != AV_NOPTS_VALUE) {
+                head_has_dts = p->pkt.dts != AV_NOPTS_VALUE;
+                break;
+            }
+        }
+    }
+    SDL_UnlockMutex(is->subtitleq.mutex);
+    SDL_UnlockMutex(is->videoq.mutex);
+    SDL_UnlockMutex(is->audioq.mutex);
+    /* A byte bound remains effective even for streams without timestamps. */
+    int byte_limit = ffp->dcc.max_buffer_size > 0 ? ffp->dcc.max_buffer_size : MAX_QUEUE_SIZE;
+    if (bytes > byte_limit - (int64_t)pkt->size - (int64_t)sizeof(MyAVPacketList))
+        return 1;
+    /* Decode timestamps are ordered after RTP reordering/wrap handling. A
+     * camera epoch reset must not hide behind a future head indefinitely.
+     * PTS-only backward movement can be normal B-frame reordering. */
+    if (head_has_dts && pkt->dts != AV_NOPTS_VALUE && tail_ts < head_ts)
+        return 1;
+    if (queue && head_ts != AV_NOPTS_VALUE && tail_ts > head_ts) {
+        AVRational tb = is->ic->streams[pkt->stream_index]->time_base;
+        /* Rescale independently: subtracting arbitrary input timestamps may
+         * overflow int64_t before the rescale. */
+        double age_ms = ((double)tail_ts - (double)head_ts) * av_q2d(tb) * 1000.0;
+        return age_ms > ffp->rtsp_live_max_buffer_ms;
+    }
+    return 0;
+}
+
+/* Return 1 to enqueue, 0 to discard, negative on a failed flush marker.
+ * Flush every stream generation together. Existing decoder/render/audio-output
+ * serial checks reject stale frames and PCM, including AudioTrack head clocks.
+ * Never feed a decoder an arbitrary post-drop P-frame as a fresh beginning. */
+static int rtsp_live_filter_packet(FFPlayer *ffp, const AVPacket *pkt)
+{
+    VideoState *is = ffp->is;
+    int enabled = rtsp_live_buffer_enabled(ffp);
+    /* Once a decoder was flushed, an option/rate change cannot make the
+     * intervening non-key video safe. Finish that restart before relaxing. */
+    if (!enabled && !is->rtsp_live_wait_keyframe && !is->rtsp_live_drop_audio_before)
+        return 1;
+    if (enabled && !is->rtsp_live_wait_keyframe &&
+        (pkt->stream_index == is->audio_stream || pkt->stream_index == is->video_stream) &&
+        rtsp_live_queue_over_limit(ffp, pkt)) {
+        PacketQueue *queues[] = { &is->audioq, &is->videoq, &is->subtitleq };
+        int streams[] = { is->audio_stream, is->video_stream, is->subtitle_stream };
+        if (is->video_stream >= 0 && ffp->node_vdec)
+            ffpipenode_flush(ffp->node_vdec);
+        for (int i = 0; i < 3; ++i) {
+            if (streams[i] >= 0) {
+                packet_queue_flush(queues[i]);
+                int ret = packet_queue_put(queues[i], &flush_pkt);
+                if (ret < 0)
+                    return ret;
+            }
+        }
+        is->rtsp_live_wait_keyframe = is->video_stream >= 0;
+        is->rtsp_live_drop_audio_before = 0;
+        set_clock(&is->extclk, NAN, 0);
+        av_log(ffp, AV_LOG_INFO, "RTSP live buffer: discard backlog and restart%s\n",
+               is->rtsp_live_wait_keyframe ? " at next keyframe" : " audio");
+    }
+    if (is->rtsp_live_wait_keyframe) {
+        if (pkt->stream_index != is->video_stream || !(pkt->flags & AV_PKT_FLAG_KEY))
+            return 0;
+        is->rtsp_live_wait_keyframe = 0;
+        int64_t ts = pkt->pts != AV_NOPTS_VALUE ? pkt->pts : pkt->dts;
+        is->rtsp_live_drop_audio_before = ts != AV_NOPTS_VALUE;
+        if (is->rtsp_live_drop_audio_before)
+            is->rtsp_live_start_us = av_rescale_q(ts, is->video_st->time_base, AV_TIME_BASE_Q);
+    }
+    /* One individually oversized packet may exceed max-buffer-size after a
+     * reset. Admit that decodable key/audio packet rather than starving every
+     * GOP; queued memory is the byte cap plus one packet and flush markers. */
+    if (is->rtsp_live_drop_audio_before && pkt->stream_index == is->audio_stream) {
+        int64_t ts = rtsp_live_packet_ts(pkt);
+        if (ts != AV_NOPTS_VALUE &&
+            av_rescale_q(ts, is->audio_st->time_base, AV_TIME_BASE_Q) < is->rtsp_live_start_us)
+            return 0;
+        is->rtsp_live_drop_audio_before = 0;
+    }
+    return 1;
+}
+
+/* RTSP is AVFMT_NOFILE: transport errors are returned directly by the
+ * demuxer, not via ic->pb->error. EAGAIN and invalid RTP data stay transient. */
+static int stream_is_rtsp_io_error(const AVFormatContext *ic, int error)
+{
+    if (!ic->iformat || strcmp(ic->iformat->name, "rtsp"))
+        return 0;
+    switch (error) {
+    case AVERROR(ETIMEDOUT):
+    case AVERROR(ECONNRESET):
+    case AVERROR(ECONNABORTED):
+    case AVERROR(EPIPE):
+    case AVERROR(EIO):
+    case AVERROR(ENOTCONN):
+    case AVERROR(ENETDOWN):
+    case AVERROR(ENETUNREACH):
+    case AVERROR(EHOSTUNREACH):
+        return 1;
+    default:
+        return 0;
+    }
+}
+
 /* this thread gets the stream from the disk or the network */
 static int read_thread(void *arg)
 {
@@ -3424,6 +3582,7 @@ static int read_thread(void *arg)
     int scan_all_pmts_set = 0;
     int64_t pkt_ts;
     int last_error = 0;
+    int rtsp_io_error = 0;
     int64_t prev_io_tick_counter = 0;
     int64_t io_tick_counter = 0;
     int init_ijkmeta = 0;
@@ -3453,8 +3612,7 @@ static int read_thread(void *arg)
         av_dict_set(&ffp->format_opts, "scan_all_pmts", "1", AV_DICT_DONT_OVERWRITE);
         scan_all_pmts_set = 1;
     }
-    if (av_stristart(is->filename, "rtmp", NULL) ||
-        av_stristart(is->filename, "rtsp", NULL)) {
+    if (av_stristart(is->filename, "rtmp", NULL)) {
         // There is total different meaning for 'timeout' option in rtmp
         av_log(ffp, AV_LOG_WARNING, "remove 'timeout' option for rtmp.\n");
         av_dict_set(&ffp->format_opts, "timeout", NULL, 0);
@@ -3741,6 +3899,8 @@ static int read_thread(void *arg)
                 av_log(NULL, AV_LOG_ERROR,
                        "%s: error while seeking\n", is->filename);
             } else {
+                is->rtsp_live_wait_keyframe = 0;
+                is->rtsp_live_drop_audio_before = 0;
                 if (is->audio_stream >= 0) {
                     packet_queue_flush(&is->audioq);
                     packet_queue_put(&is->audioq, &flush_pkt);
@@ -3771,9 +3931,13 @@ static int read_thread(void *arg)
             ffp->dcc.current_high_water_mark_in_ms = ffp->dcc.first_high_water_mark_in_ms;
             is->seek_req = 0;
             is->queue_attachments_req = 1;
-            is->eof = 0;
-            if (ret >= 0)
+            is->eof = !!rtsp_io_error;
+            if (ret >= 0) {
+                rtsp_io_error = 0;
+                ffp->error = 0;
+                is->eof = 0;
                 eof_clock_demux(is, 0);
+            }
             eof_clock_seek(is, 0);
 #ifdef FFP_MERGE
             if (is->paused)
@@ -3821,8 +3985,12 @@ static int read_thread(void *arg)
             is->queue_attachments_req = 0;
         }
 
+        /* Opt-in live mode must keep draining the transport; stopping reads
+         * only moves old media into a TCP/socket/server buffer. Its packet
+         * filter below enforces both an age and a byte bound instead. */
+        int live_buffer = rtsp_live_update_high_water_mark(ffp);
         /* if the queue are full, no need to read more */
-        if (ffp->infinite_buffer<1 && !is->seek_req &&
+        if (!live_buffer && ffp->infinite_buffer<1 && !is->seek_req &&
 #ifdef FFP_MERGE
               (is->audioq.size + is->videoq.size + is->subtitleq.size > MAX_QUEUE_SIZE
 #else
@@ -3843,10 +4011,12 @@ static int read_thread(void *arg)
         if ((!is->paused || completed) &&
             (!is->audio_st || audio_tail_drained(is)) &&
             (!is->video_st || (is->viddec.finished == is->videoq.serial && frame_queue_nb_remaining(&is->pictq) == 0))) {
-            if (ffp->loop != 1 && (!ffp->loop || --ffp->loop)) {
+            if (!rtsp_io_error && ffp->loop != 1 && (!ffp->loop || --ffp->loop)) {
                 stream_seek(is, ffp->start_time != AV_NOPTS_VALUE ? ffp->start_time : 0, 0, 0);
             } else if (ffp->autoexit) {
-                ret = AVERROR_EOF;
+                ret = rtsp_io_error ? rtsp_io_error : AVERROR_EOF;
+                if (rtsp_io_error)
+                    last_error = rtsp_io_error;
                 goto fail;
             } else {
                 ffp_statistic_l(ffp);
@@ -3868,13 +4038,24 @@ static int read_thread(void *arg)
                     toggle_pause(ffp, 1);
                     if (ffp->error) {
                         av_log(ffp, AV_LOG_INFO, "ffp_toggle_buffering: error: %d\n", ffp->error);
-                        ffp_notify_msg1(ffp, FFP_MSG_ERROR);
+                        if (rtsp_io_error)
+                            ffp_notify_msg2(ffp, FFP_MSG_ERROR, rtsp_io_error);
+                        else
+                            ffp_notify_msg1(ffp, FFP_MSG_ERROR);
                     } else {
                         av_log(ffp, AV_LOG_INFO, "ffp_toggle_buffering: completed: OK\n");
                         ffp_notify_msg1(ffp, FFP_MSG_COMPLETED);
                     }
                 }
             }
+        }
+        /* Let the existing audio/video tail drain and report one error.
+         * A successful seek or a new session is required before reading again. */
+        if (rtsp_io_error) {
+            SDL_LockMutex(wait_mutex);
+            SDL_CondWaitTimeout(is->continue_read_thread, wait_mutex, 10);
+            SDL_UnlockMutex(wait_mutex);
+            continue;
         }
         pkt->flags = 0;
         ret = av_read_frame(ic, pkt);
@@ -3894,6 +4075,11 @@ static int read_thread(void *arg)
                 pb_eof = 1;
                 pb_error = AVERROR_EXIT;
             }
+            if (stream_is_rtsp_io_error(ic, ret)) {
+                rtsp_io_error = ret;
+                pb_eof = 1;
+                pb_error = ret;
+            }
 
             if (pb_eof) {
                 if (is->video_stream >= 0)
@@ -3906,14 +4092,7 @@ static int read_thread(void *arg)
                 eof_clock_demux(is, 1);
             }
             if (pb_error) {
-                if (is->video_stream >= 0)
-                    packet_queue_put_nullpacket(&is->videoq, is->video_stream);
-                if (is->audio_stream >= 0)
-                    packet_queue_put_nullpacket(&is->audioq, is->audio_stream);
-                if (is->subtitle_stream >= 0)
-                    packet_queue_put_nullpacket(&is->subtitleq, is->subtitle_stream);
-                is->eof = 1;
-                eof_clock_demux(is, 1);
+                /* Every pb_error path above also sets pb_eof: drain once. */
                 ffp->error = pb_error;
                 av_log(ffp, AV_LOG_ERROR, "av_read_frame error: %s\n", ffp_get_error_string(ffp->error));
                 // break;
@@ -3947,6 +4126,13 @@ static int read_thread(void *arg)
         }
 
         /* check if packet is in play range specified by user, then queue, otherwise discard */
+        ret = rtsp_live_filter_packet(ffp, pkt);
+        if (ret <= 0) {
+            av_packet_unref(pkt);
+            if (ret < 0)
+                goto fail;
+            continue;
+        }
         stream_start_time = ic->streams[pkt->stream_index]->start_time;
         pkt_ts = pkt->pts == AV_NOPTS_VALUE ? pkt->dts : pkt->pts;
         pkt_in_play_range = ffp->duration == AV_NOPTS_VALUE ||
@@ -4657,8 +4843,7 @@ int ffp_prepare_async_l(FFPlayer *ffp, const char *file_name)
     assert(!ffp->is);
     assert(file_name);
 
-    if (av_stristart(file_name, "rtmp", NULL) ||
-        av_stristart(file_name, "rtsp", NULL)) {
+    if (av_stristart(file_name, "rtmp", NULL)) {
         // There is total different meaning for 'timeout' option in rtmp
         av_log(ffp, AV_LOG_WARNING, "remove 'timeout' option for rtmp.\n");
         av_dict_set(&ffp->format_opts, "timeout", NULL, 0);
@@ -4690,6 +4875,10 @@ int ffp_prepare_async_l(FFPlayer *ffp, const char *file_name)
     av_log(NULL, AV_LOG_INFO, "===================\n");
 
     av_opt_set_dict(ffp, &ffp->player_opts);
+    if (!rtsp_live_buffer_option_valid(ffp->rtsp_live_max_buffer_ms)) {
+        av_log(ffp, AV_LOG_ERROR, "rtsp-live-max-buffer-ms must be 0 or 500..60000\n");
+        return AVERROR(EINVAL);
+    }
     if (!ffp->aout) {
         ffp->aout = ffpipeline_open_audio_output(ffp->pipeline, ffp);
         if (!ffp->aout)
@@ -5066,6 +5255,9 @@ void ffp_statistic_l(FFPlayer *ffp)
 void ffp_check_buffering_l(FFPlayer *ffp)
 {
     VideoState *is            = ffp->is;
+    /* Includes the first-frame branch that restores first_high_water_mark
+     * immediately before this call. It must not outrun the live age cap. */
+    rtsp_live_update_high_water_mark(ffp);
     int hwm_in_ms             = ffp->dcc.current_high_water_mark_in_ms; // use fast water mark for first loading
     int buf_size_percent      = -1;
     int buf_time_percent      = -1;
@@ -5173,6 +5365,7 @@ void ffp_check_buffering_l(FFPlayer *ffp)
             hwm_in_ms = ffp->dcc.last_high_water_mark_in_ms;
 
         ffp->dcc.current_high_water_mark_in_ms = hwm_in_ms;
+        rtsp_live_update_high_water_mark(ffp);
 
         if (is->buffer_indicator_queue && is->buffer_indicator_queue->nb_packets > 0) {
             if (   (is->audioq.nb_packets >= MIN_MIN_FRAMES || is->audio_stream < 0 || is->audioq.abort_request)

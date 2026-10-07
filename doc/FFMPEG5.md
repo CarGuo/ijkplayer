@@ -1,6 +1,90 @@
-# FFmpeg 5 Android integration — platformrate-r3
+# FFmpeg 5 Android integration: RTSP candidate
 
-## Build and source identity
+## Current source and initializer
+
+`ffmpeg-5.0` is the migration branch name; the upstream baseline is **5.1.10**.
+The current RTSP work is based on published IJK
+`bb1d1b9fa07019155c88fe69fea9db896a108d0f` and FFmpeg
+`ff87490262107e004f6a16765484e36e1973d705`, with the frozen RTSP changes added.
+The exact RTSP initializer pin is `c157591220febd96fdcffb05283f63dd38627081`.
+The previous five-patch pin remains a historical identity, not the current RTSP
+source. Do not reset an older checkout in place; use a separate workspace.
+
+The initializer reverse-checks all six patches and never reapplies them or resets
+an existing checkout. OpenSSL 3.5.9, libyuv and SoundTouch pins, the explicit local
+repository/bundle override, and wrong-revision/non-repository preservation remain
+unchanged. The build receipt now includes the sixth patch hash. The initializer
+regression keeps fifth-patch preservation and adds sixth-patch preservation of
+`rtsp.c`, `rtsp.h` and `rtspdec.c`. **The full integration test at the new pin and
+a fresh full remote initialization were not rerun.** Syntax/AST checks do not
+replace these tests. See [initializer test scope](../tests/ffmpeg5/README-initializer.md)
+and [patch provenance](../patches/ffmpeg5/README.md).
+
+## Current RTSP behavior and limits
+
+- Initial-open RTSP redirects include SETUP and initial PLAY, bounded redirect
+  chains, session cleanup and origin-specific authentication handling. This does
+  not add playback-time REDIRECT, later PLAY/seek redirects or automatic reconnect.
+- RTSP FORMAT `timeout` is in microseconds and is preserved through the IJK hook.
+  Fatal RTSP read errors retain the original error while the existing tails drain.
+- The opt-in PLAYER `rtsp-live-max-buffer-ms` option defaults to `0`. Nonzero
+  `500..60000` ms limits apply to the selected live RTSP compressed-packet queues
+  at normal 1x speed, with documented timestamp, keyframe and byte-budget limits.
+  Recovery intentionally discards old media and can produce jumps or audio gaps.
+- A different port in Content-Base or an SDP control URL still does not create an
+  independent control connection. General multi-control-session support remains
+  unsupported; do not treat Content-Base as a 302 Location. Gateway semantics
+  and the known limitation are explained in [RTSP network notes](RTSP-NETWORK.md).
+
+The [live-policy host tests](../tests/ffmpeg5/README-rtsp-live.md) include a bounded
+20-minute software-consumer soak. Neither local queue age nor the emulator
+measurements below establish an end-to-end/camera-to-screen latency SLA.
+
+## Current emulator evidence: 2026-10-05
+
+The final prospective RTSP gate passed **12 executed cases**. One MediaCodec case
+was explicitly **N/A**, not passed. Scope: API 29, x86_64 software emulator,
+4096-byte guest pages and generated TCP/H.264/AAC fixtures. The frozen interval
+observer was independently replayed over 118 captures; each of four scored
+windows had 10/10 captures. Default-control latency-growth lower bound was
+3102.058 ms; cap=1200 growth upper bound was 518.639 ms, satisfying the existing
+bounded differential test. This is a scoped RTSP result, not an all-tests pass.
+
+The separate corrected pre-EOF rate/seek run passed 0.25x, 0.5x, 1x and 2x and
+the corrected visible 2-second seek case. **3x failed**: candidate measured
+2.3375191424..2.3382352941x, below the unchanged 2.4x floor. The previous-branch
+baseline measured 2.1647982063x and also failed its completion bound. A baseline
+failure does not turn the candidate result into a pass or prove the cause.
+The rate/seek run and final RTSP run used different instrumentation APKs with
+the same host/native candidate. Earlier failed and superseded-oracle runs remain
+historical failures or inconclusive results under their original oracles.
+
+The current RTSP candidate has **not been tested on a physical device**.
+Optional external HTTPS/HLS smoke was not run in this emulator gate. There is no
+new physical MediaCodec, ARM runtime, 16 KiB-page runtime, real-camera/TLS/UDP/H.265,
+audible-quality or full A/V-sync qualification. This branch is **not a stable
+release or universal 3x playback qualification**.
+
+## Current native build identity
+
+The carried RTSP candidate uses the local compiled snapshot label
+`v0.8.8-carguo-35-gd5c0b4eb-platformrate-r3-rtspfix-72edc055`.
+That label is **not a newly published Git commit**. Frozen source hashes and native
+build receipts bind the tested source and artifacts. Publishing the source or
+changing the initializer pin does not rebuild the previously tested libraries
+or establish bit-identical fresh builds. Keep each ABI's FFmpeg/player/SDL tuple
+matched; never mix the candidate libraries with the previous baseline tuple.
+
+## Historical platformrate-r3 record: published before RTSP
+
+The complete preceding published R3 document is retained below with its original
+claims scoped to that older candidate. In particular, its Pixel 8 physical 3x
+and HTTPS-HLS passes do not qualify this RTSP candidate or override the current
+emulator 3x failure. Its five-patch initializer and compiled labels are historical.
+
+### FFmpeg 5 Android integration — platformrate-r3
+
+#### Build and source identity
 
 `ffmpeg-5.0` names this migration series; the actual FFmpeg baseline is **5.1.10**.
 Use `init-android-ffmpeg5.sh`; the old `init-android.sh` is the FFmpeg 4.3 path.
@@ -41,7 +125,7 @@ checks and the public remote commit/blob checks are separate from a fresh full
 network initialization; that full fresh initialization was not rerun for this
 publication. Shell syntax and pin/profile/source equivalence were checked.
 
-## Integration changes
+#### Integration changes
 
 - Preserve codec EOS draining, actual-picture fallback readiness, output-ready
   audio clocks and MOV/HEVC seek replay from the recovered candidate.
@@ -65,7 +149,7 @@ backend remains unsupported/unqualified; this work does not promise expanded
 rate support on older Android. Video-only and other backend routes are not newly
 qualified by the audio-path results.
 
-## Physical verification and limits — 2026-10-04
+#### Physical verification and limits — 2026-10-04
 
 The exact ARM64 platformrate-r3 libraries were tested on Pixel 8/API 35 with
 **4096-byte system pages** using the real GSY public player/manager path:
@@ -92,7 +176,7 @@ See [native identities](platformrate-r3-native.json) and
 [GSY package verification](https://github.com/CarGuo/GSYVideoPlayer/blob/ffmpeg-5.0/doc/ffmpeg-5.0.md).
 No tag or stable-release guarantee is implied by this branch publication.
 
-## Compiled source versus publication identity
+#### Compiled source versus publication identity
 
 The carried FFmpeg binaries were compiled from recovered commit
 `0cb0a06ef3d2b8e2814cb0e60be99d7986e1bde1`; published ff87490262107e004f6a16765484e36e1973d705 has identical

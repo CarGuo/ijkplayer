@@ -78,6 +78,8 @@ static const AVOption ffp_context_options[] = {
         OPTION_OFFSET(loop),            OPTION_INT(1, INT_MIN, INT_MAX) },
     { "infbuf",                         "don't limit the input buffer size (useful with realtime streams)",
         OPTION_OFFSET(infinite_buffer), OPTION_INT(0, 0, 1) },
+    { "rtsp-live-max-buffer-ms",         "opt-in live RTSP packet age cap; keyframe restart (0 off, 500..60000 ms)",
+        OPTION_OFFSET(rtsp_live_max_buffer_ms), OPTION_INT(0, 0, 60000) },
     { "framedrop",                      "drop frames when cpu is too slow",
         OPTION_OFFSET(framedrop),       OPTION_INT(0, -1, 120) },
     { "seek-at-start",                  "set offset of player should be seeked",

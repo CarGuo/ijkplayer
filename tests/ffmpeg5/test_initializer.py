@@ -14,7 +14,7 @@ import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
-PIN = 'ff87490262107e004f6a16765484e36e1973d705'
+PIN = 'c157591220febd96fdcffb05283f63dd38627081'
 DEPS = {
     'extra/openssl-3.5.9': '45e844fa2a14ec92d146bd8f5778ac130b6625fb',
     'ijkmedia/ijkyuv': 'a0c7dd3e4b095649881f39152655437b8cde1589',
@@ -53,7 +53,7 @@ def main():
             assert (result.returncode == 0) == success, (label, result.stdout)
             assert expected in result.stdout, (label, result.stdout)
             if success:
-                assert result.stdout.count('is already applied') == 5, result.stdout
+                assert result.stdout.count('is already applied') == 6, result.stdout
             print('PASS:', label, flush=True)
         run('fresh local repository initialization')
         checkout = work / 'extra/ffmpeg5'
@@ -69,6 +69,15 @@ def main():
         run('missing fifth patch rejected', False, 'Expected patch 0005')
         assert snapshot(checkout) == before
         assert (checkout / 'libavformat/mov.c').read_bytes() == contents
+        git(checkout, 'apply', str(patch))
+        patch = work / 'patches/ffmpeg5/0006-rtsp-initial-open.patch'
+        git(checkout, 'apply', '--reverse', str(patch))
+        before = snapshot(checkout)
+        rtsp_files = ('libavformat/rtsp.c', 'libavformat/rtsp.h', 'libavformat/rtspdec.c')
+        contents = {name: (checkout / name).read_bytes() for name in rtsp_files}
+        run('missing sixth patch rejected', False, 'Expected patch 0006')
+        assert snapshot(checkout) == before
+        assert {name: (checkout / name).read_bytes() for name in rtsp_files} == contents
         git(checkout, 'apply', str(patch))
         git(checkout, 'checkout', '--detach', PIN + '^')
         before = snapshot(checkout)

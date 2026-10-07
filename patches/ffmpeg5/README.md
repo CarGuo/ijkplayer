@@ -9,25 +9,33 @@
 - Pre-remediation FFmpeg 5 fork pin: `4a62cc600696982f189fbad6c6ea1593e909b814`
 - Published four-patch fork commit (previous initializer pin): `5d01026835e0fc18be967461df180432e85db0c7`
 - Published recovery parent: `eeda3f84b84b95cbecc5604b343a9100ad656311`
-- Current published five-patch initializer pin: `ff87490262107e004f6a16765484e36e1973d705`
-- Recovered compiled-code checkpoint: `0cb0a06ef3d2b8e2814cb0e60be99d7986e1bde1` (same production code; updated publication docs)
+- Previous published five-patch initializer pin: `ff87490262107e004f6a16765484e36e1973d705`
+- Recovered five-patch compiled-code checkpoint: `0cb0a06ef3d2b8e2814cb0e60be99d7986e1bde1` (same production code as the previous five-patch pin; updated publication docs)
+- Exact six-patch RTSP initializer pin: `c157591220febd96fdcffb05283f63dd38627081`
 - Existing fork repository: https://github.com/CarGuo/FFmpeg
 - Existing fork tag: `ijk-n4.3-20260301-007`
 - Existing fork commit: `9e7c61dfc2b8f370a4851b9001bd6e37ce673903`
 - Existing fork base: `n4.3` (`8e12af29d1a3f95c9e952d78354e3c8b1c0431a8`)
 
 The Android setup is `./init-android-ffmpeg5.sh`; it checks out the exact
-pinned source and reverse-checks all five required production patches. It never
+pinned source and reverse-checks all six required production patches. It never
 reapplies them or resets an existing checkout. A different existing revision,
 a modified/missing required patch, or a non-repository target directory fails
 without overwriting it. In particular, the previous `extra/ffmpeg5` checkout
 is deliberately preserved; use a separate IJK workspace for fresh recovery.
 
-The current immutable pin is published in the default companion fork. It includes
-all five patches and current documentation; production FFmpeg source matches the
-recovered compiled-code checkpoint. Exact remote commit/tree/blob checks passed.
-A fresh end-to-end remote initializer run is a separate check and is not claimed
-by publication verification alone.
+The RTSP source adds `0006-rtsp-initial-open.patch` to the preceding five-patch
+pin. The initializer requires the exact six-patch RTSP commit listed above.
+Full new-pin initializer integration and fresh end-to-end remote initialization
+have not been rerun. The initializer test
+retains its fifth-patch regression and adds a sixth-patch removal/preservation
+case; this is not only an expected-pin update.
+
+Historical five-patch publication: the previous immutable pin above included
+all five patches and documentation; its production FFmpeg code matched the
+recovered five-patch compiled checkpoint. Exact remote commit/tree/blob checks
+passed for that earlier publication. Those historical checks are not a claim
+of new RTSP-pin initialization, compilation or runtime verification.
 
 To initialize from the delivered local source repository (or a standalone Git
 bundle containing the exact recovery commit), use an explicit override:
@@ -40,7 +48,7 @@ FFMPEG5_SOURCE_REPOSITORY=/absolute/path/to/FFmpeg.bundle ./init-android-ffmpeg5
 
 The override accepts an existing local path, not a replacement network URL.
 Relative paths are resolved from the IJK repository root. The exact commit and
-all five patch checks remain mandatory. The override only selects FFmpeg;
+all six patch checks remain mandatory. The override only selects FFmpeg;
 OpenSSL, libyuv, and SoundTouch still use their published pins and require
 network access unless their pinned checkouts are already present. See
 [initializer tests](../../tests/ffmpeg5/README-initializer.md) for the bounded,
@@ -52,7 +60,7 @@ The patches remain available to reconstruct the same source changes from
 pristine upstream FFmpeg 5.1.10. The first two patches also contain their host
 regressions; HEVC tests are in the companion IJK tree and TLS tests are in the
 FFmpeg fork's `tests/ijk` directory. This alternative production-source
-reconstruction does not depend on a pre-modified checkout. Apply all five
+reconstruction does not depend on a pre-modified checkout. Apply all six
 patches, in order:
 
 ```sh
@@ -69,6 +77,8 @@ git apply --check /path/to/ijkplayer/patches/ffmpeg5/0004-tls-peer-identity.patc
 git apply /path/to/ijkplayer/patches/ffmpeg5/0004-tls-peer-identity.patch
 git apply --check /path/to/ijkplayer/patches/ffmpeg5/0005-mov-hevc-seek-replay.patch
 git apply /path/to/ijkplayer/patches/ffmpeg5/0005-mov-hevc-seek-replay.patch
+git apply --check /path/to/ijkplayer/patches/ffmpeg5/0006-rtsp-initial-open.patch
+git apply /path/to/ijkplayer/patches/ffmpeg5/0006-rtsp-initial-open.patch
 ```
 
 ## Preservation inventory
@@ -203,3 +213,32 @@ The recovery tests cover 72 exact-YUV seek comparisons and 12 helper checks;
 these are bounded host results, not restored historical reports or Android
 vendor MediaCodec certification. Refer to the delivered source's
 `tests/mov-hevc-seek/README.md` for their scope and prerequisites.
+
+## 0006: bounded RTSP initial-open redirects and network errors
+
+`0006-rtsp-initial-open.patch` is the frozen three-file production patch for
+`libavformat/rtsp.c`, `rtsp.h` and `rtspdec.c`. SHA-256:
+`cdbda16f783f5a2dfbe228c4f5a7ee8dacce643cc667a9f0ecc5cab23cf74e14`.
+It extends initial-open redirect handling to SETUP and initial PLAY, clears
+replaced session/SDP state, bounds redirect chains and preserves network errors.
+The paired IJK changes preserve RTSP timeout and terminal-error handling and
+add the opt-in live compressed-queue policy. FFmpeg and IJK source must be used
+as the matching RTSP candidate; the patch alone does not add the IJK policy.
+
+The host network tests live in the companion FFmpeg repository; the IJK
+control-flow regression is `tests/ffmpeg5/test_rtsp_network_policy.py`, and the
+live-policy reproduction instructions are in
+[README-rtsp-live.md](../../tests/ffmpeg5/README-rtsp-live.md). Production patches
+alone do not recreate every companion fixture/test file or a published commit ID.
+
+Content-Base/SDP control URLs on another port still use the existing single
+control connection; independent multi-control sessions are unsupported.
+Playback-time REDIRECT, later PLAY/seek redirects and automatic reconnect are
+outside this patch. See [RTSP network limits](../../doc/RTSP-NETWORK.md).
+
+Current Android evidence is limited to 12 passed executed RTSP cases and one
+MediaCodec N/A on the API 29 x86_64 software emulator. Separate 3x qualification
+fails for both candidate and previous-branch baseline. This RTSP candidate has
+no physical-device qualification; optional HTTPS/HLS smoke was not run and no
+end-to-end latency SLA is claimed. See the
+[current evidence and historical R3 separation](../../doc/FFMPEG5.md).

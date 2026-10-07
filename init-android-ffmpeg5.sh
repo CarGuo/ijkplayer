@@ -25,10 +25,10 @@ checkout() {
  }
 }
 # The branch is the discovery ref; the immutable commit is the source identity.
-# The immutable five-patch source is published in the companion FFmpeg fork.
+# The immutable six-patch source is pinned from the companion FFmpeg fork.
 # For offline recovery, point FFMPEG5_SOURCE_REPOSITORY at the delivered local
 # FFmpeg repository or bundle. Dependencies still require network or pinned caches.
-# All five patches are already present; never apply them a second time.
+# All six patches are already present; never apply them a second time.
 FFMPEG_REPOSITORY=https://github.com/CarGuo/FFmpeg.git
 FFMPEG_REF=ffmpeg-5.0
 if [[ -n "${FFMPEG5_SOURCE_REPOSITORY:-}" ]]; then
@@ -40,8 +40,8 @@ if [[ -n "${FFMPEG5_SOURCE_REPOSITORY:-}" ]]; then
  FFMPEG_REPOSITORY="$(cd "$(dirname "$FFMPEG5_SOURCE_REPOSITORY")" && pwd)/$(basename "$FFMPEG5_SOURCE_REPOSITORY")"
  FFMPEG_REF=
 fi
-checkout "$FFMPEG_REPOSITORY" extra/ffmpeg5 "$FFMPEG_REF" ff87490262107e004f6a16765484e36e1973d705
-for patch_name in 0001-ijk-hooks.patch 0002-mpjpeg-eof.patch 0003-hevc-parameter-updates.patch 0004-tls-peer-identity.patch 0005-mov-hevc-seek-replay.patch; do
+checkout "$FFMPEG_REPOSITORY" extra/ffmpeg5 "$FFMPEG_REF" c157591220febd96fdcffb05283f63dd38627081
+for patch_name in 0001-ijk-hooks.patch 0002-mpjpeg-eof.patch 0003-hevc-parameter-updates.patch 0004-tls-peer-identity.patch 0005-mov-hevc-seek-replay.patch 0006-rtsp-initial-open.patch; do
 PATCH="$ROOT/patches/ffmpeg5/$patch_name"
 if git -C extra/ffmpeg5 apply --reverse --check "$PATCH"; then
  echo "Exact patch $patch_name is already applied"

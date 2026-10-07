@@ -323,6 +323,9 @@ typedef struct VideoState {
 #endif
     AVFormatContext *ic;
     int realtime;
+    int rtsp_live_wait_keyframe; /* read-thread owned live catch-up state */
+    int rtsp_live_drop_audio_before;
+    int64_t rtsp_live_start_us;
 
     EOFClockState eof_clock;
     Clock audclk;
@@ -640,6 +643,7 @@ typedef struct FFPlayer {
     int64_t seek_at_start;
     int subtitle;
     int infinite_buffer;
+    int rtsp_live_max_buffer_ms;
     enum ShowMode show_mode;
     char *audio_codec_name;
     char *subtitle_codec_name;
@@ -796,6 +800,7 @@ inline static void ffp_reset_internal(FFPlayer *ffp)
     ffp->framedrop              = 0; // option
     ffp->seek_at_start          = 0;
     ffp->infinite_buffer        = -1;
+    ffp->rtsp_live_max_buffer_ms = 0;
     ffp->show_mode              = SHOW_MODE_NONE;
     av_freep(&ffp->audio_codec_name);
     av_freep(&ffp->video_codec_name);
