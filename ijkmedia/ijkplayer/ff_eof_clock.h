@@ -20,8 +20,9 @@ static EOFClockView eof_clock_view(VideoState *is)
     EOFClockView view = { .audio_end = NAN, .audio_clock = NAN, .video_clock = NAN };
     EOFClockState *c = &is->eof_clock;
     SDL_AudioPlaybackSnapshot position = { 0 };
-    int head_mode = is->audclk.source_aout != NULL;
-    if (head_mode)
+    int head_drain = is->audclk.source_aout != NULL;
+    int head_mode = head_drain && !__atomic_load_n(&is->audclk.source_soft, __ATOMIC_ACQUIRE);
+    if (head_drain)
         SDL_AoutGetPlaybackPosition(is->audclk.source_aout, &position);
     SDL_LockMutex(is->sampq.mutex);
     SDL_LockMutex(is->audioq.mutex);
@@ -36,11 +37,12 @@ static EOFClockView eof_clock_view(VideoState *is)
         view.audio_terminal = c->demux_eof && c->audio_finished_serial == is->audioq.serial;
         view.audio_drained = view.audio_terminal &&
             !c->audio_callback_busy && !c->audio_submit_pending &&
+            !(c->audio_transform_pending && c->audio_transform_serial == is->audioq.serial) &&
             !(c->audio_output_error && c->audio_output_error_serial == is->audioq.serial) &&
             frame_queue_nb_remaining(&is->sampq) == 0 &&
             (c->audio_serial != is->audioq.serial ||
              (!c->audio_pending && now >= c->audio_deadline &&
-              (!head_mode || (position.valid &&
+              (!head_drain || (position.valid &&
                position.generation == is->audioq.serial &&
                position.epoch == c->audio_output_epoch &&
                position.played_frames >= c->audio_output_end_frame))));
@@ -56,8 +58,13 @@ static EOFClockView eof_clock_view(VideoState *is)
                     view.audio_clock = c->paused && c->audio_pause_serial == is->audioq.serial ?
                         c->audio_pause_pts : position.pts;
                 }
+            } else if (head_drain && position.valid &&
+                       position.generation == is->audioq.serial && position.epoch == c->audio_output_epoch) {
+                view.audio_clock = c->paused ? c->audio_pause_pts :
+                    position.estimated_pts;
             } else if (isfinite(c->audio_end)) {
-                view.audio_clock = c->audio_end - FFMAX(0.0, c->audio_deadline - now);
+                view.audio_clock = c->audio_end - FFMAX(0.0, c->audio_deadline - now) *
+                    (c->audio_media_rate > 0 ? c->audio_media_rate : 1.0);
             }
         }
         if (c->video_serial == is->videoq.serial && isfinite(c->video_pts)) {
@@ -122,6 +129,9 @@ static int eof_clock_rate_applied(VideoState *is, const SDL_AudioRateApplied *ap
                     c->video_updated, c->video_applied_rate, boundary);
                 c->video_updated = boundary;
             }
+            if (__atomic_load_n(&is->audclk.source_soft, __ATOMIC_ACQUIRE))
+                set_clock_speed(&is->audclk, applied->speed);
+            c->audio_media_rate = applied->speed;
             c->video_applied_rate = applied->speed;
             c->video_applied_at = effective_apply_at;
             c->applied_rate_sequence = applied->sequence;
@@ -192,7 +202,9 @@ static void eof_clock_pause(VideoState *is, int paused)
     SDL_LockMutex(c->mutex);
     if (paused && !c->paused) {
         c->pause_at = now;
-        c->audio_pause_pts = position.valid && position.generation == is->audioq.serial ? position.pts : NAN;
+        c->audio_pause_pts = position.valid && position.generation == is->audioq.serial ?
+            (__atomic_load_n(&is->audclk.source_soft, __ATOMIC_ACQUIRE) ?
+             position.estimated_pts : position.pts) : NAN;
         c->audio_pause_serial = position.valid && position.generation == is->audioq.serial ? position.generation : -1;
     }
     else if (!paused && c->paused) {
@@ -319,6 +331,7 @@ static int eof_clock_audio_submission(VideoState *is,
                (action == SDL_AUDIO_SUBMIT_CHECK || action == SDL_AUDIO_SUBMIT_FAIL) &&
                c->demux_eof && c->audio_finished_serial == is->audioq.serial &&
                !c->audio_callback_busy && !c->audio_submit_pending &&
+               !(c->audio_transform_pending && c->audio_transform_serial == is->audioq.serial) &&
                frame_queue_nb_remaining(&is->sampq) == 0 &&
                (c->audio_serial != is->audioq.serial ||
                 (!c->audio_pending &&
@@ -341,10 +354,12 @@ static int eof_clock_audio_submission(VideoState *is,
         c->audio_end = c->audio_submit_end;
         c->audio_output_epoch = submission->output_epoch;
         c->audio_output_end_frame = submission->end_frame;
+        c->audio_output_end_media = submission->end_media;
         if (position && position->valid && position->generation == submission->generation &&
             position->epoch == submission->output_epoch && c->paused &&
             (c->audio_pause_serial != submission->generation || !isfinite(c->audio_pause_pts))) {
-            c->audio_pause_pts = position->pts;
+            c->audio_pause_pts = __atomic_load_n(&is->audclk.source_soft, __ATOMIC_ACQUIRE) ?
+                position->estimated_pts : position->pts;
             c->audio_pause_serial = submission->generation;
         }
         c->audio_pending = c->audio_submit_buffer_pending;

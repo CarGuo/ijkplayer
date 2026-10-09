@@ -4,10 +4,11 @@ static void near(double got,double want,const char *name) { ++assertions; if(!is
 static SDL_mutex *new_mutex(void) { SDL_mutex*m=malloc(sizeof(*m)); if(!m||pthread_mutex_init(m,NULL))abort(); return m; }
 static SDL_cond *new_cond(void) { SDL_cond*c=malloc(sizeof(*c)); if(!c||pthread_cond_init(c,NULL))abort(); return c; }
 static void setup(FFPlayer*f,VideoState*s) {
-    memset(f,0,sizeof(*f));memset(s,0,sizeof(*s));f->is=s;active_player=f;
+    memset(f,0,sizeof(*f));memset(s,0,sizeof(*s));f->is=s;active_player=f;f->pf_playback_rate=1.0;
     s->eof_clock.mutex=new_mutex();s->sampq.mutex=new_mutex();s->sampq.cond=new_cond();s->pictq.mutex=new_mutex();s->pictq.cond=new_cond();s->audioq.mutex=new_mutex();s->videoq.mutex=new_mutex();
     s->sampq.pktq=&s->audioq;s->pictq.pktq=&s->videoq;s->sampq.max_size=s->pictq.max_size=4;
     s->audioq.serial=s->videoq.serial=s->auddec.pkt_serial=s->audio_clock_serial=6;
+    s->eof_clock.video_applied_rate=1.0;s->audio_buffer_media_rate=1.0;
     s->eof_clock.audio_serial=s->eof_clock.audio_finished_serial=s->eof_clock.video_serial=-1;
     s->eof_clock.audio_end=s->eof_clock.video_pts=s->eof_clock.video_end=NAN;
     s->audclk.queue_serial=&s->audioq.serial;s->vidclk.queue_serial=&s->videoq.serial;s->extclk.queue_serial=&s->extclk.serial;

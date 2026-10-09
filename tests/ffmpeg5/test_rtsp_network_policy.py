@@ -34,6 +34,8 @@ typedef struct { int eof, video_stream, audio_stream, subtitle_stream, pause_req
 typedef struct { VideoState *is; int error, auto_resume; } FFPlayer;
 static int next_read, read_calls, wait_calls, error_msgs, completed_msgs, error_code;
 static int test_read(AVFormatContext *c, AVPacket *p) {(void)c;(void)p;++read_calls;return next_read;}
+/* Wrapper contract is covered by test_ijklivehook.c, not this direct-RTSP fixture. */
+static int ijklivehook_is_terminal_error(const AVFormatContext*c,int e){return !strcmp(c->iformat->name,"ijklivehook") && e==AVERROR(ENOSYS);}
 static int test_feof(AVIOContext *p) {return p ? p->eof_reached : 0;}
 static void packet_queue_put_nullpacket(Queue *q,int i){(void)i;q->count++;}
 static void eof_clock_demux(VideoState*s,int e){(void)s;(void)e;}
@@ -94,6 +96,9 @@ else:
     next_read=AVERROR(EAGAIN);step(&f,&ic,&latch);assert(!latch&&!is.eof);
     next_read=AVERROR_INVALIDDATA;step(&f,&ic,&latch);assert(!latch&&!is.eof);
     fmt.name="mov";next_read=AVERROR(ETIMEDOUT);step(&f,&ic,&latch);assert(!latch);
+    fmt.name="ijklivehook";step(&f,&ic,&latch);assert(!latch);
+    next_read=AVERROR(ENOSYS);step(&f,&ic,&latch);assert(latch==AVERROR(ENOSYS));
+    calls=read_calls;step(&f,&ic,&latch);assert(read_calls==calls);
     puts("PASS exact IJK error block: one drain, preserved timeout, no rereads, one error after tail, failed/successful seek, EAGAIN/INVALIDDATA and non-RTSP controls");return 0; }
 '''
 with tempfile.TemporaryDirectory() as td:

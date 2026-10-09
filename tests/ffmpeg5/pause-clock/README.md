@@ -67,3 +67,10 @@ operands. These source counterexamples prove defects and their repairs, but do
 not establish the precise triggering interleaving in that run. Native builds,
 APK provenance and runtime qualification remain separate. LeakSanitizer is
 disabled under the host tracer; this is not a leak-check or full-player race test.
+
+The current-interface harness extracts the production Clock declaration and
+video-rate helper, copies the rate and playback-tracker headers, initializes the
+ordinary applied rate to 1x, and supplies an unavailable device-head snapshot.
+The original 78 assertions and repository playback-clock fixture are unchanged.
+These cases intentionally select the software-clock path. `--source-root` alone
+selects that source tree; `--overlay-root` overrides only files it contains.

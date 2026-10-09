@@ -45,7 +45,10 @@ longer than the cap, and an absent keyframe can leave output waiting while input
 continues to be discarded with bounded queues. Expired RTSP sessions after long
 pause still need an application-level reopen; this option does not reconnect.
 
-## Reproduction and measurements
+## Historical reproduction and measurements
+
+The recorded measurements below belong to earlier fixture/source snapshots.
+They are not a network or device acceptance result for this LOCAL-only follow-up.
 
 The fixture sends valid loopback RTSP PCMU + H.264 over TCP or UDP. Its RTP origin
 is tied to the server monotonic clock. The C harness includes the production
@@ -112,11 +115,125 @@ the single-packet byte exception, real first-frame buffering readiness, old
 AudioTrack submission COMMIT/CANCEL rejection, newer submission ownership and
 old/current rate acknowledgments after a live generation reset.
 
-ASan/UBSan pass for the IJK test translation unit. LeakSanitizer is unavailable
-under this traced runtime and is explicitly disabled; FFmpeg static libraries
-are not sanitizer-instrumented. Existing core/clock/decode/LAS/dictionary host
-regressions pass. Historical audio-submission/close extraction harnesses no
-longer compile against the current R3 playback-head/rate definitions and are
-reported as blocked, not passing. Android build, hardware codec flushing,
-playback-head concurrency, audible continuity and device soak remain separate
-verification gates.
+The harnesses in this directory provide focused host coverage. Sanitizer
+instrumentation covers the IJK test translation units; linked FFmpeg libraries
+require a separately instrumented build for equivalent coverage. LeakSanitizer
+is disabled in traced runs. The audio-submission and close harnesses have been
+updated for the current interfaces; run them separately against the same source
+snapshot. No current Android runtime, hardware codec, audible-output or
+device-soak qualification is implied.
+
+## `ijklivehook` and option-boundary follow-up
+
+The accepted cap remains `0` (off) or `500..60000` ms. Both integer and string
+setters store the option until preparation. Invalid extremes, malformed strings
+and `1..499` now consistently return `AVERROR(EINVAL)` before audio output/read
+threads open. On Android this is the synchronous `IjkMediaException` from
+`prepareAsync()`, not a later `OnError` callback. Other player options keep their
+existing permissive dictionary-error behavior; this validation is specific to
+the live cap.
+
+An enabled cap also supports `ijklivehook:rtsp://...`, using a wrapper-owned
+atomic capability derived from the **actually opened inner demuxer and its
+duration**. URL prefixes and the outer wrapper name do not establish live RTSP
+identity. After a hook rewrite or reconnect, capability is recomputed; known recordings,
+non-RTSP media, failed opens and interrupts disable it. Player threads never borrow a
+replaceable inner context pointer. As for other AVFormatContext operations, the
+outer context must stay alive until all reader threads have joined.
+
+The wrapper exposes FORMAT `timeout` (RTSP microseconds) and `rtsp_transport`
+options, preserving explicit values and forwarding them to post-hook RTSP URLs
+on each open. Omitted values preserve FFmpeg defaults; these RTSP-specific values
+are not forwarded when the hook changes the URL to another protocol. This is a
+bounded forwarding fix, not a claim that arbitrary format options pass through
+this FFmpeg5 wrapper.
+
+Only when the player cap is enabled, the player supplies the internal
+`ijklivehook-stable-streams=1` mode. Outer stream objects and time bases then stay
+fixed across reconnects; new packet timestamps/durations are rescaled into those
+original time bases. Reconnect discontinuities invalidate the old live queues,
+advance selected stream serials together, and restart video on a key packet.
+Audio alignment from the previous timestamp epoch is cleared. A pending decoder
+restart still finishes if the new source is VOD or a different protocol, but no
+new age-cap drops are initiated for that source.
+
+Changing stream count/order or codec configuration cannot safely reuse the
+already-open player decoders. In this opted-in mode it produces a latched
+`AVERROR(ENOSYS)` with a diagnostic requiring an application-level player reopen,
+rather than repeatedly reconnecting or appending streams under active decoders.
+Stream identity is positional, with codec/layout/extradata compatibility checks;
+identical same-codec tracks reordered by a server are not distinguishable here.
+The default cap-off wrapper retains its legacy reconnect/stream behavior.
+Ordinary transport failures still use the wrapper's existing reconnect policy,
+with its application callback and interrupt callback controlling retries. The
+wrapper does not extend this cap to untrusted networks or enable it by default.
+
+Run the wrapper-specific checks in addition to the existing queue harness:
+
+Run deterministic in-process checks without sockets first:
+
+```sh
+IJKLIVEHOOK_LOCAL_ONLY=1 bash tests/ffmpeg5/run-ijklivehook.sh FFMPEG_SOURCE FFMPEG_HOST_BUILD OUTPUT
+```
+
+Omitting `IJKLIVEHOOK_LOCAL_ONLY` enables additional loopback network tests;
+those are separate from LOCAL-only acceptance:
+
+```sh
+bash tests/ffmpeg5/run-ijklivehook.sh FFMPEG_SOURCE FFMPEG_HOST_BUILD OUTPUT
+ASAN_OPTIONS=detect_leaks=0 SANITIZE=address,undefined,float-cast-overflow \
+  bash tests/ffmpeg5/run-ijklivehook.sh FFMPEG_SOURCE FFMPEG_HOST_BUILD OUTPUT_ASAN
+```
+
+`test_ijklivehook.c` uses the production wrapper callbacks, FFmpeg's actual outer
+option/open dispatch, and scripted inner I/O for rewritten URL/duration/protocol,
+repeated reconnect, time-base rescaling, topology rejection, and bounded
+interrupt/retry cases. `test_ijklivehook_network.c` uses the production wrapper and
+actual RTSP demuxer over loopback; it checks effective socket timeout, negotiated
+transport, outgoing TCP/UDP SETUP, a read stall followed by reconnect, and a
+positive-duration RTSP recording guard. The queue harness now registers/links the
+production wrapper and accepts a wrapped URL, and tests the real cap parser and
+both public native setters in the preparation-time helper. It still does not
+instantiate the full Android player/read/render threads or verify hardware
+codecs, audible output, Android exceptions, or a device soak.
+
+
+The follow-up compatibility guard distinguishes decoder configuration from
+advisory metadata for the checked H264/HEVC/AAC/AAC-LATM, PCMU/PCMA/PCM-S16LE and
+G726/G726LE decoder contracts. Bitrate estimates and ordinary container tags
+may change, and unknown sample-format/profile/level metadata may become known,
+without forcing a reopen. H264's special SMV2 tag remains significant. G726's
+coded sample width is initialization data: G726-32 to G726-24 cannot reuse the
+old decoder. Equivalent legacy/new channel-layout representations are accepted.
+For other codecs, no advisory exemption has been established; remaining
+initialization fields (including bitrate/tag/block sizes) must match, so those
+formats can still require application reopen on metadata differences. This is
+a bounded codec-specific compatibility policy, not a universal decoder proof.
+Callback cancellation and read interruption are latched for the wrapper session;
+subsequent reads cannot revive the old inner source after cancellation.
+
+For deterministic in-process tests only, set `IJKLIVEHOOK_LOCAL_ONLY=1` when
+running `run-ijklivehook.sh`. This mode runs no socket/loopback test. It includes
+G726 codeword-width rejection and repeated reads following callback cancellation
+or a cleared transient interrupt.
+
+
+A failed seek after a latched terminal RTSP/wrapper error now leaves buffering
+off. The terminal read loop also releases buffering entered while the remaining
+tail drains, before backpressure/completion checks. These calls use the existing
+pause updater: explicit user pause and single-step/paused-seek preview requests
+remain intact. A successful seek still clears the terminal latch, flushes the
+selected queue generations and resumes ordinary buffering. This prevents an
+unfillable buffering pause from hiding the terminal error indefinitely.
+
+Run the local production-block regression with real buffering/pause helpers:
+
+```sh
+python3 tests/ffmpeg5/test_terminal_seek.py FFMPEG_SOURCE FFMPEG_HOST_BUILD OUTPUT
+```
+
+It extracts the actual seek and terminal-loop blocks, substitutes only the seek
+result, and starts no network I/O or player threads. Cases cover failed terminal
+seek, undrained/drained tails, one error/no rereads, user pause/step, successful
+seek generations, nonterminal rebuffering and autoexit. `--repo PREVIOUS_CHECKOUT`
+runs identical assertions against another tree as a negative control.

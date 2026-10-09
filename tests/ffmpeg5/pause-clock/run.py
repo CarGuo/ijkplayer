@@ -2,10 +2,10 @@ from pathlib import Path
 import hashlib,json,re,subprocess,os,argparse
 HERE=Path(__file__).resolve().parent
 BASE=HERE.parents[2]
-p=argparse.ArgumentParser();p.add_argument('--source-root',type=Path,default=BASE);p.add_argument('--overlay-root',type=Path,default=BASE);p.add_argument('--out',type=Path,required=True);a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
+p=argparse.ArgumentParser();p.add_argument('--source-root',type=Path,default=BASE);p.add_argument('--overlay-root',type=Path);p.add_argument('--out',type=Path,required=True);a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
 srcroot=a.source_root.resolve()
 def source_path(rel):
- p=a.overlay_root.resolve()/rel
+ p=(a.overlay_root.resolve() if a.overlay_root else srcroot)/rel
  return p if p.is_file() else srcroot/rel
 def source_text(rel):return source_path(rel).read_text()
 src=source_text('ijkmedia/ijkplayer/ff_ffplay.c');defs=source_text('ijkmedia/ijkplayer/ff_ffplay_def.h');eof=source_text('ijkmedia/ijkplayer/ff_eof_clock.h');audio=source_text('ijkmedia/ijksdl/ijksdl_audio.h');mp=source_text('ijkmedia/ijkplayer/ijkplayer.c')
@@ -17,7 +17,8 @@ def extract(s,name):
  return s[m.start():i]
 def decl(name):return re.search(r'typedef struct '+name+r' \{.*?\} '+name+r';',defs,re.S).group()
 h=(HERE/'harness.h').read_text()
-h=h.replace('/* PRODUCTION_DECLARATIONS */',audio[audio.index('typedef struct SDL_AudioSubmission'):audio.index('typedef struct SDL_AudioSpec')]+decl('EOFClockState')+'\n'+decl('Clock'))
+rate_flags=re.search(r'enum \{ SDL_AUDIO_RATE_SPEED =.*?\};',source_text('ijkmedia/ijksdl/ijksdl_aout.h'),re.S).group()
+h=h.replace('/* PRODUCTION_DECLARATIONS */',rate_flags+'\n'+audio[audio.index('typedef struct SDL_AudioSubmission'):audio.index('typedef struct SDL_AudioSpec')]+decl('EOFClockState')+'\n'+decl('Clock'))
 h=h.replace('    double audio_clock;','    double audio_clock;\n    SDL_mutex *play_mutex;\n    double frame_timer;\n    int step, buffering_on;\n    int64_t seek_pos;\n    struct FormatContext { int64_t start_time, duration; } format, *ic;\n    SDL_cond *continue_read_thread;')
 h=h.replace('    void *aout;','    void *aout;\n    int no_time_adjust, auto_resume;')
 h+='''\n#include <assert.h>
@@ -30,7 +31,7 @@ static int64_t av_rescale(int64_t a,int64_t b,int64_t c){return (int64_t)roundl(
 static void SDL_AoutPauseAudio(void *a,int paused){(void)a;(void)paused;}
 '''
 h+=re.search(r'^#define fftime_to_milliseconds.*$',defs,re.M).group()+'\n'
-names=['frame_queue_nb_remaining','get_clock','set_clock_at','set_clock','init_clock','sync_clock_to_slave']
+names=['frame_queue_nb_remaining','get_clock','set_clock_at','set_clock','set_clock_speed','init_clock','sync_clock_to_slave']
 # Stateful dependency instrumentation verifies actual lock order and lets one
 # worker ACK wait behind a control transition, without altering extracted code.
 h=h.replace('static void SDL_LockMutex(SDL_mutex *m) { int r=pthread_mutex_lock(m); if(r) abort(); }',r'''static int core_fixture_mode,core_mutex_count;
@@ -46,8 +47,10 @@ static void SDL_LockMutex(SDL_mutex *m) {
 }''')
 h=h.replace('static void SDL_UnlockMutex(SDL_mutex *m) { int r=pthread_mutex_unlock(m); if(r) abort(); }','static void SDL_UnlockMutex(SDL_mutex *m) { if(!held_count || held_locks[held_count-1]!=m)abort();--held_count;int r=pthread_mutex_unlock(m);if(r)abort(); }')
 h=h.replace('static double SDL_AoutGetLatencySeconds(void *a) { (void)a;', 'static double SDL_AoutGetLatencySeconds(void *a) { if(held_count)abort(); (void)a;')
+for header,rel in [('ff_rate_clock.h','ijkmedia/ijkplayer/ff_rate_clock.h'),('ijksdl_audio_playback.h','ijkmedia/ijksdl/ijksdl_audio_playback.h')]:
+ (a.out/header).write_text(source_text(rel))
 h+='\n'.join(extract(src,n) for n in names)+'\n'+eof+'\n'
-other=['get_default_master_sync_type','get_master_sync_type','get_master_clock','stream_toggle_pause_l','step_to_next_frame_l','stream_update_pause_l','toggle_pause_l','toggle_pause','ffp_start_l','ffp_pause_l','ffp_is_paused_l','ffp_get_current_position_l','sdl_audio_submission_callback']
+other=['video_update_platform_rate_l','get_default_master_sync_type','get_master_sync_type','get_master_clock','stream_toggle_pause_l','step_to_next_frame_l','stream_update_pause_l','toggle_pause_l','toggle_pause','ffp_start_l','ffp_pause_l','ffp_is_paused_l','ffp_get_current_position_l','sdl_audio_submission_callback']
 h+='\n'.join(extract(src,n) for n in other)+'\n'
 h+=(HERE/'setup.c').read_text()+'\n'
 # Real public pause request function, with state validation/removal mocked and a
@@ -70,8 +73,8 @@ h+=(Path(__file__).parent/'cases.c').read_text();c=a.out/'extracted.c';c.write_t
 results=[]
 for name,flags in [('normal',['-O1']),('optimized',['-O3','-fno-fast-math']),('sanitizers',['-O1','-fsanitize=address,undefined','-fno-omit-frame-pointer'])]:
  binary=a.out/name;cmd=['cc','-std=c11','-g','-Wall','-Wextra','-Wno-unused-function','-Wno-unused-variable','-Wno-sign-compare','-pthread',*flags,str(c),'-lm','-o',str(binary)]
- built=subprocess.run(cmd,text=True,capture_output=True);assert built.returncode==0,built.stderr
- run=subprocess.run([str(binary)],text=True,capture_output=True,timeout=20,env={**os.environ,'ASAN_OPTIONS':'detect_leaks=0'});(a.out/(name+'.txt')).write_text(run.stdout+run.stderr);print(name,run.returncode,run.stdout);assert run.returncode==0
+ built=subprocess.run(cmd,text=True,capture_output=True);(a.out/('build-'+name+'.log')).write_text(built.stdout+built.stderr);assert built.returncode==0,built.stderr
+ run=subprocess.run([str(binary)],text=True,capture_output=True,timeout=20,env={**os.environ,'ASAN_OPTIONS':'detect_leaks=0'});(a.out/(name+'.txt')).write_text(run.stdout+run.stderr);print(name,run.returncode,run.stdout);assert run.returncode==0,run.stderr
  results.append(dict(mode=name,command=cmd,exit=run.returncode,output=run.stdout,compiler_stderr=built.stderr))
-paths=['ijkmedia/ijkplayer/ff_ffplay.c','ijkmedia/ijkplayer/ff_ffplay_def.h','ijkmedia/ijkplayer/ff_eof_clock.h','ijkmedia/ijkplayer/ijkplayer.c','ijkmedia/ijksdl/ijksdl_audio.h','tests/ffmpeg5/test_core.c']
+paths=['ijkmedia/ijksdl/ijksdl_aout.h','ijkmedia/ijkplayer/ff_rate_clock.h','ijkmedia/ijksdl/ijksdl_audio_playback.h','ijkmedia/ijkplayer/ff_ffplay.c','ijkmedia/ijkplayer/ff_ffplay_def.h','ijkmedia/ijkplayer/ff_eof_clock.h','ijkmedia/ijkplayer/ijkplayer.c','ijkmedia/ijksdl/ijksdl_audio.h','tests/ffmpeg5/test_core.c']
 (a.out/'result.json').write_text(json.dumps(dict(source_root=str(srcroot),sources={str(source_path(n)):hashlib.sha256(source_path(n).read_bytes()).hexdigest() for n in paths},functions=names+other+['ijkmp_pause_l','test_playback_clock'],extraction_sha256=hashlib.sha256(c.read_bytes()).hexdigest(),results=results,limits='Exact extracted production functions; deterministic mock monotonic clock and AudioTrack latency/pause; real pthread core locks. Pause event dispatch schedule is selected explicitly. No JNI, Android, whole-player threading or audible output. Leak detection disabled.'),indent=2)+'\n')

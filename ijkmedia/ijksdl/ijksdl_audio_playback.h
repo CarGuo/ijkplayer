@@ -1,5 +1,7 @@
 /*
- * Experimental private ordinary-1x AudioTrack head-to-PCM mapping.
+ * Private AudioTrack head-to-PCM mapping and acknowledged frame drain.
+ * Exact PTS and transform compatibility estimates are separate fields.
+ * Media-progress/rate spans preserve queued tempo changes and discontinuities.
  *
  * No allocation, locks, wall clock, platform calls, or public PTS clamping.
  * The caller serializes every operation with its position/lifetime mutex and
@@ -37,6 +39,8 @@ typedef struct SDL_AudioPlaybackSpan {
     double pts_start;
     double pts_end;
     int real_pcm;
+    double media_start, media_step, media_rate;
+    double estimate_start, estimate_end;
 } SDL_AudioPlaybackSpan;
 
 typedef struct SDL_AudioPlaybackSnapshot {
@@ -45,6 +49,8 @@ typedef struct SDL_AudioPlaybackSnapshot {
     uint64_t played_frames;
     uint64_t accepted_frames;
     double pts;
+    double played_media, accepted_media, media_rate;
+    double estimated_pts; /* compatibility estimate, never an exact PTS claim */
     int valid;
     int fresh;
 } SDL_AudioPlaybackSnapshot;
@@ -70,7 +76,8 @@ typedef struct SDL_AudioPlaybackTracker {
     uint64_t accepted_frames;
     uint32_t raw_head;
     double pts;
-    double last_real_end;
+    double last_real_end, estimated_pts, last_estimate_end;
+    double played_media, accepted_media, media_rate;
     int sample_mapped;
     int valid;
     int fresh;
@@ -87,7 +94,9 @@ static inline SDL_AudioPlaybackResult SDL_AudioPlaybackTracker_Init(
     t->generation = -1;
     t->epoch = t->played_frames = t->accepted_frames = 0;
     t->raw_head = 0;
-    t->pts = t->last_real_end = NAN;
+    t->pts = t->last_real_end = t->estimated_pts = t->last_estimate_end = NAN;
+    t->played_media = t->accepted_media = 0;
+    t->media_rate = 1.0;
     t->sample_mapped = t->valid = t->fresh = 0;
     return SDL_AUDIO_PLAYBACK_OK;
 }
@@ -104,7 +113,9 @@ static inline SDL_AudioPlaybackResult SDL_AudioPlaybackTracker_Reset(
     t->epoch = epoch;
     t->played_frames = t->accepted_frames = 0;
     t->raw_head = 0;
-    t->pts = t->last_real_end = NAN;
+    t->pts = t->last_real_end = t->estimated_pts = t->last_estimate_end = NAN;
+    t->played_media = t->accepted_media = 0;
+    t->media_rate = 1.0;
     t->sample_mapped = t->valid = t->fresh = 0;
     return SDL_AUDIO_PLAYBACK_OK;
 }
@@ -117,9 +128,10 @@ static inline size_t SDL_AudioPlaybackTracker_SpanIndex(
     return offset >= until_wrap ? offset - until_wrap : t->first + offset;
 }
 
-static inline SDL_AudioPlaybackResult SDL_AudioPlaybackTracker_Accept(
+static inline SDL_AudioPlaybackResult SDL_AudioPlaybackTracker_AcceptEstimated(
     SDL_AudioPlaybackTracker *t, uint64_t frame_count, int real_pcm,
-    double pts_start, double pts_end)
+    double pts_start, double pts_end, double media_step, double media_rate,
+    double estimate_start, double estimate_end)
 {
     SDL_AudioPlaybackSpan *s;
     if (!t || !t->spans || !t->capacity)
@@ -128,21 +140,34 @@ static inline SDL_AudioPlaybackResult SDL_AudioPlaybackTracker_Accept(
         return SDL_AUDIO_PLAYBACK_OK;
     if (frame_count > UINT64_MAX - t->accepted_frames)
         return SDL_AUDIO_PLAYBACK_OVERFLOW;
+    if (!isfinite(media_step) || media_step < 0 || !isfinite(media_rate) || media_rate <= 0)
+        return SDL_AUDIO_PLAYBACK_INVALID;
     real_pcm = !!real_pcm;
+    if (!real_pcm) media_step = 0;
+    double next_media = t->accepted_media + frame_count * media_step;
+    if (!isfinite(next_media)) return SDL_AUDIO_PLAYBACK_OVERFLOW;
     if (!real_pcm || !isfinite(pts_start) || !isfinite(pts_end))
         pts_start = pts_end = NAN;
+    if (!real_pcm || !isfinite(estimate_start) || !isfinite(estimate_end))
+        estimate_start = estimate_end = NAN;
 
     /* Conservative exact coalescing only: synthetic silence or identical,
      * finite constant-PTS real spans. General floating slopes are not merged
      * merely because rounded division happens to produce equal numbers. */
     if (t->count) {
         s = &t->spans[SDL_AudioPlaybackTracker_SpanIndex(t, t->count - 1)];
-        if (s->real_pcm == real_pcm &&
+        if (s->real_pcm == real_pcm && s->media_step == media_step && s->media_rate == media_rate &&
+            (!real_pcm ||
+             (!isfinite(s->estimate_start) && !isfinite(s->estimate_end) &&
+              !isfinite(estimate_start) && !isfinite(estimate_end)) ||
+             (s->estimate_start == s->estimate_end &&
+              s->estimate_end == estimate_start && estimate_start == estimate_end)) &&
             (!real_pcm || (isfinite(pts_start) &&
               s->pts_start == s->pts_end && s->pts_end == pts_start &&
               pts_start == pts_end))) {
             s->frame_count += frame_count; /* bounded by accepted overflow check */
             t->accepted_frames += frame_count;
+            t->accepted_media = next_media;
             return SDL_AUDIO_PLAYBACK_OK;
         }
     }
@@ -152,12 +177,33 @@ static inline SDL_AudioPlaybackResult SDL_AudioPlaybackTracker_Accept(
     s->first_frame = t->accepted_frames;
     s->frame_count = frame_count;
     s->real_pcm = real_pcm;
+    s->media_start = t->accepted_media;
+    s->media_step = media_step;
+    s->media_rate = media_rate;
     s->pts_start = pts_start;
     s->pts_end = pts_end;
+    s->estimate_start = estimate_start;
+    s->estimate_end = estimate_end;
     ++t->count;
     t->accepted_frames += frame_count;
+    t->accepted_media = next_media;
     /* Queueing never changes the clock at an unchanged head. */
     return SDL_AUDIO_PLAYBACK_OK;
+}
+
+static inline SDL_AudioPlaybackResult SDL_AudioPlaybackTracker_AcceptRate(
+    SDL_AudioPlaybackTracker *t, uint64_t count, int real_pcm, double start, double end,
+    double step, double rate)
+{
+    return SDL_AudioPlaybackTracker_AcceptEstimated(t, count, real_pcm, start, end,
+        step, rate, NAN, NAN);
+}
+
+/* Compatibility for callers that need only exact PTS/frame accounting. */
+static inline SDL_AudioPlaybackResult SDL_AudioPlaybackTracker_Accept(
+    SDL_AudioPlaybackTracker *t, uint64_t count, int real_pcm, double start, double end)
+{
+    return SDL_AudioPlaybackTracker_AcceptRate(t, count, real_pcm, start, end, 0, 1);
 }
 
 static inline double SDL_AudioPlaybackTracker_Interpolate(
@@ -196,7 +242,7 @@ static inline SDL_AudioPlaybackResult SDL_AudioPlaybackTracker_Observe(
     t->raw_head = raw_head;
     t->played_frames += delta;
     if (delta || !t->sample_mapped) {
-        double value = t->last_real_end;
+        double value = t->last_real_end, estimate = t->last_estimate_end;
         for (i = 0; i < t->count; ++i) {
             const SDL_AudioPlaybackSpan *s =
                 &t->spans[SDL_AudioPlaybackTracker_SpanIndex(t, i)];
@@ -207,8 +253,15 @@ static inline SDL_AudioPlaybackResult SDL_AudioPlaybackTracker_Observe(
             consumed = t->played_frames - s->first_frame;
             if (consumed > s->frame_count)
                 consumed = s->frame_count;
-            if (s->real_pcm)
+            t->played_media = s->media_start + consumed * s->media_step;
+            if (s->real_pcm) t->media_rate = s->media_rate;
+            if (s->real_pcm) {
                 value = SDL_AudioPlaybackTracker_Interpolate(s, consumed);
+                SDL_AudioPlaybackSpan approximate = *s;
+                approximate.pts_start = s->estimate_start;
+                approximate.pts_end = s->estimate_end;
+                estimate = SDL_AudioPlaybackTracker_Interpolate(&approximate, consumed);
+            }
             t->sample_mapped = 1;
             /* Consumed-prefix semantics: exactly at a discontinuity, retain
              * the preceding endpoint; enter the new span only after progress. */
@@ -216,14 +269,17 @@ static inline SDL_AudioPlaybackResult SDL_AudioPlaybackTracker_Observe(
                 break;
         }
         t->pts = value;
+        t->estimated_pts = estimate;
     }
     /* Keep the real endpoint independently while reclaiming played spans. */
     while (t->count) {
         SDL_AudioPlaybackSpan *s = &t->spans[t->first];
         if (s->first_frame + s->frame_count > t->played_frames)
             break;
-        if (s->real_pcm)
+        if (s->real_pcm) {
             t->last_real_end = s->pts_end;
+            t->last_estimate_end = s->estimate_end;
+        }
         ++t->first;
         if (t->first == t->capacity)
             t->first = 0;
@@ -243,6 +299,10 @@ static inline SDL_AudioPlaybackResult SDL_AudioPlaybackTracker_GetSnapshot(
     out->played_frames = t->played_frames;
     out->accepted_frames = t->accepted_frames;
     out->pts = t->pts;
+    out->estimated_pts = t->estimated_pts;
+    out->played_media = t->played_media;
+    out->accepted_media = t->accepted_media;
+    out->media_rate = t->media_rate;
     out->valid = t->valid;
     out->fresh = t->fresh;
     return SDL_AUDIO_PLAYBACK_OK;

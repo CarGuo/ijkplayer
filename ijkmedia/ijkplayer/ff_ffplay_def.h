@@ -209,6 +209,8 @@ typedef struct EOFClockState {
     SDL_mutex *mutex;
     int audio_finished_serial, audio_serial, audio_pending, audio_callback_busy;
     double audio_end, audio_deadline;
+    double audio_media_rate, audio_output_end_media;
+    int audio_transform_pending, audio_transform_serial;
     double audio_pause_pts;
     int audio_pause_serial;
     /* A real buffer copied by the callback is not submitted until the backend
@@ -223,12 +225,14 @@ typedef struct EOFClockState {
     double video_applied_rate, video_applied_at;
     uint64_t applied_rate_sequence, applied_rate_epoch;
     int applied_rate_generation;
+    uint64_t software_control_frame, software_control_epoch;
     int demux_eof, seek_pending, paused;
     double pause_at, last_resume_at;
 } EOFClockState;
 
 typedef struct Clock {
     SDL_Aout *source_aout; /* optional sampled audio device clock */
+    volatile int source_soft; /* atomic: sampled head remains a drain source */
     volatile int source_head_logged; /* atomic once per Clock lifetime */
     double pts;           /* clock base */
     double pts_drift;     /* clock base minus time at which we updated the clock */
@@ -305,6 +309,9 @@ typedef struct Decoder {
 
 typedef struct VideoState {
     int platform_rate_capable; /* fixed backend capability */
+    int software_rate_mode; /* active engine, changed only after checked output drain */
+    int requested_software_rate_mode, audio_engine_drained;
+    uint64_t audio_engine_sequence;
     int platform_rate_mode; /* selected with a usable audio stream before decoding */
     SDL_Thread *read_tid;
     SDL_Thread _read_tid;
@@ -348,6 +355,11 @@ typedef struct VideoState {
     double audio_clock;
     int audio_clock_serial;
     int audio_clock_unsupported;
+    int audio_processing_error;
+    int audio_transform_serial, audio_transform_draining;
+    double audio_resample_end;
+    double audio_input_end, audio_output_cursor, audio_buffer_media_rate;
+    double audio_software_rate;
     double audio_diff_cum; /* used for AV difference average computation */
     double audio_diff_avg_coef;
     double audio_diff_threshold;

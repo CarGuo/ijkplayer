@@ -54,7 +54,7 @@ typedef struct SDL_Aout_Opaque {
     SDL_AudioPlaybackTracker playback;
     SDL_AudioPlaybackSpan *playback_spans;
     uint64_t output_epoch;
-    int frame_size;
+    int frame_size, output_sample_rate;
 
     SDL_AudioSpec spec;
     SDL_Android_AudioTrack* atrack;
@@ -76,13 +76,18 @@ typedef struct SDL_Aout_Opaque {
 
     volatile float speed;
     volatile bool speed_changed;
-    /* Requested tuple is wakeup-mutex protected; applied values come from JNI. */
+    /* Logical user intent is distinct from temporary handoff device controls.
+     * Both requested tuples are wakeup-mutex protected; applied values come
+     * only from checked JNI. */
+    float logical_platform_rate;
+    int logical_preserve_pitch;
     uint64_t requested_rate_sequence;
     float requested_platform_rate;
     int requested_preserve_pitch;
     SDL_AudioRateApplied applied_rate;
     uint64_t notified_rate_sequence, notified_rate_epoch;
     int notified_rate_generation;
+    int engine_wakeup;
 
 } SDL_Aout_Opaque;
 
@@ -166,14 +171,22 @@ static int aout_accept_prefix(SDL_Aout *aout, SDL_AudioSubmission *submission,
     };
     double begin = SDL_AudioPlaybackTracker_Interpolate(&whole, offset / opaque->frame_size);
     double end = SDL_AudioPlaybackTracker_Interpolate(&whole, (offset + written) / opaque->frame_size);
+    whole.pts_start = submission->estimate_start;
+    whole.pts_end = submission->estimate_end;
+    double estimated_begin = SDL_AudioPlaybackTracker_Interpolate(&whole, offset / opaque->frame_size);
+    double estimated_end = SDL_AudioPlaybackTracker_Interpolate(&whole, (offset + written) / opaque->frame_size);
     SDL_LockMutex(opaque->position_mutex);
     if (offset == 0) {
         submission->output_epoch = opaque->playback.epoch;
         submission->first_frame = opaque->playback.accepted_frames;
     }
-    int result = SDL_AudioPlaybackTracker_Accept(&opaque->playback,
-        written / opaque->frame_size, submission->real_pcm, begin, end);
+    double rate = submission->media_rate > 0 ? submission->media_rate : 1.0;
+    int result = SDL_AudioPlaybackTracker_AcceptEstimated(&opaque->playback,
+        written / opaque->frame_size, submission->real_pcm, begin, end,
+        opaque->output_sample_rate > 0 ? rate / opaque->output_sample_rate : 0, rate,
+        estimated_begin, estimated_end);
     submission->end_frame = opaque->playback.accepted_frames;
+    submission->end_media = opaque->playback.accepted_media;
     SDL_UnlockMutex(opaque->position_mutex);
     return result == 0 ? 0 : -1;
 }
@@ -181,6 +194,8 @@ static int aout_accept_prefix(SDL_Aout *aout, SDL_AudioSubmission *submission,
 /* Return 0 to continue with a fresh callback, -1 to terminate output. The
  * transaction covers real PCM only; silence tokens never keep EOF pending. */
 static int aout_apply_platform_rate(JNIEnv *env, SDL_Aout *aout);
+static int aout_apply_active_rate(JNIEnv *env, SDL_Aout *aout);
+static int aout_request_platform_rate(SDL_Aout *aout, float speed, int preserve_pitch, int fields);
 static void aout_notify_platform_rate(SDL_Aout *aout);
 
 static int aout_write_submitted_buffer(JNIEnv *env, SDL_Aout *aout,
@@ -215,11 +230,67 @@ static int aout_write_submitted_buffer(JNIEnv *env, SDL_Aout *aout,
             notify(userdata, submission, SDL_AUDIO_SUBMIT_CANCEL, 0);
             return -1;
         }
+        if (!submission->engine_switch && !submission->token && status == SDL_AUDIO_SUBMIT_DRAINED) {
+            SDL_LockMutex(opaque->wakeup_mutex);
+            int engine_wakeup = opaque->engine_wakeup;
+            opaque->engine_wakeup = 0;
+            SDL_UnlockMutex(opaque->wakeup_mutex);
+            if (engine_wakeup) return 0; /* Let producer prepare a control-only boundary. */
+        }
+        if (submission->engine_switch) {
+            if (status != SDL_AUDIO_SUBMIT_WAIT) {
+                if (aout_bind_generation(env, aout, submission->generation, track_paused) < 0)
+                    return aout_device_failed(opaque, submission);
+                SDL_AudioPlaybackSnapshot position = { 0 };
+                aout_get_playback_position(aout, &position);
+                if (position.valid && position.generation == submission->generation &&
+                    position.played_frames == position.accepted_frames) {
+                    float speed = submission->engine_switch == 2 ? 1.0f : submission->engine_rate;
+                    if (aout_request_platform_rate(aout, speed, submission->engine_switch == 2,
+                            SDL_AUDIO_RATE_SPEED | SDL_AUDIO_RATE_PITCH_POLICY | SDL_AUDIO_RATE_TRANSIENT) < 0 ||
+                        aout_apply_platform_rate(env, aout) < 0)
+                        return aout_device_failed(opaque, submission);
+                    SDL_LockMutex(opaque->wakeup_mutex);
+                    SDL_AudioRateApplied applied = opaque->applied_rate;
+                    SDL_UnlockMutex(opaque->wakeup_mutex);
+                    int verified_unit_rate = fabsf(applied.speed - 1.0f) < .0001f &&
+                        fabsf(applied.pitch - 1.0f) < .0001f;
+                    submission->output_epoch = position.epoch;
+                    submission->end_frame = position.accepted_frames;
+                    int action = submission->engine_switch == 2 && !verified_unit_rate ?
+                        SDL_AUDIO_SUBMIT_ENGINE_REJECT : SDL_AUDIO_SUBMIT_ENGINE_COMMIT;
+                    status = notify(userdata, submission, action, 0);
+                    if (status == SDL_AUDIO_SUBMIT_READY || status == SDL_AUDIO_SUBMIT_SUPERSEDED) {
+                        if (status == SDL_AUDIO_SUBMIT_READY && action == SDL_AUDIO_SUBMIT_ENGINE_COMMIT)
+                            opaque->spec.software_tempo = submission->engine_switch == 2;
+                        if (status == SDL_AUDIO_SUBMIT_SUPERSEDED && aout_apply_active_rate(env, aout) < 0)
+                            return aout_device_failed(opaque, submission);
+                        aout_notify_platform_rate(aout);
+                        return 0;
+                    }
+                    continue; /* A concurrent seek retains normal generation handling. */
+                }
+            }
+            /* No synthetic PCM while waiting: otherwise this drain could never
+             * finish. Service pause/abort/seek without holding any lock asleep. */
+            if (paused && !*track_paused) {
+                if (SDL_Android_AudioTrack_pause_checked(env, opaque->atrack) < 0)
+                    return aout_device_failed(opaque, submission);
+                *track_paused = 1;
+            } else if (!paused && *track_paused && status != SDL_AUDIO_SUBMIT_WAIT) {
+                SDL_Android_AudioTrack_play(env, opaque->atrack);
+                *track_paused = 0;
+            }
+            SDL_LockMutex(opaque->wakeup_mutex);
+            if (!opaque->abort_request)
+                SDL_CondWaitTimeout(opaque->wakeup_cond, opaque->wakeup_mutex, 10);
+            SDL_UnlockMutex(opaque->wakeup_mutex);
+            continue;
+        }
         /* This loop also owns the audio-drained video tail and a partial PCM
          * suffix. Service controls without leaving or discarding either. */
-        if (opaque->spec.rate_applied && aout_apply_platform_rate(env, aout) < 0) {
+        if ((opaque->spec.rate_applied || opaque->spec.software_tempo) && aout_apply_active_rate(env, aout) < 0) {
             SDL_AudioSubmission rejected = *submission;
-            rejected.clock_unsupported = 1;
             return aout_device_failed(opaque, &rejected);
         }
         aout_notify_platform_rate(aout);
@@ -250,7 +321,7 @@ static int aout_write_submitted_buffer(JNIEnv *env, SDL_Aout *aout,
             }
         }
         if (!idle && status != SDL_AUDIO_SUBMIT_WAIT &&
-            (submission->clock_unsupported || size <= 0 || size > 256 || size % opaque->frame_size))
+            (submission->clock_unsupported || submission->processing_error || size <= 0 || size > 256 || size % opaque->frame_size))
             return aout_device_failed(opaque, submission);
         if (!idle && status != SDL_AUDIO_SUBMIT_WAIT && offset == size) {
             status = notify(userdata, submission, SDL_AUDIO_SUBMIT_COMMIT, 0);
@@ -303,7 +374,7 @@ static int aout_supports_platform_rate(SDL_Aout *aout)
 {
     JNIEnv *env = NULL;
     return aout && SDL_JNI_SetupThreadEnv(&env) == JNI_OK &&
-        J4A_GetSystemAndroidApiLevel(env) >= 23;
+        J4A_GetSystemAndroidApiLevel(env) >= 16;
 }
 
 static int aout_request_platform_rate(SDL_Aout *aout, float speed, int preserve_pitch, int fields)
@@ -313,11 +384,18 @@ static int aout_request_platform_rate(SDL_Aout *aout, float speed, int preserve_
         return -1;
     SDL_LockMutex(opaque->wakeup_mutex);
     int changed = 0;
-    if ((fields & SDL_AUDIO_RATE_SPEED) && opaque->requested_platform_rate != speed) {
+    if (fields & SDL_AUDIO_RATE_ENGINE_WAKE) opaque->engine_wakeup = 1;
+    if (!(fields & SDL_AUDIO_RATE_TRANSIENT)) {
+        if (fields & SDL_AUDIO_RATE_SPEED) opaque->logical_platform_rate = speed;
+        if (fields & SDL_AUDIO_RATE_PITCH_POLICY) opaque->logical_preserve_pitch = !!preserve_pitch;
+    }
+    if (!(fields & SDL_AUDIO_RATE_LOGICAL_ONLY) &&
+        (fields & SDL_AUDIO_RATE_SPEED) && opaque->requested_platform_rate != speed) {
         opaque->requested_platform_rate = speed;
         changed = 1;
     }
-    if ((fields & SDL_AUDIO_RATE_PITCH_POLICY) && opaque->requested_preserve_pitch != !!preserve_pitch) {
+    if (!(fields & SDL_AUDIO_RATE_LOGICAL_ONLY) &&
+        (fields & SDL_AUDIO_RATE_PITCH_POLICY) && opaque->requested_preserve_pitch != !!preserve_pitch) {
         opaque->requested_preserve_pitch = !!preserve_pitch;
         changed = 1;
     }
@@ -337,6 +415,7 @@ static int aout_apply_platform_rate(JNIEnv *env, SDL_Aout *aout)
     applied.sequence = opaque->requested_rate_sequence;
     applied.preserve_pitch = opaque->requested_preserve_pitch;
     requested = opaque->requested_platform_rate;
+    int previous_preserve_pitch = opaque->applied_rate.preserve_pitch;
     int pending = applied.sequence != opaque->applied_rate.sequence;
     SDL_UnlockMutex(opaque->wakeup_mutex);
     if (!pending) return 0;
@@ -348,7 +427,8 @@ static int aout_apply_platform_rate(JNIEnv *env, SDL_Aout *aout)
     if (result == 0)
         result = SDL_Android_AudioTrack_set_rate_checked(env, opaque->atrack, requested,
             applied.preserve_pitch, &applied.speed, &applied.pitch);
-    if (result == 0)
+    applied.rejected = result > 0;
+    if (result >= 0)
         result = SDL_Android_AudioTrack_get_playback_head(env, opaque->atrack, &applied.head_after);
     applied.apply_after = av_gettime_relative() / 1000000.0;
     applied.generation = opaque->playback.generation;
@@ -359,6 +439,11 @@ static int aout_apply_platform_rate(JNIEnv *env, SDL_Aout *aout)
             applied.sequence, requested, applied.preserve_pitch);
         return -1;
     }
+    if (applied.rejected) {
+        applied.preserve_pitch = previous_preserve_pitch;
+        ALOGW("IJK_PLATFORM_RATE_REJECTED_RESTORED seq=%" PRIu64 " requested=%.6f actual=%.6f pitch=%.6f",
+            applied.sequence, requested, applied.speed, applied.pitch);
+    }
     SDL_LockMutex(opaque->wakeup_mutex);
     opaque->applied_rate = applied;
     /* Do not overwrite requested fields: a newer request remains pending. */
@@ -368,6 +453,35 @@ static int aout_apply_platform_rate(JNIEnv *env, SDL_Aout *aout)
         applied.generation, applied.output_epoch, applied.apply_before, applied.apply_after,
         applied.head_before, applied.head_after);
     return 0;
+}
+
+/* Only the owner changes this engine policy, after a successful player commit.
+ * A seek can invalidate an engine-control callback after JNI has changed the
+ * device. Restore the last committed policy before any further PCM is produced
+ * or written, including exact partial-write suffixes. */
+static int aout_apply_active_rate(JNIEnv *env, SDL_Aout *aout)
+{
+    SDL_Aout_Opaque *opaque = aout->opaque;
+    /* Read intent and publish its physical request in the same critical
+     * section, so a concurrent newer setter cannot be overwritten. Temporary
+     * handoff controls never replace logical intent, including when a seek or
+     * option cancellation makes the handoff stale after JNI changed hardware. */
+    SDL_LockMutex(opaque->wakeup_mutex);
+    float speed = opaque->spec.software_tempo ? 1.0f : opaque->logical_platform_rate;
+    int preserve = opaque->spec.software_tempo ? 1 : opaque->logical_preserve_pitch;
+    if (opaque->requested_platform_rate != speed || opaque->requested_preserve_pitch != preserve) {
+        opaque->requested_platform_rate = speed;
+        opaque->requested_preserve_pitch = preserve;
+        ++opaque->requested_rate_sequence;
+    }
+    SDL_UnlockMutex(opaque->wakeup_mutex);
+    if (aout_apply_platform_rate(env, aout) < 0) return -1;
+    SDL_LockMutex(opaque->wakeup_mutex);
+    int valid = !opaque->spec.software_tempo ||
+        (fabsf(opaque->applied_rate.speed - 1.0f) < .0001f &&
+         fabsf(opaque->applied_rate.pitch - 1.0f) < .0001f);
+    SDL_UnlockMutex(opaque->wakeup_mutex);
+    return valid ? 0 : -1;
 }
 
 /* Rebind the actual applied rate after a seek's first acknowledged PCM too. */
@@ -473,9 +587,8 @@ static int aout_thread_n(JNIEnv *env, SDL_Aout *aout)
         }
         SDL_UnlockMutex(opaque->wakeup_mutex);
 
-        if (opaque->spec.rate_applied && aout_apply_platform_rate(env, aout) < 0) {
+        if ((opaque->spec.rate_applied || opaque->spec.software_tempo) && aout_apply_active_rate(env, aout) < 0) {
             SDL_AudioSubmission failure = { 0 };
-            failure.clock_unsupported = 1;
             aout_device_failed(opaque, &failure);
             break;
         }
@@ -573,6 +686,7 @@ static int aout_open_audio_n(JNIEnv *env, SDL_Aout *aout, const SDL_AudioSpec *d
 
     SDL_AudioSpec target = { 0 };
     SDL_Android_AudioTrack_get_target_spec(opaque->atrack, &target);
+    opaque->output_sample_rate = target.freq;
     opaque->frame_size = target.channels * (SDL_AUDIO_BITSIZE(target.format) / 8);
     if (opaque->frame_size <= 0 || opaque->frame_size > 256 || opaque->output_epoch == UINT64_MAX)
         goto fail_playback;
@@ -750,6 +864,7 @@ SDL_Aout *SDL_AoutAndroid_CreateForAudioTrack()
     aout->func_set_playback_rate    = func_set_playback_rate;
     aout->func_supports_platform_rate = aout_supports_platform_rate;
     aout->func_request_platform_rate = aout_request_platform_rate;
+    opaque->logical_platform_rate = 1.0f;
     opaque->requested_platform_rate = 1.0f;
     opaque->requested_rate_sequence = 1;
     opaque->notified_rate_generation = -1;

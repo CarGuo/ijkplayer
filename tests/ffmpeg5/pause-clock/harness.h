@@ -1,6 +1,16 @@
 #define _POSIX_C_SOURCE 200809L
 #include <math.h>
 #include <stdint.h>
+#include <inttypes.h>
+#include "ijksdl_audio_playback.h"
+#define ALOGI(...) ((void)0)
+#define AV_LOG_WARNING 1
+#define av_log(...) ((void)0)
+typedef struct SDL_Aout { int unused; } SDL_Aout;
+/* Legacy fixtures deliberately provide no sampled device clock. */
+static int SDL_AoutGetPlaybackPosition(SDL_Aout *a, SDL_AudioPlaybackSnapshot *p) {
+    (void)a; *p = (SDL_AudioPlaybackSnapshot){.pts=NAN}; return -1;
+}
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,13 +47,17 @@ typedef struct {
     PacketQueue audioq,videoq;
     struct {int pkt_serial,finished;} auddec,viddec;
     void *audio_st,*video_st;
-    int av_sync_type,requested_av_sync_type,paused,seek_req;
+    int av_sync_type,requested_av_sync_type,paused,seek_req,platform_rate_mode,software_rate_mode;
+    int requested_software_rate_mode,audio_engine_drained,platform_rate_capable;
+    uint64_t audio_engine_sequence;
+    double audio_software_rate;
     unsigned int audio_buf_size;
     int audio_buf_index,audio_write_buf_size,audio_volume,muted,show_mode;
     int audio_clock_serial,latest_audio_seek_load_serial,pause_req,abort_request;
     struct { int frame_size,bytes_per_sec; } audio_tgt;
     Uint8 *audio_buf;
     double audio_clock;
+    double audio_buffer_media_rate;
 } VideoState;
 typedef struct {
     VideoState *is;
@@ -80,6 +94,7 @@ static int audio_decode_frame(FFPlayer *f) {
     return 400;
 }
 static double SDL_AoutGetLatencySeconds(void *a) { (void)a; ++latency_calls; now_us+=latency_delay_us; return backend_latency; }
+static int SDL_AoutRequestPlatformRate(void*a,float rate,int preserve,int fields){(void)a;(void)rate;(void)preserve;(void)fields;abort();}
 static void SDL_AoutSetPlaybackRate(void*a,double b) {(void)a;(void)b;}
 static void SDL_AoutSetPlaybackVolume(void*a,double b) {(void)a;(void)b;}
 static void SDL_AoutFlushAudio(void*a) {(void)a;}

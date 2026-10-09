@@ -79,7 +79,10 @@ int    SDL_AoutGetAudioPerSecondCallBacks(SDL_Aout *aout);
 void   SDL_AoutSetPlaybackRate(SDL_Aout *aout, float playbackRate);
 void   SDL_AoutSetPlaybackVolume(SDL_Aout *aout, float volume);
 
-enum { SDL_AUDIO_RATE_SPEED = 1, SDL_AUDIO_RATE_PITCH_POLICY = 2 };
+/* TRANSIENT changes only a device-control tuple; LOGICAL_ONLY records media
+ * intent without touching the device (software tempo owns the PCM). */
+enum { SDL_AUDIO_RATE_SPEED = 1, SDL_AUDIO_RATE_PITCH_POLICY = 2, SDL_AUDIO_RATE_ENGINE_WAKE = 4,
+       SDL_AUDIO_RATE_TRANSIENT = 8, SDL_AUDIO_RATE_LOGICAL_ONLY = 16 };
 int SDL_AoutSupportsPlatformRate(SDL_Aout *aout);
 int SDL_AoutRequestPlatformRate(SDL_Aout *aout, float rate, int preserve_pitch, int fields);
 

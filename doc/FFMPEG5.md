@@ -20,6 +20,43 @@ a fresh full remote initialization were not rerun.** Syntax/AST checks do not
 replace these tests. See [initializer test scope](../tests/ffmpeg5/README-initializer.md)
 and [patch provenance](../patches/ffmpeg5/README.md).
 
+## Current audio source behavior and limits
+
+These audio compatibility changes are later than the emulator, Pixel 8 and
+compiled native identities recorded below. Those earlier artifacts do not
+qualify the current source. Host regressions and native compilation/ELF checks
+are separate evidence; they establish no new Android/device, audible-quality,
+A/V-sync or 16 KiB-page runtime qualification.
+
+- `soundtouch=1` selects bounded software tempo on AudioTrack, including API 23+.
+  The supported software range is 0.25×–4×, including 3×. Invalid or out-of-range
+  requests leave the active/requested rate unchanged; they are not clamped.
+- `soundtouch=0` selects device-dependent checked platform control: PlaybackParams
+  on API 23+ (retaining the existing pitch), or native playback sample rate on
+  API 16–22 (which also changes pitch). Rejection is recoverable only after
+  read-back verifies restoration of the prior full tuple: speed, pitch and
+  fallback mode on API 23+, or the prior sample rate on API 16–22. Unverified
+  restoration remains an output error. On the active AudioTrack rate-controlled path, the getter reports the
+  applied/playing media rate; before preparation or outside that path it can
+  report the requested rate.
+- The live integer `soundtouch` option supports GSY's rate-then-option call order.
+  The string option remains prepare-time configuration. Live handoff drains old
+  transformed PCM and waits for the physical playback head through acknowledged
+  output before switching engines. Software requires verified hardware 1×/pitch-1
+  to prevent double tempo. A paused queued handoff waits for resume while seek
+  and abort remain serviced. Temporary hardware controls do not replace the
+  latest user rate; a cancelled handoff retains the committed engine policy.
+- Resampling, compensation and SoundTouch use per-output-span estimated media
+  PTS, separate from acknowledged physical-frame drain accounting. Queued spans
+  keep their own rates and PTS gaps. Resampler/software tails, retained partial
+  writes, generation/epoch and the final played frame still gate EOF. A 96 kHz
+  input can be resampled to a negotiated 48 kHz output; this is not native
+  high-sample-rate AudioTrack output support.
+
+See [audio compatibility regressions](../tests/ffmpeg5/audio-compatibility/README.md)
+and [submission/EOF regressions](../tests/ffmpeg5/audio-submission/README.md) for
+runnable host tests and their mocked-JNI/head limitations.
+
 ## Current RTSP behavior and limits
 
 - Initial-open RTSP redirects include SETUP and initial PLAY, bounded redirect
@@ -36,14 +73,30 @@ and [patch provenance](../patches/ffmpeg5/README.md).
   unsupported; do not treat Content-Base as a 302 Location. Gateway semantics
   and the known limitation are explained in [RTSP network notes](RTSP-NETWORK.md).
 
+Set PLAYER `rtsp-live-max-buffer-ms` before preparation to `0` (off) or
+`500..60000` ms. Invalid integer or string values fail preparation. The cap
+applies only at normal 1x playback to actually opened live RTSP media with
+unknown/nonpositive duration; it is a compressed-queue policy, not an
+end-to-end latency bound.
+
+For `ijklivehook`, live capability is recomputed from the opened inner demuxer
+and duration after hook rewrites/reconnects. Explicit FORMAT `timeout`
+(microseconds) and `rtsp_transport` are forwarded to post-hook RTSP URLs;
+arbitrary format-option forwarding is not promised. With the cap enabled,
+reconnects preserve outer stream objects/time bases and rescale packets.
+Incompatible stream topology/codec configuration returns terminal `ENOSYS`
+and requires an application-level player reopen. Callback cancellation and
+read interruption remain terminal for that wrapper session. Ordinary transport
+failures retain the wrapper's existing callback-controlled retry policy.
+
 The [live-policy host tests](../tests/ffmpeg5/README-rtsp-live.md) include a bounded
 20-minute software-consumer soak. Neither local queue age nor the emulator
 measurements below establish an end-to-end/camera-to-screen latency SLA.
 
-## Current emulator evidence: 2026-10-05
+## Historical emulator evidence: 2026-10-05
 
-The final prospective RTSP gate passed **12 executed cases**. One MediaCodec case
-was explicitly **N/A**, not passed. Scope: API 29, x86_64 software emulator,
+The earlier frozen RTSP artifacts passed **12 executed cases** in their final
+prospective gate. One MediaCodec case was explicitly **N/A**, not passed. Scope: API 29, x86_64 software emulator,
 4096-byte guest pages and generated TCP/H.264/AAC fixtures. The frozen interval
 observer was independently replayed over 118 captures; each of four scored
 windows had 10/10 captures. Default-control latency-growth lower bound was
@@ -59,15 +112,15 @@ The rate/seek run and final RTSP run used different instrumentation APKs with
 the same host/native candidate. Earlier failed and superseded-oracle runs remain
 historical failures or inconclusive results under their original oracles.
 
-The current RTSP candidate has **not been tested on a physical device**.
+That earlier RTSP candidate was **not tested on a physical device**.
 Optional external HTTPS/HLS smoke was not run in this emulator gate. There is no
 new physical MediaCodec, ARM runtime, 16 KiB-page runtime, real-camera/TLS/UDP/H.265,
 audible-quality or full A/V-sync qualification. This branch is **not a stable
 release or universal 3x playback qualification**.
 
-## Current native build identity
+## Historical RTSP native build identity
 
-The carried RTSP candidate uses the local compiled snapshot label
+The earlier tested RTSP artifacts used the local compiled snapshot label
 `v0.8.8-carguo-35-gd5c0b4eb-platformrate-r3-rtspfix-72edc055`.
 That label is **not a newly published Git commit**. Frozen source hashes and native
 build receipts bind the tested source and artifacts. Publishing the source or

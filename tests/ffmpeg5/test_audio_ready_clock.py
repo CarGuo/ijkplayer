@@ -2,19 +2,33 @@
 """Compile exact production callback/clock functions against deterministic stubs.
 No Android SDK, codec or device simulation is claimed. Usage: SCRIPT REPO [--baseline].
 """
+import argparse
+from contextlib import nullcontext
+import hashlib
+import json
 import os
+import re
 from pathlib import Path
 import subprocess
-import sys
 import tempfile
-repo = Path(sys.argv[1]).resolve()
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('repo', type=Path)
+parser.add_argument('--baseline', action='store_true', help='Read production inputs from git HEAD')
+parser.add_argument('--out', type=Path, help='Retain exact extraction, build logs and input hashes')
+args = parser.parse_args()
+repo = args.repo.resolve()
+if args.out:
+    args.out = args.out.resolve()
+    args.out.mkdir(parents=True, exist_ok=True)
 source_path = 'ijkmedia/ijkplayer/ff_ffplay.c'
-source = (subprocess.check_output(['git', 'show', 'HEAD:' + source_path], cwd=repo).decode()
-          if '--baseline' in sys.argv else (repo / source_path).read_text())
+def source_text(path):
+    return (subprocess.check_output(['git', 'show', 'HEAD:' + path], cwd=repo).decode()
+            if args.baseline else (repo / path).read_text())
+
+source = source_text(source_path)
 
 def extract(name):
-    import re
-    match = re.search(r'^static [^\n]*\b' + name + r'\([^\n]*\)\n\{', source, re.M)
+    match = re.search(r'^static [^\n]*\b' + name + r'\([^;]*?\)\s*\{', source, re.M)
     assert match, name
     start = source.index('{', match.start())
     depth = 1
@@ -27,11 +41,17 @@ def extract(name):
 preamble = r'''
 #include <math.h>
 #include <stdint.h>
+#include <inttypes.h>
+#include "ijksdl_audio_playback.h"
+#define ALOGI(...) ((void)0)
+typedef struct SDL_Aout { int unused; } SDL_Aout;
+typedef int SDL_mutex;
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdatomic.h>
 typedef uint8_t Uint8;
+#include "submission.h"
 #define SDL_AUDIO_MIN_BUFFER_SIZE 512
 #define SDL_MIX_MAXVOLUME 128
 #define SHOW_MODE_VIDEO 0
@@ -39,16 +59,19 @@ typedef uint8_t Uint8;
 #define AV_NOSYNC_THRESHOLD 10.0
 #define FFP_MSG_AUDIO_RENDERING_START 1
 #define FFP_MSG_AUDIO_SEEK_RENDERING_START 2
-typedef struct { double pts, last_updated, pts_drift, speed; int paused, serial; int *queue_serial; } Clock;
+/* PRODUCTION_CLOCK */
 typedef struct {
     int audio_buf_index, audio_buf_size, audio_write_buf_size, audio_volume;
     int muted, show_mode, audio_clock_serial, latest_audio_seek_load_serial;
-    int pause_req, abort_request;
+    int pause_req, abort_request, platform_rate_mode, software_rate_mode, audio_clock_unsupported, audio_processing_error, av_sync_type;
+    int audio_engine_drained, requested_software_rate_mode;
+    uint64_t audio_engine_sequence;
+    SDL_mutex *play_mutex;
     struct { int frame_size, bytes_per_sec; } audio_tgt;
     struct { int pkt_serial; } auddec;
-    struct { int serial; } audioq;
+    struct { int serial; SDL_mutex *mutex; } audioq;
     Uint8 *audio_buf;
-    double audio_clock;
+    double audio_clock, audio_buffer_media_rate;
     Clock audclk, extclk;
 } VideoState;
 typedef struct {
@@ -65,6 +88,20 @@ static int abort_wait, seek_wait, latency_calls, notify_calls, decode_calls;
 static double backend_latency;
 static FFPlayer *active;
 static Uint8 pcm[4000];
+/* These callback-only fixtures deliberately do not negotiate submission or
+ * device-head clocks. EOF ownership bookkeeping is isolated from clock math. */
+static int SDL_AoutGetPlaybackPosition(SDL_Aout *a, SDL_AudioPlaybackSnapshot *p) {
+    (void)a; *p=(SDL_AudioPlaybackSnapshot){.pts=NAN}; return -1;
+}
+static void SDL_LockMutex(SDL_mutex *m) { (void)m; }
+static void SDL_UnlockMutex(SDL_mutex *m) { (void)m; }
+static void eof_clock_audio_busy(VideoState *s, int busy) { (void)s; (void)busy; }
+static void eof_clock_audio_stage(VideoState *s, double end, int serial, int pending, SDL_AudioSubmission *sub) {
+    (void)s; (void)end; (void)serial; (void)pending; (void)sub; abort();
+}
+static void eof_clock_audio_delivered(VideoState *s, double end, int serial, int pending, double latency, double now) {
+    (void)s; (void)end; (void)serial; (void)pending; (void)latency; (void)now;
+}
 static int64_t av_gettime_relative(void) { return now_us; }
 static int audio_decode_frame(FFPlayer *f) {
     ++decode_calls; now_us += decode_delay;
@@ -98,12 +135,12 @@ static void close_to(double actual, double expected, const char *name) {
     }
 }
 static void setup(FFPlayer *f, VideoState *s) {
-    memset(f,0,sizeof(*f)); memset(s,0,sizeof(*s)); f->is=s; active=f;
+    memset(f,0,sizeof(*f)); memset(s,0,sizeof(*s)); f->is=s; active=f; f->pf_playback_rate=1.0;
     now_us=100000000; decode_delay=latency_delay=wait_delay=0; abort_wait=seek_wait=0;
     latency_calls=notify_calls=decode_calls=0; backend_latency=0.1;
     s->audio_tgt.frame_size=4; s->audio_tgt.bytes_per_sec=4000;
     s->audio_volume=128; s->audioq.serial=s->auddec.pkt_serial=s->audio_clock_serial=7;
-    s->latest_audio_seek_load_serial=-1; s->audio_clock=1.0;
+    s->latest_audio_seek_load_serial=-1; s->audio_clock=1.0; s->audio_buffer_media_rate=1.0;
     s->audclk.speed=s->extclk.speed=1.0;
     s->audclk.queue_serial=&s->audioq.serial; s->extclk.queue_serial=&s->extclk.serial;
     s->audclk.serial=s->extclk.serial=7;
@@ -145,7 +182,8 @@ int main(void) {
     run_case("paused clock stays frozen",6500000,25000,0,1);
     FFPlayer f; VideoState s; Uint8 out[1000]; setup(&f,&s);
     s.audio_clock=NAN; sdl_audio_callback(&f,out,sizeof(out));
-    check(isnan(get_clock(&s.audclk)) && !latency_calls,"unknown PTS not published");
+    check(isnan(get_clock(&s.audclk)),"unknown PTS not published");
+    check(latency_calls==1,"unknown real PCM still queries EOF drain latency");
     puts("PASS unknown PTS");
 #if defined(__ANDROID__)
     setup(&f,&s); abort_wait=1; wait_delay=4000000;
@@ -188,15 +226,34 @@ int main(void) {
     return 0;
 }
 '''
+clock = re.search(r'typedef struct Clock \{.*?\} Clock;', source_text('ijkmedia/ijkplayer/ff_ffplay_def.h'), re.S).group()
+preamble = preamble.replace('/* PRODUCTION_CLOCK */', clock)
 body = preamble + '\n' + '\n'.join(extract(n) for n in (
-    'get_clock','set_clock_at','set_clock','sync_clock_to_slave','sdl_audio_callback')) + '\n' + main
-with tempfile.TemporaryDirectory(prefix='ijk-audio-ready-') as tmp:
+    'get_clock','set_clock_at','set_clock','sync_clock_to_slave','sdl_audio_callback_internal','sdl_audio_callback')) + '\n' + main
+with (nullcontext(str(args.out)) if args.out else tempfile.TemporaryDirectory(prefix='ijk-audio-ready-')) as tmp:
     c = Path(tmp)/'test.c'; c.write_text(body)
+    (Path(tmp)/'ijksdl_audio_playback.h').write_text(source_text('ijkmedia/ijksdl/ijksdl_audio_playback.h'))
+    audio = source_text('ijkmedia/ijksdl/ijksdl_audio.h')
+    (Path(tmp)/'submission.h').write_text(audio[audio.index('typedef struct SDL_AudioSubmission'):audio.index('typedef struct SDL_AudioSpec')])
     for platform in ('android','other'):
         exe=Path(tmp)/platform
         flags=['-D__ANDROID__'] if platform=='android' else []
         cmd=[os.environ.get('CC','cc'),'-std=c11','-O3','-fno-fast-math','-Wall','-Wextra','-Werror']
         if os.environ.get('SANITIZE'): cmd+=['-fsanitize='+os.environ['SANITIZE'],'-fno-omit-frame-pointer']
-        subprocess.run(cmd+flags+[str(c),'-lm','-o',str(exe)],check=True)
+        build = subprocess.run(cmd+flags+[str(c),'-lm','-o',str(exe)], text=True, capture_output=True)
+        (Path(tmp)/('build-'+platform+'.log')).write_text(build.stdout+build.stderr)
+        if build.returncode:
+            raise RuntimeError(build.stderr)
         print('Platform: '+platform,flush=True)
-        subprocess.run([str(exe)],check=True)
+        run = subprocess.run([str(exe)], text=True, capture_output=True)
+        (Path(tmp)/(platform+'.txt')).write_text(run.stdout+run.stderr)
+        print(run.stdout, end='')
+        if run.returncode:
+            raise RuntimeError(run.stderr)
+    inputs = [source_path, 'ijkmedia/ijkplayer/ff_ffplay_def.h',
+              'ijkmedia/ijksdl/ijksdl_audio.h', 'ijkmedia/ijksdl/ijksdl_audio_playback.h']
+    (Path(tmp)/'provenance.json').write_text(json.dumps({
+        'source_root': str(repo), 'revision': 'HEAD' if args.baseline else 'working-tree',
+        'inputs': {path: hashlib.sha256(source_text(path).encode()).hexdigest() for path in inputs},
+        'method': 'Exact callback and Clock extraction; deterministic callback-only dependencies; no Android/device test'
+    }, indent=2)+'\n')

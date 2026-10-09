@@ -39,7 +39,7 @@ for file in "$ROOT/ijkmedia/ijkplayer/ff_ffplay.c" "$ROOT/ijkmedia/ijkplayer/ff_
 done
 echo "PASS strict host API compile (JNI-only files excluded)"
 "$CC" "${FLAGS[@]}" "$ROOT/tests/ffmpeg5/test_core.c" "${SDL[@]}" \
-    "$ROOT/ijkmedia/ijksdl/ijksdl_aout.c" "${LIBS[@]}" -o "$OUTPUT/test-core"
+    "$ROOT/ijkmedia/ijksdl/ijksdl_aout.c" "$ROOT/ijkmedia/ijkplayer/ijkavformat/ijklivehook.c" "${LIBS[@]}" -o "$OUTPUT/test-core"
 "$CC" "${FLAGS[@]}" "$ROOT/tests/ffmpeg5/test_las_io.c" "${SDL[@]}" \
     "$ROOT/ijkmedia/ijksdl/ijksdl_thread.c" "$ROOT/ijkmedia/ijkplayer/ijkavformat/cJSON.c" \
     "${LIBS[@]}" -o "$OUTPUT/test-las-io"

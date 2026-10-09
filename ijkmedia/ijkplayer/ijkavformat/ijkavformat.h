@@ -25,6 +25,17 @@
 #ifndef AVFORMAT_IJKAVFORMAT_H
 #define AVFORMAT_IJKAVFORMAT_H
 
+#include "libavformat/avformat.h"
+
 #define AV_PKT_FLAG_DISCONTINUITY 0x0100
+
+/* Snapshot of the actual opened inner format, never an inner-context pointer.
+ * Thread-safe while the caller retains avf. As with every AVFormatContext API,
+ * the caller must join readers before closing/freeing avf. False while opening,
+ * after an error, for known recordings, or without the opt-in stable-stream mode. */
+int ijklivehook_is_live_rtsp(const AVFormatContext *avf);
+/* True for a latched safety failure or cancellation in the opt-in mode. Normal
+ * wrapper transport failures still use the wrapper's existing retry policy. */
+int ijklivehook_is_terminal_error(const AVFormatContext *avf, int error);
 
 #endif

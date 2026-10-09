@@ -3,6 +3,7 @@
 #include "../../ijkmedia/ijkplayer/ff_ffplay.c"
 #include <pthread.h>
 
+void SDL_Delay(Uint32 ms) { av_usleep((int64_t)ms * 1000); }
 Uint64 SDL_GetTickHR(void) { return av_gettime_relative() / 1000; }
 void SDL_ProfilerReset(SDL_Profiler *p, int max_sample) { memset(p, 0, sizeof(*p)); }
 float SDL_SpeedSamplerAdd(SDL_SpeedSampler *s, int log, const char *tag) { return 0; }
@@ -41,6 +42,49 @@ static AVPacket make_packet(int stream, int64_t pts, int key)
     p.stream_index = stream; p.pts = p.dts = pts; p.flags = key ? AV_PKT_FLAG_KEY : 0; p.duration = 20;
     return p;
 }
+static void option_tests(void)
+{
+    const int values[] = { -1, 0, 1, 499, 500, 60000, 60001, INT_MAX, INT_MIN };
+    for (int string_setter = 0; string_setter < 2; string_setter++) {
+        for (unsigned i = 0; i < sizeof(values) / sizeof(values[0]); i++) {
+            FFPlayer ffp = { .av_class = &ffp_context_class };
+            char text[32]; snprintf(text, sizeof(text), "%d", values[i]);
+            if (string_setter)
+                ffp_set_option(&ffp, FFP_OPT_CATEGORY_PLAYER, "rtsp-live-max-buffer-ms", text);
+            else
+                ffp_set_option_int(&ffp, FFP_OPT_CATEGORY_PLAYER, "rtsp-live-max-buffer-ms", values[i]);
+            int valid = values[i] == 0 || (values[i] >= 500 && values[i] <= 60000);
+            assert(rtsp_live_apply_player_options(&ffp) == (valid ? 0 : AVERROR(EINVAL)));
+            assert(ffp.rtsp_live_max_buffer_ms == (valid ? values[i] : 0));
+            assert(!ffp.is && !ffp.aout); /* prepare validates before either is opened */
+            av_dict_free(&ffp.player_opts);
+        }
+    }
+    const char *invalid[] = { "not-a-number", "", "1e100", "nan", "inf" };
+    for (unsigned i = 0; i < sizeof(invalid) / sizeof(invalid[0]); i++) {
+        FFPlayer ffp = { .av_class = &ffp_context_class };
+        ffp_set_option(&ffp, FFP_OPT_CATEGORY_PLAYER, "rtsp-live-max-buffer-ms", invalid[i]);
+        assert(rtsp_live_apply_player_options(&ffp) == AVERROR(EINVAL));
+        assert(!ffp.rtsp_live_max_buffer_ms);
+        av_dict_free(&ffp.player_opts);
+    }
+    /* Keep preexisting permissive handling of unrelated/unknown options, but
+     * do not let their order suppress this option's validation or application. */
+    FFPlayer ffp = { .av_class = &ffp_context_class };
+    ffp_set_option(&ffp, FFP_OPT_CATEGORY_PLAYER, "an", "invalid");
+    ffp_set_option_int(&ffp, FFP_OPT_CATEGORY_PLAYER, "rtsp-live-max-buffer-ms", 60001);
+    assert(rtsp_live_apply_player_options(&ffp) == AVERROR(EINVAL));
+    ffp_set_option_int(&ffp, FFP_OPT_CATEGORY_PLAYER, "rtsp-live-max-buffer-ms", 1200);
+    assert(!rtsp_live_apply_player_options(&ffp) && ffp.rtsp_live_max_buffer_ms == 1200);
+    av_dict_free(&ffp.player_opts);
+    ffp_set_option(&ffp, FFP_OPT_CATEGORY_PLAYER, "unknown-player-option", "unchanged");
+    ffp_set_option_int(&ffp, FFP_OPT_CATEGORY_PLAYER, "packet-buffering", 1);
+    assert(!rtsp_live_apply_player_options(&ffp) && ffp.packet_buffering == 1);
+    assert(av_dict_get(ffp.player_opts, "unknown-player-option", NULL, 0));
+    av_dict_free(&ffp.player_opts);
+    puts("PASS live cap: actual integer/string setters and prepare-time AVOption parser; invalid values return EINVAL, valid boundaries apply; unrelated legacy handling preserved");
+}
+
 static void unit_tests(void)
 {
     AVFormatContext *ic = avformat_alloc_context();
@@ -151,6 +195,25 @@ static void unit_tests(void)
     assert(!is.buffering_on && !is.paused);
     assert(ffp.dcc.current_high_water_mark_in_ms<=250);
     msg_queue_destroy(&ffp.msg_queue);
+    destroy(&is);
+    initialize(&ffp,&is,ic); is.audio_stream=0; is.video_stream=1; is.audio_st=a; is.video_st=v;
+    p=make_packet(0,900000,1); packet_queue_put(&is.audioq,&p);
+    p=make_packet(1,900000,1); packet_queue_put(&is.videoq,&p);
+    is.rtsp_live_drop_audio_before=1; is.rtsp_live_start_us=900000000;
+    as=is.audioq.serial; vs=is.videoq.serial;
+    assert(!stream_handle_discontinuity(&ffp));
+    assert(is.audioq.serial==as+1 && is.videoq.serial==vs+1);
+    assert(is.audioq.nb_packets==1 && is.videoq.nb_packets==1);
+    assert(is.rtsp_live_wait_keyframe && !is.rtsp_live_drop_audio_before);
+    p=make_packet(1,0,0); assert(!rtsp_live_filter_packet(&ffp,&p)); av_packet_unref(&p);
+    p=make_packet(1,100,1); assert(rtsp_live_filter_packet(&ffp,&p)); av_packet_unref(&p);
+    p=make_packet(0,80,1); assert(!rtsp_live_filter_packet(&ffp,&p)); av_packet_unref(&p);
+    p=make_packet(0,100,1); assert(rtsp_live_filter_packet(&ffp,&p)); av_packet_unref(&p);
+    ffp.rtsp_live_max_buffer_ms=0;
+    p=make_packet(0,120,1); packet_queue_put(&is.audioq,&p);
+    int retained=is.audioq.nb_packets;
+    assert(!stream_handle_discontinuity(&ffp));
+    assert(is.audioq.nb_packets==retained+1 && !is.rtsp_live_wait_keyframe);
     destroy(&is); avformat_free_context(ic);
     puts("PASS live RTSP: opt-in/VOD/protocol/pause/step/seek/rate guards, paired serial flush, keyframe gating, A/V alignment, missing-keyframe byte bound, audio-only/video-only");
 }
@@ -224,10 +287,18 @@ static void network_test(const char *url,const char *transport,int cap,int secon
     r.stop_at=av_gettime_relative()+(seconds+10)*1000000LL;
     ic->interrupt_callback=(AVIOInterruptCB){interrupt_read,&r};
     av_dict_set(&opts,"rtsp_transport",transport,0); av_dict_set(&opts,"timeout","1000000",0);
+    if (cap > 0 && av_strstart(url, "ijklivehook:", NULL))
+        av_dict_set_int(&opts, "ijklivehook-stable-streams", 1, 0);
     av_dict_set(&opts,"probesize","32768",0); av_dict_set(&opts,"analyzeduration","0",0);
     assert(avformat_open_input(&ic,url,NULL,&opts)>=0);
     assert(avformat_find_stream_info(ic,NULL)>=0); av_dict_free(&opts);
     initialize(&r.ffp,&r.is,ic); r.ffp.rtsp_live_max_buffer_ms=cap;
+    if (rtsp_live_buffer_enabled(&r.ffp)) {
+        r.is.pause_req=1; assert(!rtsp_live_buffer_enabled(&r.ffp)); r.is.pause_req=0;
+        r.is.step=1; assert(!rtsp_live_buffer_enabled(&r.ffp)); r.is.step=0;
+        r.is.seek_req=1; assert(!rtsp_live_buffer_enabled(&r.ffp)); r.is.seek_req=0;
+        r.ffp.pf_playback_rate=2; assert(!rtsp_live_buffer_enabled(&r.ffp)); r.ffp.pf_playback_rate=1;
+    }
     printf("{\"setup\":true,\"duration_us\":%"PRId64",\"live_policy_active\":%d}\n",ic->duration,rtsp_live_buffer_enabled(&r.ffp));
     r.is.audio_stream=av_find_best_stream(ic,AVMEDIA_TYPE_AUDIO,-1,-1,NULL,0);
     r.is.video_stream=av_find_best_stream(ic,AVMEDIA_TYPE_VIDEO,-1,-1,NULL,0);
@@ -252,6 +323,8 @@ static void network_test(const char *url,const char *transport,int cap,int secon
             r.is.pause_req=0;
             paused_once=1;
         }
+        if (p.flags & AV_PKT_FLAG_DISCONTINUITY)
+            assert(!stream_handle_discontinuity(&r.ffp));
         int keep=rtsp_live_filter_packet(&r.ffp,&p); assert(keep>=0);
         if(keep && p.stream_index==r.is.audio_stream) packet_queue_put(&r.is.audioq,&p);
         else if(keep && p.stream_index==r.is.video_stream) packet_queue_put(&r.is.videoq,&p);
@@ -267,7 +340,10 @@ static void network_test(const char *url,const char *transport,int cap,int secon
 int main(int argc,char **argv)
 {
     flush_pkt.data=(uint8_t *)&flush_pkt; av_log_set_level(AV_LOG_WARNING);
-    if(argc==1) unit_tests();
+    extern AVInputFormat ijkff_ijklivehook_demuxer;
+    int ijkav_register_ijklivehook_demuxer(AVInputFormat *, int);
+    assert(!ijkav_register_ijklivehook_demuxer(&ijkff_ijklivehook_demuxer, sizeof(AVInputFormat)));
+    if(argc==1) { option_tests(); unit_tests(); }
     else { assert(argc==6); network_test(argv[1],argv[2],atoi(argv[3]),atoi(argv[4]),atoi(argv[5])); }
     return 0;
 }

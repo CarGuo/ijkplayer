@@ -451,6 +451,9 @@ int SDL_Android_AudioTrack_flush_checked(JNIEnv *env, SDL_Android_AudioTrack *at
 int SDL_Android_AudioTrack_set_rate_checked(JNIEnv *env, SDL_Android_AudioTrack *atrack,
     float speed, int preserve_pitch, float *actual_speed, float *actual_pitch)
 {
+    if (J4A_GetSystemAndroidApiLevel(env) < 23)
+        return J4AC_android_media_AudioTrack__setLegacyRateChecked(env, atrack->thiz,
+            atrack->spec.sample_rate_in_hz, speed, preserve_pitch, actual_speed, actual_pitch);
     return J4AC_android_media_AudioTrack__setParamsChecked(env, atrack->thiz,
         speed, preserve_pitch, actual_speed, actual_pitch);
 }

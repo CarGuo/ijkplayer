@@ -85,7 +85,14 @@ typedef struct SDL_AudioSubmission {
     /* Optional homogeneous segment for a device-head clock. Backend fills the
      * output coordinates only after positive, whole-frame write acceptance. */
     int output_bytes, real_pcm, clock_unsupported;
+    int processing_error;
+    int engine_switch; /* 0 PCM, 1 platform, 2 SoundTouch; drain before commit */
+    uint64_t engine_sequence;
+    float engine_rate;
     double pts_start, pts_end;
+    double estimate_start, estimate_end; /* approximate compatibility clock */
+    double end_media; /* acknowledged cumulative output-media progress */
+    double media_rate; /* software media seconds per output second, 1 if plain */
     uint64_t output_epoch, first_frame, end_frame;
 } SDL_AudioSubmission;
 
@@ -94,7 +101,9 @@ enum {
     SDL_AUDIO_SUBMIT_COMMIT,
     SDL_AUDIO_SUBMIT_CANCEL,
     SDL_AUDIO_SUBMIT_FAIL,
-    SDL_AUDIO_SUBMIT_DEVICE_FAIL
+    SDL_AUDIO_SUBMIT_DEVICE_FAIL,
+    SDL_AUDIO_SUBMIT_ENGINE_COMMIT,
+    SDL_AUDIO_SUBMIT_ENGINE_REJECT
 };
 enum {
     SDL_AUDIO_SUBMIT_READY,
@@ -102,7 +111,8 @@ enum {
     SDL_AUDIO_SUBMIT_STALE,
     SDL_AUDIO_SUBMIT_ABORT,
     SDL_AUDIO_SUBMIT_FAILED,
-    SDL_AUDIO_SUBMIT_DRAINED
+    SDL_AUDIO_SUBMIT_DRAINED,
+    SDL_AUDIO_SUBMIT_SUPERSEDED /* engine control cancelled before commit */
 };
 typedef void (*SDL_AudioSubmitCallback)(void *userdata, Uint8 *stream, int len,
                                       SDL_AudioSubmission *submission);
@@ -115,6 +125,7 @@ typedef int (*SDL_AudioSubmissionCallback)(void *userdata,
 typedef struct SDL_AudioRateApplied {
     uint64_t sequence, output_epoch;
     int generation, preserve_pitch;
+    int rejected; /* request rejected, previous tuple positively restored */
     float speed, pitch;
     double apply_before, apply_after, observed_at;
     uint32_t head_before, head_after;
@@ -136,6 +147,7 @@ typedef struct SDL_AudioSpec
     SDL_AudioSubmitCallback callback_submit;
     SDL_AudioSubmissionCallback submission;
     SDL_AudioRateAppliedCallback rate_applied;
+    int software_tempo; /* backend-owned active engine policy after open */
 } SDL_AudioSpec;
 
 void SDL_CalculateAudioSpec(SDL_AudioSpec * spec);

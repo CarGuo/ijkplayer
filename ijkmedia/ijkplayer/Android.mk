@@ -36,9 +36,11 @@ LOCAL_C_INCLUDES += $(LOCAL_PATH)
 LOCAL_C_INCLUDES += $(realpath $(LOCAL_PATH)/..)
 LOCAL_C_INCLUDES += $(MY_APP_FFMPEG_INCLUDE_PATH)
 LOCAL_C_INCLUDES += $(realpath $(LOCAL_PATH)/../ijkj4a)
+LOCAL_C_INCLUDES += $(realpath $(LOCAL_PATH)/../ijksoundtouch/include)
 
 LOCAL_SRC_FILES += ff_cmdutils.c
 LOCAL_SRC_FILES += ff_ffplay.c
+LOCAL_SRC_FILES += ff_soundtouch.cpp
 LOCAL_SRC_FILES += ff_ffpipeline.c
 LOCAL_SRC_FILES += ff_ffpipenode.c
 LOCAL_SRC_FILES += ijkmeta.c

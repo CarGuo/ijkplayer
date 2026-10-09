@@ -15,6 +15,8 @@ FLAGS=(-std=gnu11 -D_GNU_SOURCE -g -O3 -ffast-math -fno-fast-math
  -I"$OUTPUT/include" -I"$BUILD" -I"$SOURCE" -I"$ROOT/ijkmedia" -I"$ROOT/ijkmedia/ijkplayer")
 if [[ -n ${SANITIZE:-} ]]; then FLAGS+=(-fsanitize="$SANITIZE" -fno-omit-frame-pointer); fi
 "${CC:-cc}" "${FLAGS[@]}" "$ROOT/tests/ffmpeg5/test_rtsp_live.c" \
+ "$ROOT/ijkmedia/ijkplayer/ijkavformat/ijklivehook.c" \
+ "$ROOT/ijkmedia/ijksdl/ijksdl_audio.c" "$ROOT/ijkmedia/ijksdl/ijksdl_vout.c" \
  "$ROOT/ijkmedia/ijksdl/ijksdl_mutex.c" "$ROOT/ijkmedia/ijksdl/ijksdl_error.c" "$ROOT/ijkmedia/ijksdl/ijksdl_aout.c" \
  -Wl,--gc-sections -Wl,--start-group "$BUILD"/{libavformat/libavformat.a,libavcodec/libavcodec.a,libavutil/libavutil.a,libswscale/libswscale.a,libswresample/libswresample.a} \
  -Wl,--end-group -lm -lpthread -lz -latomic -o "$OUTPUT/test-rtsp-live"
