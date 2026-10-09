@@ -79,6 +79,9 @@ typedef struct SDL_AudioPlaybackTracker {
     double last_real_end, estimated_pts, last_estimate_end;
     double played_media, accepted_media, media_rate;
     int sample_mapped;
+    /* Sticky for this physical epoch, including real PCM with zero-valued
+     * samples or unknown PTS, and after its spans have been reclaimed. */
+    int has_real_pcm;
     int valid;
     int fresh;
 } SDL_AudioPlaybackTracker;
@@ -98,6 +101,7 @@ static inline SDL_AudioPlaybackResult SDL_AudioPlaybackTracker_Init(
     t->played_media = t->accepted_media = 0;
     t->media_rate = 1.0;
     t->sample_mapped = t->valid = t->fresh = 0;
+    t->has_real_pcm = 0;
     return SDL_AUDIO_PLAYBACK_OK;
 }
 
@@ -117,6 +121,7 @@ static inline SDL_AudioPlaybackResult SDL_AudioPlaybackTracker_Reset(
     t->played_media = t->accepted_media = 0;
     t->media_rate = 1.0;
     t->sample_mapped = t->valid = t->fresh = 0;
+    t->has_real_pcm = 0;
     return SDL_AUDIO_PLAYBACK_OK;
 }
 
@@ -168,6 +173,7 @@ static inline SDL_AudioPlaybackResult SDL_AudioPlaybackTracker_AcceptEstimated(
             s->frame_count += frame_count; /* bounded by accepted overflow check */
             t->accepted_frames += frame_count;
             t->accepted_media = next_media;
+            t->has_real_pcm |= real_pcm;
             return SDL_AUDIO_PLAYBACK_OK;
         }
     }
@@ -187,6 +193,7 @@ static inline SDL_AudioPlaybackResult SDL_AudioPlaybackTracker_AcceptEstimated(
     ++t->count;
     t->accepted_frames += frame_count;
     t->accepted_media = next_media;
+    t->has_real_pcm |= real_pcm;
     /* Queueing never changes the clock at an unchanged head. */
     return SDL_AUDIO_PLAYBACK_OK;
 }

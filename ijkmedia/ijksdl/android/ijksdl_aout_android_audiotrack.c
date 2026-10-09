@@ -243,6 +243,30 @@ static int aout_write_submitted_buffer(JNIEnv *env, SDL_Aout *aout,
                     return aout_device_failed(opaque, submission);
                 SDL_AudioPlaybackSnapshot position = { 0 };
                 aout_get_playback_position(aout, &position);
+                if (position.valid && position.fresh &&
+                    position.generation == submission->generation &&
+                    position.played_frames < position.accepted_frames) {
+                    SDL_LockMutex(opaque->position_mutex);
+                    int synthetic_only = !opaque->playback.has_real_pcm;
+                    SDL_UnlockMutex(opaque->position_mutex);
+                    /* The sole writer may retire an exclusively synthetic
+                     * physical epoch. A short startup-silence prefix cannot
+                     * reach AudioTrack's minimum fill while this control waits
+                     * for drain. Never flush an epoch that accepted real PCM,
+                     * even silent/unknown-PTS PCM or already-reclaimed spans.
+                     * Keep pause/flush checked and re-read the new epoch before
+                     * commit; ordinary generation/seek validation still applies. */
+                    if (synthetic_only) {
+                        int reset_result = aout_reset_playback(env, aout, submission->generation, track_paused);
+                        ALOGI("IJK_AUDIO_SYNTHETIC_EPOCH_RESET generation=%d epoch=%" PRIu64
+                            " accepted=%" PRIu64 " played=%" PRIu64 " real=0 result=%d new_epoch=%" PRIu64,
+                            submission->generation, position.epoch, position.accepted_frames,
+                            position.played_frames, reset_result, opaque->output_epoch);
+                        if (reset_result < 0)
+                            return aout_device_failed(opaque, submission);
+                        aout_get_playback_position(aout, &position);
+                    }
+                }
                 if (position.valid && position.generation == submission->generation &&
                     position.played_frames == position.accepted_frames) {
                     float speed = submission->engine_switch == 2 ? 1.0f : submission->engine_rate;

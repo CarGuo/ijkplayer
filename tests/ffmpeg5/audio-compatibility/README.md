@@ -50,7 +50,9 @@ python3 tests/ffmpeg5/test_audio_ready_clock.py .
 The submission suite includes actual backend request/apply/notify sequencing and
 live engine-handoff schedules, including concurrent rate changes and seek/option
 cancellation in either direction. Rejected controls must preserve exact PCM suffixes;
-engine handoff must never write silence or flush accepted same-generation audio.
+engine handoff must never write silence or flush accepted same-generation real PCM.
+The startup suite below permits a checked reset only for an exclusively synthetic
+physical epoch that has never accepted real PCM.
 EOF still requires transform exhaustion, no outstanding real submission, matching
 generation/epoch, and the final acknowledged output frame actually played.
 
@@ -74,3 +76,8 @@ finite/unknown/discontinuous PTS, 1→3→1 buffer rates, pause/seek reset, and 
 engine-control boundaries without consuming the next engine's input early.
 Runs normal, optimized and ASan+UBSan modes. Together with the backend-owner suite,
 this distinguishes producer/tail correctness from transaction/device behavior.
+
+For the combined production initialization, producer, callback and owner path,
+run `../audio-startup/run.py` with the same dependency flags. Its AudioTrack model
+holds the head at zero until 18,448 frames are filled, reproducing the pre-first-
+decode synthetic-silence/control deadlock in r3. See `../audio-startup/README.md`.

@@ -237,3 +237,51 @@ result, and starts no network I/O or player threads. Cases cover failed terminal
 seek, undrained/drained tails, one error/no rereads, user pause/step, successful
 seek generations, nonterminal rebuffering and autoexit. `--repo PREVIOUS_CHECKOUT`
 runs identical assertions against another tree as a negative control.
+
+
+### Terminal error state and repeated failed seeks
+
+A failed seek after the terminal error was already reported keeps the existing
+terminal-notification latch. The failed seek still reports its own result through
+`FFP_MSG_SEEK_COMPLETE`; it does not emit the original read error a second time.
+A successful in-flight seek clears the read-error latch as before. Normal EOF,
+auto-looping, explicit pause/step, tail draining and nonterminal seek buffering
+keep their existing behavior.
+
+Delivery of `FFP_MSG_ERROR` now enters the documented public `MP_STATE_ERROR`
+before invoking the listener. `isPlaying()` is false in that state, and existing
+start/pause/seek guards reject those commands. Applications must reset/reopen
+after `OnError`. Android JNI still discards the native seek return value, so a
+post-error `seekTo()` can return without throwing, without issuing a native seek
+or producing `OnSeekComplete`. Delayed prepared/completed messages and duplicate
+errors cannot replace the error state; errors for inactive/stopped states are
+ignored. Android's existing completion fallback when an `OnErrorListener` returns
+false is unchanged.
+
+The public-state regression executes production `ijkmp_get_msg`, command guards,
+message queues and seek/pause helpers. It includes preparing/started/paused errors,
+queued controls, a stop between dequeue and dispatch, aborted old-player queues,
+a separate replacement player, and ordinary EOF-to-seek/start. It does not run
+JNI, Android reset/release, a device, or a full read/render thread:
+
+```sh
+python3 tests/ffmpeg5/test_player_error_state.py FFMPEG_SOURCE FFMPEG_HOST_BUILD OUTPUT
+ASAN_OPTIONS=detect_leaks=0 SANITIZE=address,undefined,float-cast-overflow \
+  python3 tests/ffmpeg5/test_player_error_state.py FFMPEG_SOURCE FFMPEG_HOST_BUILD OUTPUT_ASAN
+```
+
+Both Python regressions accept `--repo PREVIOUS_CHECKOUT` for an identical negative
+control. The terminal-block regression also covers repeated failed seeks after a
+reported `AVERROR_EXIT`/`ENOSYS`, normal EOF and ordinary auto-loop behavior.
+
+
+The ERROR transition uses the existing error event without adding a separate
+`FFP_MSG_PLAYBACK_STATE_CHANGED`. The iOS bridge already emits its playback-state
+notification and then its error-finish notification from ERROR; the native
+cardinality regression requires exactly one ERROR, zero extra STATE_CHANGED
+messages and unchanged following-event order. Normal completion/start transitions
+still emit their existing state-change events. No platform bridge code changes.
+
+Queue abortion still cannot retract an error already dequeued before shutdown.
+The stop-dispatch and replacement-queue tests cover their specific orderings;
+they do not establish comprehensive Android release/reset race elimination.

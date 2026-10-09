@@ -5,9 +5,11 @@
 #include <pthread.h>
 #include <stdatomic.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <time.h>
+#define ALOGI(...) ((void)0)
 typedef pthread_mutex_t SDL_mutex;
 typedef pthread_cond_t SDL_cond;
 typedef pthread_t SDL_Thread;

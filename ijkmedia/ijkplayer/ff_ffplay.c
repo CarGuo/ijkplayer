@@ -4167,7 +4167,10 @@ static int read_thread(void *arg)
             if (is->paused)
                 step_to_next_frame(is);
 #endif
-            completed = 0;
+            /* A failed seek does not create a new terminal generation. Keep
+             * the notification latch until a seek actually clears the error. */
+            if (!rtsp_io_error)
+                completed = 0;
             SDL_LockMutex(ffp->is->play_mutex);
             if (ffp->auto_resume) {
                 is->pause_req = 0;

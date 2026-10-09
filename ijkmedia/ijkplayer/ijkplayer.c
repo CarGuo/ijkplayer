@@ -696,9 +696,36 @@ int ijkmp_get_msg(IjkMediaPlayer *mp, AVMessage *msg, int block)
             return retval;
 
         switch (msg->what) {
+        case FFP_MSG_ERROR:
+            MPTRACE("ijkmp_get_msg: FFP_MSG_ERROR\n");
+            pthread_mutex_lock(&mp->mutex);
+            /* Publish ERROR before the listener can issue another command.
+             * Late errors from a stopped/inactive session and duplicate errors
+             * must not replace its state or notify the same failure again. */
+            if (mp->mp_state == MP_STATE_ASYNC_PREPARING ||
+                mp->mp_state == MP_STATE_PREPARED ||
+                mp->mp_state == MP_STATE_STARTED ||
+                mp->mp_state == MP_STATE_PAUSED ||
+                mp->mp_state == MP_STATE_COMPLETED) {
+                mp->seek_req = 0;
+                mp->seek_msec = 0;
+                /* ERROR already carries the state transition to the bridges;
+                 * iOS emits its existing state notification from that event. */
+                mp->mp_state = MP_STATE_ERROR;
+            } else {
+                continue_wait_next_msg = 1;
+            }
+            pthread_mutex_unlock(&mp->mutex);
+            break;
+
         case FFP_MSG_PREPARED:
             MPTRACE("ijkmp_get_msg: FFP_MSG_PREPARED\n");
             pthread_mutex_lock(&mp->mutex);
+            if (mp->mp_state == MP_STATE_ERROR) {
+                continue_wait_next_msg = 1;
+                pthread_mutex_unlock(&mp->mutex);
+                break;
+            }
             if (mp->mp_state == MP_STATE_ASYNC_PREPARING) {
                 ijkmp_change_state_l(mp, MP_STATE_PREPARED);
             } else {
@@ -715,6 +742,11 @@ int ijkmp_get_msg(IjkMediaPlayer *mp, AVMessage *msg, int block)
             MPTRACE("ijkmp_get_msg: FFP_MSG_COMPLETED\n");
 
             pthread_mutex_lock(&mp->mutex);
+            if (mp->mp_state == MP_STATE_ERROR) {
+                continue_wait_next_msg = 1;
+                pthread_mutex_unlock(&mp->mutex);
+                break;
+            }
             mp->restart = 1;
             mp->restart_from_beginning = 1;
             ijkmp_change_state_l(mp, MP_STATE_COMPLETED);

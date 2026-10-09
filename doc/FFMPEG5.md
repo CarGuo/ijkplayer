@@ -22,11 +22,19 @@ and [patch provenance](../patches/ffmpeg5/README.md).
 
 ## Current audio source behavior and limits
 
-These audio compatibility changes are later than the emulator, Pixel 8 and
-compiled native identities recorded below. Those earlier artifacts do not
-qualify the current source. Host regressions and native compilation/ELF checks
-are separate evidence; they establish no new Android/device, audible-quality,
-A/V-sync or 16 KiB-page runtime qualification.
+These audio compatibility changes are later than the historical emulator,
+Pixel 8 and compiled identities recorded below; those older artifacts do not
+qualify the current source. The current three-ABI build uses `module-lite-more.sh`.
+Its final ARM64 candidate passed the 2026-10-09 Pixel 5 / API 30 core gate:
+14 checks passed, none failed and three were explicitly skipped. The exercised
+scope includes software tempo 0.25x–4x, A/V playback at 2x, 96 kHz resampling,
+and three captured-audio content checks. The two very short audio-tail checks
+and the device-dependent rejected-rate restoration check remain unqualified.
+See the [device execution](https://console.firebase.google.com/project/test-58c3b/testlab/histories/bh.8ae82e296c4d7b0/matrices/6556061339783384372/executions/bs.f39e19bcb7379ff8)
+(requires access to the test project). This is not universal device, hardware
+codec, perceptual audio-quality, full A/V-sync or 16 KiB-page runtime qualification.
+HE-AAC/SBR-specific late signaling and explicit non-audio master selection were
+not exercised through the public Java device harness.
 
 - `soundtouch=1` selects bounded software tempo on AudioTrack, including API 23+.
   The supported software range is 0.25×–4×, including 3×. Invalid or out-of-range
@@ -46,6 +54,11 @@ A/V-sync or 16 KiB-page runtime qualification.
   to prevent double tempo. A paused queued handoff waits for resume while seek
   and abort remain serviced. Temporary hardware controls do not replace the
   latest user rate; a cancelled handoff retains the committed engine policy.
+- A control boundary may retire an underfilled startup epoch only after proving
+  that it has accepted synthetic silence and no real PCM, using checked
+  pause/flush/reset. This prevents waiting forever for a playback head which
+  cannot start below the device's minimum fill. Epochs that accepted any real
+  PCM retain the physical drain barrier, including real audio containing zeros.
 - Resampling, compensation and SoundTouch use per-output-span estimated media
   PTS, separate from acknowledged physical-frame drain accounting. Queued spans
   keep their own rates and PTS gaps. Resampler/software tails, retained partial
@@ -88,6 +101,15 @@ Incompatible stream topology/codec configuration returns terminal `ENOSYS`
 and requires an application-level player reopen. Callback cancellation and
 read interruption remain terminal for that wrapper session. Ordinary transport
 failures retain the wrapper's existing callback-controlled retry policy.
+
+Asynchronous native errors enter the documented Error state before invoking the
+listener. The state guard drops duplicate errors and errors processed while
+stopped or inactive. It does not retract an event already dequeued before
+shutdown; applications must retain their existing session/lifecycle guards.
+After Error, seek/start/pause remain rejected under the existing API contract; reset or recreate the player before preparing again. A failed seek
+already in flight does not re-emit an unchanged terminal RTSP error, and late
+prepared/completed messages cannot replace Error. Normal completion remains
+seekable. Java's existing seek return/exception behavior is unchanged.
 
 The [live-policy host tests](../tests/ffmpeg5/README-rtsp-live.md) include a bounded
 20-minute software-consumer soak. Neither local queue age nor the emulator

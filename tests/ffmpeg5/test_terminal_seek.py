@@ -60,7 +60,7 @@ static void notifications(FFPlayer *ffp, int *errors, int *completions)
 {
     AVMessage msg;
     while (msg_queue_get(&ffp->msg_queue, &msg, 0) > 0) {
-        if (msg.what == FFP_MSG_ERROR) { (*errors)++; assert(msg.arg1 == AVERROR(ENOSYS)); }
+        if (msg.what == FFP_MSG_ERROR) { (*errors)++; assert(msg.arg1 == ffp->error); }
         if (msg.what == FFP_MSG_COMPLETED) (*completions)++;
         msg_free_res(&msg);
     }
@@ -101,6 +101,30 @@ int main(void)
     assert(terminal_iteration(&ffp, latch, &done) == 0);
     notifications(&ffp, &errors, &completions); assert(errors == 1);
     cleanup(&ffp, &is);
+
+    /* Failed seek after notification keeps the same terminal generation.
+     * A second pending seek wakes the completed branch without aborting it. */
+    for (int error_case = 0; error_case < 2; ++error_case) {
+        setup(&ffp, &is, ic);
+        latch = ffp.error = error_case ? AVERROR_EXIT : AVERROR(ENOSYS);
+        done = errors = completions = 0; is.eof = 1;
+        assert(terminal_iteration(&ffp, latch, &done) == 0 && done);
+        notifications(&ffp, &errors, &completions);
+        assert(errors == 1 && !completions && is.pause_req);
+        as = is.audioq.serial; vs = is.videoq.serial;
+        for (int attempt = 0; attempt < 3; ++attempt) {
+            is.seek_req = 1;
+            run_seek(&ffp, &latch, &done, AVERROR(EIO));
+            assert(done && latch == ffp.error && is.eof);
+            assert(!is.buffering_on && is.pause_req && is.step && !is.paused);
+            assert(is.audioq.serial == as && is.videoq.serial == vs);
+            is.seek_req = 1; /* deterministic wake, no wait/thread/network */
+            assert(terminal_iteration(&ffp, latch, &done) == 0 && done);
+            notifications(&ffp, &errors, &completions);
+            assert(errors == 1 && !completions);
+        }
+        cleanup(&ffp, &is);
+    }
 
     /* A remaining tail must resume draining, without rereads or early errors. */
     setup(&ffp, &is, ic);
@@ -159,6 +183,23 @@ int main(void)
     assert(terminal_iteration(&ffp, latch, &done) == 1 && is.buffering_on);
     cleanup(&ffp, &is);
 
+    /* Normal EOF still completes once, and ordinary auto-loop still seeks. */
+    setup(&ffp, &is, ic);
+    latch = done = errors = completions = 0; is.eof = 1;
+    assert(terminal_iteration(&ffp, latch, &done) == 1 && done);
+    notifications(&ffp, &errors, &completions);
+    assert(!errors && completions == 1 && is.pause_req && !is.buffering_on);
+    is.seek_req = 1;
+    run_seek(&ffp, &latch, &done, AVERROR(EIO));
+    assert(!done && !latch && is.buffering_on); /* ordinary seek policy unchanged */
+    cleanup(&ffp, &is);
+    setup(&ffp, &is, ic);
+    latch = done = errors = completions = 0; is.eof = 1; ffp.loop = 2;
+    assert(terminal_iteration(&ffp, latch, &done) == 1 && !done);
+    notifications(&ffp, &errors, &completions);
+    assert(!errors && !completions && is.seek_req && ffp.loop == 1);
+    cleanup(&ffp, &is);
+
     /* Existing autoexit receives the terminal error after buffering releases. */
     setup(&ffp, &is, ic);
     latch = ffp.error = AVERROR(ENOSYS); done = 0; is.eof = 1; ffp.autoexit = 1;
@@ -167,7 +208,7 @@ int main(void)
     assert(!is.buffering_on && !is.paused && !is.pause_req);
     cleanup(&ffp, &is);
     avformat_free_context(ic);
-    puts("PASS exact production seek/terminal blocks: failed-terminal-seek buffering release, drain before one error, no rereads, user pause/step, successful seek generations and ordinary buffering, autoexit error");
+    puts("PASS exact production seek/terminal blocks: repeated post-notification failed seek cannot rearm the same ENOSYS/EXIT error; normal EOF/auto-loop; failed-terminal-seek buffering release, drain before one error, no rereads, user pause/step, successful seek generations and ordinary buffering, autoexit error");
     return 0;
 }
 '''.replace("@ROOT@", str(root)).replace("@SEEK@", seek).replace("@TERMINAL@", terminal)
