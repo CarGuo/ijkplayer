@@ -38,8 +38,9 @@ The complete network-disabled initializer integration passed ten cases at the
 public pin, including standalone-bundle recovery and fifth/sixth/seventh patch
 removal/preservation. A fresh full remote initialization remains unrun. Host
 HTTP+HTTPS, HTTPS-only and ASan/UBSan policy regressions passed. The current
-ARMv7 tuple also has bounded physical-device TLS/HLS and 1x/3x playback evidence;
-the current ARM64 and x86_64 tuples remain build/static-only. See the
+ARMv7 and ARM64 tuples also have separate bounded physical-device TLS/HLS and
+1x/3x playback evidence; the current x86_64 tuple remains build/static-only.
+Official OpenSSL unit execution is limited to ARMv7. See the
 [current Android scope](../../doc/FFMPEG5.md#current-tls-fixes-and-qualification-boundary)
 and [FFmpeg test scope](https://github.com/CarGuo/FFmpeg/blob/0c8735b51d29dbc74e18c235246d5230bd5db989/doc/tests/hls-tls-options.md).
 

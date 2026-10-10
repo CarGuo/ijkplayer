@@ -18,22 +18,24 @@ The direct-HTTPS evidence below belongs to the earlier ARMv7-only candidate,
 built before the HLS inheritance fix. The current combined candidate pins
 FFmpeg `0c8735b51d29dbc74e18c235246d5230bd5db989` and rebuilds all three migrated
 ABIs. Its current ARMv7 tuple has a separate
-[Pixel 5 / API 30 TLS/HLS result](https://console.firebase.google.com/project/test-58c3b/testlab/histories/bh.faa1330aa1b29782/matrices/8558173587236303850/executions/bs.74fab5dea7b801b/test-cases)
-(2026-10-10, test-project access required): 15 passed and 1 failed, with the sole
+Pixel 5 / API 30 TLS/HLS result
+(2026-10-10): 15 passed and 1 failed, with the sole
 failure reproducing the original ARMv7 CA-load crash. The candidate passes
 direct HTTPS, strict certificate/peer-name rejection, nested-segment wrong-CA/SAN
 rejection and controlled HLS audio at 1x/3x. Official sparse-array, property and
 user-property ARMv7 source tests also pass with complete TAP, in separately
 linked static-libcrypto executables rather than against dynamic IJK. The custom
-invariant probe below is not covered by that official-unit claim. Current ARM64
-and x86_64 tuples remain build/static-only. See the
+invariant probe below is not covered by that official-unit claim. The current
+ARM64 tuple now has separate bounded physical-device TLS/HLS and 1x/3x audio
+evidence, but no ARM64 official OpenSSL unit executables were run. Current
+x86_64 remains build/static-only. See the
 [current qualification limits](../../../doc/FFMPEG5.md#current-tls-fixes-and-qualification-boundary).
 Do not reuse the older hashes below or assume historical passes qualify changed
 binaries.
 
 The targeted workaround repaired the observed ARMv7 certificate-loading crash
-in the 2026-10-10 [Pixel 3 / API 28 comparison](https://console.firebase.google.com/project/test-58c3b/testlab/histories/bh.93e2df2eab2c5575/matrices/7759948617160091666/details)
-(test-project access required). The same runtime and valid CA reproduced the
+in the 2026-10-10 Pixel 3 / API 28 comparison.
+The same runtime and valid CA reproduced the
 original library's SIGSEGV at address `0xa` after CA loading began (exit 139),
 while the candidate returned `Loaded=1` and exit 0. The Java/JNI playback process
 was verified as 32-bit. Candidate `IjkMediaPlayer` completed the two-second AAC

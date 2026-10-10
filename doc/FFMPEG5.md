@@ -44,8 +44,8 @@ combined candidate. See the [original comparison and reusable optimizer tests](.
 The combined candidate rebuilds all nine matched FFmpeg/player/SDL libraries for
 ARMv7, ARM64 and x86_64 against the current FFmpeg pin. The current ARMv7 tuple
 was exercised in a 32-bit Java/JNI process on a physical Pixel 5 / API 30 in the
-[2026-10-10 TLS/HLS run](https://console.firebase.google.com/project/test-58c3b/testlab/histories/bh.faa1330aa1b29782/matrices/8558173587236303850/executions/bs.74fab5dea7b801b/test-cases)
-(test-project access required). The suite reports **15 passed, 1 failed** across
+2026-10-10 TLS/HLS run.
+The suite reports **15 passed, 1 failed** across
 16 cases; the sole failure reproduces the original ARMv7 CA-loading crash. The
 overall matrix remains failed, not all green. Candidate CA loading, default and
 verified direct HTTPS, wrong-CA/DNS/IP rejection, and nested-segment wrong-CA/SAN
@@ -59,8 +59,23 @@ are not tests dynamically linked to the IJK library.
 The preceding 14-pass/2-fail attempt remains recorded under its original
 pre-start getter oracle. The rerun corrected when the harness observes applied
 speed; it changed neither the native tuple nor its clock implementation.
-Current ARM64 and x86_64 libraries have build/static verification only, with no
-runtime result for those new bytes. The ARMv7 result does not qualify TLS 1.3,
+
+The separate 2026-10-10 ARM64 run
+exercised the final ARM64 tuple in a verified
+64-bit Java/JNI process on a physical Pixel 5 / API 30. It reports **12 passed,
+1 failed** across 13 cases; the sole failure is again the original ARMv7
+CA-loading negative control, executed in an isolated 32-bit child. That matrix
+also remains failed. Final ARM64 CA loading, default/trusted direct HTTPS,
+wrong-CA/DNS/IP rejection, HLS 1x/3x playback and nested-segment wrong-CA/SAN
+rejection passed. Both HLS runs fetched master/media playlists and all 13
+segments. The 24.021-second media completed at 3x in 8.585 seconds with a
+sampled position slope of 2.9853x; all 35 interior speed readings were 3, and
+all 109 interior 1x readings were 1. The paired timing/slope gates passed.
+Official OpenSSL unit executables were not run on ARM64; the ARMv7 source-unit
+evidence above remains separate.
+
+Current x86_64 libraries have build/static verification only, with no runtime
+result for those bytes. These ARMv7 and ARM64 results do not qualify TLS 1.3,
 all HLS key/init/live/redirect paths, video or hardware decoding, acoustic
 quality, external networks, long sessions, all devices or 16 KiB-page runtime.
 Static checks and historical runs must not be reported as a current whole-release
@@ -74,14 +89,15 @@ qualify the current source. The current three-ABI build uses `module-lite-more.s
 The earlier, pre-TLS/HLS ARM64 tuple passed the 2026-10-09 Pixel 5 / API 30
 core gate: 14 checks passed, none failed and three were explicitly skipped.
 That result is historical and does not qualify the newly rebuilt ARM64 tuple.
-The current ARM64 and x86_64 tuples have build/static verification only;
-16 KiB ELF alignment is a static layout check, not device-runtime coverage.
+The current rebuilt ARM64 tuple has separate, bounded TLS/HLS and 1x/3x audio
+evidence above; that run does not repeat this broader historical audio gate.
+Current x86_64 remains build/static-only. ARM64/x86_64 16 KiB ELF alignment is
+a static layout check, not 16 KiB-page device-runtime coverage.
 That historical ARM64 run's exercised
 scope includes software tempo 0.25x–4x, A/V playback at 2x, 96 kHz resampling,
 and three captured-audio content checks. The two very short audio-tail checks
 and the device-dependent rejected-rate restoration check remain unqualified.
-See the [device execution](https://console.firebase.google.com/project/test-58c3b/testlab/histories/bh.8ae82e296c4d7b0/matrices/6556061339783384372/executions/bs.f39e19bcb7379ff8)
-(requires access to the test project). This is not universal device, hardware
+This is not universal device, hardware
 codec, perceptual audio-quality, full A/V-sync or 16 KiB-page runtime qualification.
 HE-AAC/SBR-specific late signaling and explicit non-audio master selection were
 not exercised through the public Java device harness.
