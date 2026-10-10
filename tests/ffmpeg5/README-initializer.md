@@ -8,7 +8,7 @@ python3 tests/ffmpeg5/test_initializer.py /absolute/path/to/FFmpeg
 
 Requires Bash, Git, Python 3, enough temporary disk space for independent FFmpeg
 clones and a standalone bundle, and the delivered FFmpeg repository at
-`c157591220febd96fdcffb05283f63dd38627081`. This test does not download dependencies.
+`0c8735b51d29dbc74e18c235246d5230bd5db989`. This test does not download dependencies.
 It verifies and reuses these existing IJK checkouts through temporary symlinks:
 
 - `extra/openssl-3.5.9`: `45e844fa2a14ec92d146bd8f5778ac130b6625fb`
@@ -23,33 +23,30 @@ operations are confined to the temporary copy.
 
 Coverage:
 
-1. Fresh initialization from the actual local repository, exact pin and all six reverse checks
+1. Fresh initialization from the actual local repository, exact pin and seven reverse checks
 2. Idempotent rerun, with unchanged checkout status
 3. Missing fifth patch fails and preserves the modified MOV file
 4. Missing sixth patch fails and preserves all three modified RTSP source files
-5. Wrong source revision fails and preserves that revision/worktree
-6. Non-repository target directory fails and preserves its sentinel
-7. Invalid local source override fails before creating a checkout
-8. Fresh initialization from a standalone bundle containing the recovery pin
-9. Original source, pre-existing FFmpeg checkout and dependency checkouts remain unchanged
+5. Missing seventh patch fails and preserves all four modified TLS/HLS source files
+6. Wrong source revision fails and preserves that revision/worktree
+7. Non-repository target directory fails and preserves its sentinel
+8. Invalid local source override fails before creating a checkout
+9. Fresh initialization from a standalone bundle containing the exact pin
+10. Original source, pre-existing FFmpeg checkout and dependency checkouts remain unchanged
 
 ## Current verification status
 
-The current initializer requires the RTSP commit and all six reverse checks.
-The test retains the fifth-patch removal/preservation regression and adds the
-sixth-patch removal/preservation regression. This is more than a pin-only change.
-The complete initializer integration test has **not been rerun at the new pin**;
-Python AST parsing and shell syntax checks are not an integration pass. A fresh
-full remote initialization has not been rerun either. The local-source override,
-no-reset/no-overwrite behavior and all three dependency pins are preserved.
+All ten cases passed with the published seven-patch pin
+`0c8735b51d29dbc74e18c235246d5230bd5db989`. Fifth- and sixth-patch removal checks remain in place;
+the added seventh-patch case snapshots `aviobuf.c`, `hls.c`, `http.c`, and `http.h`
+and requires rejection without altering those files or the checkout status.
+The standalone bundle contains full history and is independently cloneable.
 
-The exact six-patch initializer pin is `c157591220febd96fdcffb05283f63dd38627081`.
-The test requires a local repository or bundle containing that exact commit,
-plus the three pinned dependency checkouts listed above.
-
-See [current RTSP scope and historical R3 results](../../doc/FFMPEG5.md).
-Android compilation, emulator playback and physical-device qualification are
-separate from this initializer test.
+This integration run is network-disabled and reuses the existing pinned
+dependencies. It does not qualify a fresh full remote dependency initialization,
+Android compilation or any device runtime. The local-source override,
+no-reset/no-overwrite behavior and all three dependency pins remain preserved.
+See [current integration scope](../../doc/FFMPEG5.md).
 
 ## Historical five-patch verification record
 

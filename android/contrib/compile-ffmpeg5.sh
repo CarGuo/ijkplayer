@@ -86,6 +86,16 @@ SSL_TOOLCHAIN_SHA256=$({
  hash_tree "${BIN%/bin}"
 } | sha256sum | cut -d' ' -f1)
 SSL_FLAGS=("$SSL" "-D__ANDROID_API__=$API" no-shared no-module no-dso no-apps no-tests -fPIC --libdir=lib)
+# Clang 11's ARMv7 -O3 code generation can load a sparse-array traversal
+# node before its initialization. Keep the pinned upstream TLS source and API,
+# and disable this optimization only for the affected compiler/ABI pair.
+# These flags are part of SSL_IDENTITY below, so old caches cannot be reused.
+if [[ "$ARCH" == armv7a ]]; then
+ SSL_CLANG_MAJOR=$("$CC" -dM -E -x c /dev/null | awk '$2 == "__clang_major__" { print $3 }')
+ if [[ "$SSL_CLANG_MAJOR" == 11 ]]; then
+  SSL_FLAGS+=(-fno-unroll-loops)
+ fi
+fi
 SSL_IDENTITY=$({
  echo 'cache_schema=openssl-static-v1'
  echo "openssl_version=$SSL_VERSION"
@@ -207,7 +217,7 @@ cp config_components.h "$OUT/include/config_components.h"
  else
   echo 'ffmpeg_source_dirty=false'
  fi
- for patch_name in 0001-ijk-hooks.patch 0002-mpjpeg-eof.patch 0003-hevc-parameter-updates.patch 0004-tls-peer-identity.patch 0005-mov-hevc-seek-replay.patch 0006-rtsp-initial-open.patch; do
+ for patch_name in 0001-ijk-hooks.patch 0002-mpjpeg-eof.patch 0003-hevc-parameter-updates.patch 0004-tls-peer-identity.patch 0005-mov-hevc-seek-replay.patch 0006-rtsp-initial-open.patch 0007-hls-tls-options.patch; do
   echo "patch_${patch_name}_sha256=$(sha256sum "$ROOT/patches/ffmpeg5/$patch_name" | cut -d' ' -f1)"
  done
  echo "ffmpeg_config_sha256=$(sha256sum config.h config_components.h | sha256sum | cut -d' ' -f1)"

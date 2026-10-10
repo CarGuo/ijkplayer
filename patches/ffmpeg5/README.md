@@ -11,25 +11,37 @@
 - Published recovery parent: `eeda3f84b84b95cbecc5604b343a9100ad656311`
 - Previous published five-patch initializer pin: `ff87490262107e004f6a16765484e36e1973d705`
 - Recovered five-patch compiled-code checkpoint: `0cb0a06ef3d2b8e2814cb0e60be99d7986e1bde1` (same production code as the previous five-patch pin; updated publication docs)
-- Exact six-patch RTSP initializer pin: `c157591220febd96fdcffb05283f63dd38627081`
+- Previous six-patch RTSP initializer pin: `c157591220febd96fdcffb05283f63dd38627081`
+- Exact seven-patch TLS/HLS initializer pin: `0c8735b51d29dbc74e18c235246d5230bd5db989`
 - Existing fork repository: https://github.com/CarGuo/FFmpeg
 - Existing fork tag: `ijk-n4.3-20260301-007`
 - Existing fork commit: `9e7c61dfc2b8f370a4851b9001bd6e37ce673903`
 - Existing fork base: `n4.3` (`8e12af29d1a3f95c9e952d78354e3c8b1c0431a8`)
 
 The Android setup is `./init-android-ffmpeg5.sh`; it checks out the exact
-pinned source and reverse-checks all six required production patches. It never
+pinned source and reverse-checks all seven required production patches. It never
 reapplies them or resets an existing checkout. A different existing revision,
 a modified/missing required patch, or a non-repository target directory fails
 without overwriting it. In particular, the previous `extra/ffmpeg5` checkout
 is deliberately preserved; use a separate IJK workspace for fresh recovery.
 
-The RTSP source adds `0006-rtsp-initial-open.patch` to the preceding five-patch
-pin. The initializer requires the exact six-patch RTSP commit listed above.
-Full new-pin initializer integration and fresh end-to-end remote initialization
-have not been rerun. The initializer test
-retains its fifth-patch regression and adds a sixth-patch removal/preservation
-case; this is not only an expected-pin update.
+The current source adds `0007-hls-tls-options.patch` to the six-patch RTSP pin.
+It preserves explicit TLS and proxy policy through nested HTTP(S)-backed HLS
+resource opens and keepalive fallback; it does not enable verification by default.
+The exact current pin is `0c8735b51d29dbc74e18c235246d5230bd5db989`. Its production tree is
+`1b66ddd0115c0c4e558224cef421f0ebeb67e264`, identical to the locally reviewed
+`c9fc8ab40e548ea4546edd9e870da5f57b4d78f0`; publication changed commit metadata
+and message, not source bytes. The production-only seventh patch SHA-256 is
+`15a775141617e7d9377c34c62b764c629ffd7537e78ef035f820ed6c08c02cb5`.
+
+The complete network-disabled initializer integration passed ten cases at the
+public pin, including standalone-bundle recovery and fifth/sixth/seventh patch
+removal/preservation. A fresh full remote initialization remains unrun. Host
+HTTP+HTTPS, HTTPS-only and ASan/UBSan policy regressions passed. The current
+ARMv7 tuple also has bounded physical-device TLS/HLS and 1x/3x playback evidence;
+the current ARM64 and x86_64 tuples remain build/static-only. See the
+[current Android scope](../../doc/FFMPEG5.md#current-tls-fixes-and-qualification-boundary)
+and [FFmpeg test scope](https://github.com/CarGuo/FFmpeg/blob/0c8735b51d29dbc74e18c235246d5230bd5db989/doc/tests/hls-tls-options.md).
 
 Historical five-patch publication: the previous immutable pin above included
 all five patches and documentation; its production FFmpeg code matched the
@@ -48,7 +60,7 @@ FFMPEG5_SOURCE_REPOSITORY=/absolute/path/to/FFmpeg.bundle ./init-android-ffmpeg5
 
 The override accepts an existing local path, not a replacement network URL.
 Relative paths are resolved from the IJK repository root. The exact commit and
-all six patch checks remain mandatory. The override only selects FFmpeg;
+all seven patch checks remain mandatory. The override only selects FFmpeg;
 OpenSSL, libyuv, and SoundTouch still use their published pins and require
 network access unless their pinned checkouts are already present. See
 [initializer tests](../../tests/ffmpeg5/README-initializer.md) for the bounded,
@@ -60,7 +72,7 @@ The patches remain available to reconstruct the same source changes from
 pristine upstream FFmpeg 5.1.10. The first two patches also contain their host
 regressions; HEVC tests are in the companion IJK tree and TLS tests are in the
 FFmpeg fork's `tests/ijk` directory. This alternative production-source
-reconstruction does not depend on a pre-modified checkout. Apply all six
+reconstruction does not depend on a pre-modified checkout. Apply all seven
 patches, in order:
 
 ```sh
@@ -79,6 +91,8 @@ git apply --check /path/to/ijkplayer/patches/ffmpeg5/0005-mov-hevc-seek-replay.p
 git apply /path/to/ijkplayer/patches/ffmpeg5/0005-mov-hevc-seek-replay.patch
 git apply --check /path/to/ijkplayer/patches/ffmpeg5/0006-rtsp-initial-open.patch
 git apply /path/to/ijkplayer/patches/ffmpeg5/0006-rtsp-initial-open.patch
+git apply --check /path/to/ijkplayer/patches/ffmpeg5/0007-hls-tls-options.patch
+git apply /path/to/ijkplayer/patches/ffmpeg5/0007-hls-tls-options.patch
 ```
 
 ## Preservation inventory

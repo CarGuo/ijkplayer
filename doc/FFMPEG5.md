@@ -1,32 +1,82 @@
-# FFmpeg 5 Android integration: RTSP candidate
+# FFmpeg 5 Android integration: TLS/HLS candidate
 
 ## Current source and initializer
 
 `ffmpeg-5.0` is the migration branch name; the upstream baseline is **5.1.10**.
-The current RTSP work is based on published IJK
-`bb1d1b9fa07019155c88fe69fea9db896a108d0f` and FFmpeg
-`ff87490262107e004f6a16765484e36e1973d705`, with the frozen RTSP changes added.
-The exact RTSP initializer pin is `c157591220febd96fdcffb05283f63dd38627081`.
-The previous five-patch pin remains a historical identity, not the current RTSP
-source. Do not reset an older checkout in place; use a separate workspace.
+The current seven-patch initializer pins FFmpeg
+[`0c8735b51d29dbc74e18c235246d5230bd5db989`](https://github.com/CarGuo/FFmpeg/commit/0c8735b51d29dbc74e18c235246d5230bd5db989).
+This adds explicit nested-HLS TLS policy inheritance to the preceding RTSP pin
+`c157591220febd96fdcffb05283f63dd38627081`. The older five- and six-patch pins
+remain historical identities. Do not reset an older checkout in place; use a
+separate workspace.
 
-The initializer reverse-checks all six patches and never reapplies them or resets
-an existing checkout. OpenSSL 3.5.9, libyuv and SoundTouch pins, the explicit local
-repository/bundle override, and wrong-revision/non-repository preservation remain
-unchanged. The build receipt now includes the sixth patch hash. The initializer
-regression keeps fifth-patch preservation and adds sixth-patch preservation of
-`rtsp.c`, `rtsp.h` and `rtspdec.c`. **The full integration test at the new pin and
-a fresh full remote initialization were not rerun.** Syntax/AST checks do not
-replace these tests. See [initializer test scope](../tests/ffmpeg5/README-initializer.md)
+The initializer reverse-checks all seven production patches without reapplying
+or resetting an existing checkout. Build receipts include all seven patch
+hashes. OpenSSL 3.5.9, libyuv and SoundTouch dependency pins and the explicit local
+repository/bundle override remain unchanged. The complete offline initializer
+integration passed ten cases at the current public pin, including fresh local
+repository and standalone-bundle initialization; fifth/sixth/seventh missing
+patch preservation; wrong-revision, non-repository and invalid-override handling;
+and unchanged original checkouts. This does not certify a fresh full network
+initialization. See [initializer scope](../tests/ffmpeg5/README-initializer.md)
 and [patch provenance](../patches/ffmpeg5/README.md).
+
+## Current TLS fixes and qualification boundary
+
+OpenSSL Configure adds `-fno-unroll-loops` only for `armv7a` when the selected
+compiler defines `__clang_major__ == 11`. The flag is included in the existing
+content-addressed TLS cache key. OpenSSL 3.5.9 source, certificate/peer-name
+verification, NDK r22b, and the ARMv7 API 16 floor are unchanged. ARM64 and x86_64
+receive no new OpenSSL flag.
+
+The FFmpeg change preserves explicitly supplied TLS policy through HTTP(S)-backed
+HLS child playlists, reloads, keys, segments and initialization opens, including
+keepalive fallback. It preserves explicit empty proxy overrides and fails closed
+if policy copying fails. Verification is not enabled by default. Explicit peer
+names and client-authentication files follow nested resources, as for existing
+HTTP redirects; do not supply client-authentication settings to an untrusted
+playlist. Custom/local initial AVIO remains the I/O provider's responsibility.
+See the [source regression and exact option scope](https://github.com/CarGuo/FFmpeg/blob/0c8735b51d29dbc74e18c235246d5230bd5db989/doc/tests/hls-tls-options.md).
+
+The earlier ARMv7-only workaround passed a bounded Pixel 3 / API 28 direct-HTTPS
+comparison. It did not exercise nested HLS policy and does not qualify the new
+combined candidate. See the [original comparison and reusable optimizer tests](../tests/ffmpeg5/tls-sparse-array/README.md).
+The combined candidate rebuilds all nine matched FFmpeg/player/SDL libraries for
+ARMv7, ARM64 and x86_64 against the current FFmpeg pin. The current ARMv7 tuple
+was exercised in a 32-bit Java/JNI process on a physical Pixel 5 / API 30 in the
+[2026-10-10 TLS/HLS run](https://console.firebase.google.com/project/test-58c3b/testlab/histories/bh.faa1330aa1b29782/matrices/8558173587236303850/executions/bs.74fab5dea7b801b/test-cases)
+(test-project access required). The suite reports **15 passed, 1 failed** across
+16 cases; the sole failure reproduces the original ARMv7 CA-loading crash. The
+overall matrix remains failed, not all green. Candidate CA loading, default and
+verified direct HTTPS, wrong-CA/DNS/IP rejection, and nested-segment wrong-CA/SAN
+rejection passed. Trusted HLS fetched the master, media playlist and all 13
+segments at 1x and 3x; the 24.021-second fixture completed at 3x in 8.754 seconds
+with a sampled media-position slope of 3.0028x and all 35 interior rate readings
+equal to 3. The paired 1x/3x timing and slope gates passed. Three official OpenSSL
+ARMv7 source-test executables passed separately against static libcrypto; they
+are not tests dynamically linked to the IJK library.
+
+The preceding 14-pass/2-fail attempt remains recorded under its original
+pre-start getter oracle. The rerun corrected when the harness observes applied
+speed; it changed neither the native tuple nor its clock implementation.
+Current ARM64 and x86_64 libraries have build/static verification only, with no
+runtime result for those new bytes. The ARMv7 result does not qualify TLS 1.3,
+all HLS key/init/live/redirect paths, video or hardware decoding, acoustic
+quality, external networks, long sessions, all devices or 16 KiB-page runtime.
+Static checks and historical runs must not be reported as a current whole-release
+pass.
 
 ## Current audio source behavior and limits
 
 These audio compatibility changes are later than the historical emulator,
 Pixel 8 and compiled identities recorded below; those older artifacts do not
 qualify the current source. The current three-ABI build uses `module-lite-more.sh`.
-Its final ARM64 candidate passed the 2026-10-09 Pixel 5 / API 30 core gate:
-14 checks passed, none failed and three were explicitly skipped. The exercised
+The earlier, pre-TLS/HLS ARM64 tuple passed the 2026-10-09 Pixel 5 / API 30
+core gate: 14 checks passed, none failed and three were explicitly skipped.
+That result is historical and does not qualify the newly rebuilt ARM64 tuple.
+The current ARM64 and x86_64 tuples have build/static verification only;
+16 KiB ELF alignment is a static layout check, not device-runtime coverage.
+That historical ARM64 run's exercised
 scope includes software tempo 0.25x–4x, A/V playback at 2x, 96 kHz resampling,
 and three captured-audio content checks. The two very short audio-tail checks
 and the device-dependent rejected-rate restoration check remain unqualified.
