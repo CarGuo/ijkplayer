@@ -21,8 +21,12 @@ typedef struct { VideoState *is; bool mediacodec_auto_fallback, mediacodec_auto_
 typedef struct { int port, acodec_serial; SDL_AMediaCodecBufferInfo info; } AMC_Buf_Out;
 typedef struct { int value; } AVFrame;
 typedef struct {
-    FFPlayer *ffp; Decoder *decoder; void *acodec, *acodec_mutex;
+    FFPlayer *ffp; Decoder *decoder; void *acodec, *acodec_mutex, *acodec_cond;
     bool real_output_seen, input_eos_queued, output_eos_seen, abort, acodec_flush_request;
+    volatile bool acodec_reconfigure_request;
+    bool hevc_boundary_pending, hevc_boundary_drained;
+    int hevc_boundary_serial;
+    int64_t hevc_drain_idle_since_us;
     int output_eos_serial, input_packet_count, off_buf_out;
     AMC_Buf_Out *amc_buf_out;
 } IJKFF_Pipenode_Opaque;
@@ -30,6 +34,7 @@ typedef struct { IJKFF_Pipenode_Opaque *opaque; } IJKFF_Pipenode;
 static int queued, released, waits, locks, deq_result, queue_result, release_result, fill_result;
 static void SDL_LockMutex(void *p) { (void)p; ++locks; }
 static void SDL_UnlockMutex(void *p) { (void)p; --locks; }
+static void SDL_CondSignal(void *c) { (void)c; }
 static void SDL_CondWaitTimeout(void *c, void *m, int ms)
 { (void)c; (void)m; assert(ms > 0 && ms <= 100); ++waits; }
 static ssize_t SDL_AMediaCodec_dequeueInputBuffer(void *c, int64_t us)
@@ -74,13 +79,13 @@ int main(void)
     assert(receive_codec_eos(&n, 7, &info) == 0 && o.output_eos_seen && !is.viddec.finished);
     record_codec_output(&n, &info); assert(o.real_output_seen);
     o.off_buf_out=2; o.amc_buf_out=reorder;
-    assert(drain_codec_eos(&n,&frame,&got)==0 && got && frame.value==11 && !is.viddec.finished);
+    assert(drain_codec_eos(&n,&frame,&got,false)==0 && got && frame.value==11 && !is.viddec.finished);
     got=0;
-    assert(drain_codec_eos(&n,&frame,&got)==0 && got && frame.value==12 && !is.viddec.finished);
+    assert(drain_codec_eos(&n,&frame,&got,false)==0 && got && frame.value==12 && !is.viddec.finished);
     got=0;
-    assert(drain_codec_eos(&n,&frame,&got)==0 && !got && is.viddec.finished==1);
+    assert(drain_codec_eos(&n,&frame,&got,false)==0 && !got && is.viddec.finished==1);
     q.serial=2; is.viddec.finished=0;
-    assert(drain_codec_eos(&n,&frame,&got)==0 && !is.viddec.finished);
+    assert(drain_codec_eos(&n,&frame,&got,false)==0 && !is.viddec.finished);
     // Emulate production flush reset. Real-output evidence is deliberately kept.
     o.input_eos_queued=false; o.output_eos_seen=false; is.viddec.pkt_serial=2;
     assert(feed_codec_eos(&n,1,false,&count)==0 && queued==2);
@@ -97,7 +102,7 @@ int main(void)
     release_result=0; info.flags=4|0x1000;
     assert(receive_codec_eos(&n,11,&info)==1 && released==3);
     o.off_buf_out=1; fill_result=-1;
-    assert(drain_codec_eos(&n,&frame,&got)==AVERROR_EXTERNAL);
+    assert(drain_codec_eos(&n,&frame,&got,false)==AVERROR_EXTERNAL);
     o.input_eos_queued=false; o.abort=true;
     assert(feed_codec_eos(&n,1,true,&count)==0 && queued==2);
     o.abort=false; o.acodec_flush_request=true;
