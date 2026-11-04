@@ -1,5 +1,9 @@
 # MediaCodec packet and HEVC parameter-update host regressions
 
+The independent [output-size regressions](README-output-size.md) cover H.264
+crop-only changes and the shared output-frame geometry policy. They can run
+without a FFmpeg build and are also included by the main runner below.
+
 Run against a native build of the matching patched FFmpeg 5.1.10 source:
 
 ```sh

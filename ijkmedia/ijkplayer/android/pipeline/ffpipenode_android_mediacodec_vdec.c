@@ -33,7 +33,6 @@
 #include "ijkplayer/ff_ffplay_debug.h"
 #include "ffamc_ffmpeg.h"
 #include "libavutil/time.h"
-#include "ffamc_visible_size.h"
 #include "ffamc_packet_queue.h"
 #include "mpeg4_esds.h"
 #include "ffpipeline_android.h"
@@ -129,6 +128,8 @@ typedef struct IJKFF_Pipenode_Opaque {
     SDL_SpeedSampler          sampler;
     volatile bool             abort;
 } IJKFF_Pipenode_Opaque;
+
+#include "ffamc_output_size.h"
 
 static void cancel_hevc_generation_l(IJKFF_Pipenode_Opaque *opaque);
 
@@ -944,18 +945,11 @@ static int drain_output_buffer_l(JNIEnv *env, IJKFF_Pipenode *node, int64_t time
             if (SDL_AMediaFormat_getInt32(opaque->output_aformat, "crop-top", &crop_top)) crop_mask |= 2;
             if (SDL_AMediaFormat_getInt32(opaque->output_aformat, "crop-right", &crop_right)) crop_mask |= 4;
             if (SDL_AMediaFormat_getInt32(opaque->output_aformat, "crop-bottom", &crop_bottom)) crop_mask |= 8;
-            if (opaque->codecpar->codec_id == AV_CODEC_ID_HEVC &&
-                ijk_amc_visible_size(width, height, crop_mask,
-                    crop_left, crop_top, crop_right, crop_bottom,
-                    opaque->frame_rotate_degrees,
-                    &opaque->frame_width, &opaque->frame_height) < 0)
+            if (update_output_frame_size(opaque, width, height, crop_mask,
+                    crop_left, crop_top, crop_right, crop_bottom) < 0)
                 return AVERROR_INVALIDDATA;
 
-            // Preserve the historical non-HEVC/TI workaround. HEVC frame sizes
-            // above flow through normal per-frame size notifications.
-            // ffp_notify_msg3(ffp, FFP_MSG_VIDEO_SIZE_CHANGED, width, height);
-            // opaque->frame_width  = width;
-            // opaque->frame_height = height;
+            // Updated H.264/HEVC sizes flow through per-frame notifications.
             ALOGI(
                 "AMEDIACODEC__INFO_OUTPUT_FORMAT_CHANGED\n"
                 "    width-height: (%d x %d)\n"
@@ -1130,18 +1124,11 @@ static int drain_output_buffer2_l(JNIEnv *env, IJKFF_Pipenode *node, int64_t tim
             if (SDL_AMediaFormat_getInt32(opaque->output_aformat, "crop-top", &crop_top)) crop_mask |= 2;
             if (SDL_AMediaFormat_getInt32(opaque->output_aformat, "crop-right", &crop_right)) crop_mask |= 4;
             if (SDL_AMediaFormat_getInt32(opaque->output_aformat, "crop-bottom", &crop_bottom)) crop_mask |= 8;
-            if (opaque->codecpar->codec_id == AV_CODEC_ID_HEVC &&
-                ijk_amc_visible_size(width, height, crop_mask,
-                    crop_left, crop_top, crop_right, crop_bottom,
-                    opaque->frame_rotate_degrees,
-                    &opaque->frame_width, &opaque->frame_height) < 0)
+            if (update_output_frame_size(opaque, width, height, crop_mask,
+                    crop_left, crop_top, crop_right, crop_bottom) < 0)
                 return AVERROR_INVALIDDATA;
 
-            // Preserve the historical non-HEVC/TI workaround. HEVC frame sizes
-            // above flow through normal per-frame size notifications.
-            // ffp_notify_msg3(ffp, FFP_MSG_VIDEO_SIZE_CHANGED, width, height);
-            // opaque->frame_width  = width;
-            // opaque->frame_height = height;
+            // Updated H.264/HEVC sizes flow through per-frame notifications.
             ALOGI(
                 "AMEDIACODEC__INFO_OUTPUT_FORMAT_CHANGED\n"
                 "    width-height: (%d x %d)\n"
