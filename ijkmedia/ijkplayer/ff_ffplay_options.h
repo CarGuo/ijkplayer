@@ -196,6 +196,8 @@ static const AVOption ffp_context_options[] = {
         OPTION_OFFSET(mediacodec_mpeg4),        OPTION_INT(0, 0, 1) },
     { "mediacodec-handle-resolution-change",                    "MediaCodec: handle resolution change automatically",
         OPTION_OFFSET(mediacodec_handle_resolution_change),     OPTION_INT(0, 0, 1) },
+    { "mediacodec-h264-crop-workaround", "MediaCodec: recreate at supported H264 crop-only IDR changes",
+        OPTION_OFFSET(mediacodec_h264_crop_workaround), OPTION_INT(0, 0, 1) },
     { "opensles",                           "OpenSL ES: enable",
         OPTION_OFFSET(opensles),            OPTION_INT(0, 0, 1) },
     { "soundtouch",                           "SoundTouch: enable",

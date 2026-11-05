@@ -10,7 +10,8 @@ static int feed_codec_eos(IJKFF_Pipenode *node, int64_t timeout_us,
     IJKFF_Pipenode_Opaque *opaque = node->opaque;
     Decoder *d = opaque->decoder;
     ssize_t index;
-    int ret = 0;
+    int ret = 0, input_codec_serial = 0;
+    bool crop_guard = h264_crop_enabled(opaque), surface_locked = false, queue_locked = false;
     if (opaque->input_eos_queued) {
         // Bound the wait so stop, seek and an output error can interrupt it.
         SDL_LockMutex(d->queue->mutex);
@@ -31,12 +32,27 @@ static int feed_codec_eos(IJKFF_Pipenode *node, int64_t timeout_us,
     if (opaque->abort || d->queue->abort_request ||
         d->pkt_serial != d->queue->serial || opaque->acodec_flush_request)
         goto done;
+    if (crop_guard) {
+        ffpipeline_lock_surface(opaque->pipeline);
+        surface_locked = true;
+        if (!h264_input_valid_l(opaque)) goto done;
+        input_codec_serial = SDL_AMediaCodec_getSerial(opaque->acodec);
+    }
     index = SDL_AMediaCodec_dequeueInputBuffer(opaque->acodec, timeout_us);
     if (index == AMEDIACODEC__INFO_TRY_AGAIN_LATER)
         goto done;
     if (index < 0) {
         ret = AVERROR_EXTERNAL;
         goto done;
+    }
+    if (crop_guard) {
+        SDL_LockMutex(d->queue->mutex);
+        queue_locked = true;
+        if (!h264_input_valid_l(opaque) ||
+            input_codec_serial != SDL_AMediaCodec_getSerial(opaque->acodec)) {
+            opaque->h264_input_abandoned = true;
+            goto done;
+        }
     }
     if (SDL_AMediaCodec_queueInputBuffer(opaque->acodec, index, 0, 0, 0,
             AMEDIACODEC__BUFFER_FLAG_END_OF_STREAM) != SDL_AMEDIA_OK) {
@@ -48,6 +64,8 @@ static int feed_codec_eos(IJKFF_Pipenode *node, int64_t timeout_us,
     if (enqueue_count)
         ++*enqueue_count;
 done:
+    if (queue_locked) SDL_UnlockMutex(d->queue->mutex);
+    if (surface_locked) ffpipeline_unlock_surface(opaque->pipeline);
     if (threaded)
         SDL_UnlockMutex(opaque->acodec_mutex);
     return ret;

@@ -1,0 +1,77 @@
+{
+  "description": "New synthetic lavfi regression corpus, generated entirely by generate_fixtures.py. No external media or historical fixture bytes are inputs.",
+  "generator": "generate_fixtures.py",
+  "generator_sha256": "477d93bfa5d25f0da106354d01f072c4a28784ffc1983290a561007c1c678556",
+  "versions": {
+    "ffmpeg": [
+      "ffmpeg version 7.1.5-0+deb13u1 Copyright (c) 2000-2026 the FFmpeg developers",
+      "built with gcc 14 (Debian 14.2.0-19)"
+    ],
+    "ffprobe": [
+      "ffprobe version 7.1.5-0+deb13u1 Copyright (c) 2007-2026 the FFmpeg developers",
+      "built with gcc 14 (Debian 14.2.0-19)"
+    ]
+  },
+  "dimensions": {
+    "A": [
+      640,
+      360
+    ],
+    "B": [
+      640,
+      272
+    ],
+    "small_A": [
+      32,
+      32
+    ],
+    "small_B": [
+      32,
+      24
+    ],
+    "C": [
+      480,
+      272
+    ]
+  },
+  "ordinary_packet_count": 288,
+  "files": {
+    "actual_a.h264": {
+      "bytes": 9821,
+      "sha256": "ac069db113f4bef8895d907536dac7e3de0a66ee2aa0489487312f011ed50f65"
+    },
+    "actual_b.h264": {
+      "bytes": 9822,
+      "sha256": "3782f602febeaa1e20404452fe33d2cf7c194e009255d41dcd18baa928be078a"
+    },
+    "avc3/boundary_B.avcc-au": {
+      "bytes": 9822,
+      "sha256": "4b74b4a8bf08f5f56a45b1703de9fd7dc944bc2e18594fb691070bf611c5d004"
+    },
+    "avc3/first_A.avcc-au": {
+      "bytes": 9781,
+      "sha256": "d931c022224c0cb678fb367fe979e4984443485bfc9f257ae6e6c30e2a420cf8"
+    },
+    "ordinary_video_packets.bin": {
+      "bytes": 1555815,
+      "sha256": "b91d653bd18538e685110c2d3d59bacdad31035e3a207d24643ec8adcc90f62f"
+    },
+    "resolution/C_480x272.avcc": {
+      "bytes": 46,
+      "sha256": "aa35b9b85cdcd3c257daa1100f72258e461478a5b27588a800029da66e66f7fa"
+    },
+    "resolution/first_C_480x272.avcc-au": {
+      "bytes": 9249,
+      "sha256": "f11cbcb2fbbe51c8da4e047e4c3ae4ee02f56337ef2c1ac7cedaec9001688885"
+    },
+    "small_a.h264": {
+      "bytes": 59,
+      "sha256": "2af173efb909ae5019c69488d865422e544cff4b77eb0410b7e9e7df3a57f6b5"
+    },
+    "small_b.h264": {
+      "bytes": 60,
+      "sha256": "3d557ac389a17145f8a801c6d82a3c611872c9e00169c1928dab2717c43379b8"
+    }
+  },
+  "limits": "System FFmpeg/libx264 creates and software-checks media. The separate host runner exercises real FFmpeg 5.1.10 helpers. These generated media are not the historical real-device corpus."
+}
