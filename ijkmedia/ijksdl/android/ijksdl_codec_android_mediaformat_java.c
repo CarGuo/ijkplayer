@@ -155,6 +155,32 @@ static void SDL_AMediaFormatJava_setBuffer(SDL_AMediaFormat* aformat, const char
     }
 }
 
+int SDL_AMediaFormatJava_setBufferChecked(JNIEnv *env, SDL_AMediaFormat *format,
+                                          const char *name, const void *data, size_t size)
+{
+    int ret = -1;
+    jobject bytes = NULL;
+    jstring key = NULL;
+    if (!env || !format || !name || !data || !size || size > INT32_MAX) return -1;
+    jobject media_format = SDL_AMediaFormatJava_getObject(env, format);
+    if (!media_format) return -1;
+    bytes = J4AC_ByteBuffer__allocateDirect(env, (jint)size);
+    if (J4A_ExceptionCheck__catchAll(env) || !bytes) goto done;
+    void *address = (*env)->GetDirectBufferAddress(env, bytes);
+    jlong capacity = (*env)->GetDirectBufferCapacity(env, bytes);
+    if (J4A_ExceptionCheck__catchAll(env) || !address || capacity < (jlong)size) goto done;
+    memcpy(address, data, size);
+    key = (*env)->NewStringUTF(env, name);
+    if (J4A_ExceptionCheck__catchAll(env) || !key) goto done;
+    J4AC_MediaFormat__setByteBuffer(env, media_format, key, bytes);
+    if (J4A_ExceptionCheck__catchAll(env)) goto done;
+    ret = 0; // MediaFormat retains the exact-size direct buffer.
+done:
+    SDL_JNI_DeleteLocalRefP(env, &key);
+    SDL_JNI_DeleteLocalRefP(env, &bytes);
+    return ret;
+}
+
 static void setup_aformat(SDL_AMediaFormat *aformat, jobject android_media_format) {
     SDL_AMediaFormat_Opaque *opaque = aformat->opaque;
     opaque->android_media_format = android_media_format;

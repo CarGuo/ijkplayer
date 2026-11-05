@@ -32,6 +32,7 @@
 #include "ijkplayer/ff_ffplay.h"
 #include "ijkplayer/ff_ffplay_debug.h"
 #include "ffamc_ffmpeg.h"
+#include "ffamc_h264_crop.h"
 #include "libavutil/time.h"
 #include "ffamc_packet_queue.h"
 #include "mpeg4_esds.h"
@@ -79,6 +80,13 @@ typedef struct IJKFF_Pipenode_Opaque {
 
     AVCodecParameters        *codecpar;
     AVBSFContext             *bsfc;
+    AVBSFContext             *h264_next_bsfc; // staged alongside shared generation CSD
+    AVCodecParameters        *h264_baseline_codecpar; // immutable pre-workaround description
+    bool                      h264_crop_committed; // restore baseline at the next real flush
+    bool                      h264_baseline_restore_pending;
+    bool                      h264_crop_replay_pending; // one admitted AU, clear after real full queue
+    bool                      h264_crop_disabled; // unsupported parameter input: preserve baseline
+    bool                      h264_input_abandoned; // cleared only by actual flush/recreation
     AVPacket                  filtered_packet; // owns pkt_temp's data
     bool                      bsf_pending;
     bool                      real_output_seen; // monotonic for this node
@@ -135,6 +143,26 @@ static void cancel_hevc_generation_l(IJKFF_Pipenode_Opaque *opaque);
 
 #include "ffamc_eos_policy.h"
 #include "ffamc_error_policy.h"
+
+/* Opt-in and threaded-only: default-off, synchronous AVC and HEVC retain the
+ * original feeder/lifecycle. These checks are not a second generation machine. */
+static bool h264_crop_enabled(const IJKFF_Pipenode_Opaque *opaque)
+{
+    return opaque->ffp->mediacodec_h264_crop_workaround &&
+           !opaque->ffp->mediacodec_sync &&
+           opaque->decoder->avctx->codec_id == AV_CODEC_ID_H264;
+}
+
+/* Surface lock is held across borrowing/queueing. Queue mutex additionally
+ * protects the final serial check and queueInputBuffer as one operation. */
+static bool h264_input_valid_l(const IJKFF_Pipenode_Opaque *opaque)
+{
+    const Decoder *d = opaque->decoder;
+    return !opaque->abort && !opaque->ffp->is->abort_request &&
+           !d->queue->abort_request && !opaque->acodec_flush_request &&
+           d->queue->serial == d->pkt_serial && !opaque->h264_input_abandoned &&
+           !ffpipeline_is_surface_need_reconfigure_l(opaque->pipeline);
+}
 
 static int fallback_to_ffplay_decoder(IJKFF_Pipenode *node)
 {
@@ -239,7 +267,13 @@ static int recreate_format_l(JNIEnv *env, IJKFF_Pipenode *node)
 
     if (csd_par->extradata && csd_par->extradata_size > 0) {
         if (csd_par->codec_id == AV_CODEC_ID_H264 || csd_par->codec_id == AV_CODEC_ID_HEVC) {
-            SDL_AMediaFormat_setBuffer(opaque->input_aformat, "csd-0", csd_par->extradata, csd_par->extradata_size);
+            if (h264_crop_enabled(opaque) && opaque->hevc_next_csd) {
+                if (SDL_AMediaFormatJava_setBufferChecked(env, opaque->input_aformat,
+                        "csd-0", csd_par->extradata, csd_par->extradata_size) < 0)
+                    goto fail;
+            } else {
+                SDL_AMediaFormat_setBuffer(opaque->input_aformat, "csd-0", csd_par->extradata, csd_par->extradata_size);
+            }
         } else if (csd_par->codec_id == AV_CODEC_ID_MPEG4) {
             size_t esds_dec_dscr_type_length = csd_par->extradata_size + 0x18;
             size_t esds_es_dscr_type_length = esds_dec_dscr_type_length + 0x08;
@@ -271,7 +305,8 @@ fail:
     return -1;
 }
 
-static int reconfigure_codec_l(JNIEnv *env, IJKFF_Pipenode *node, jobject new_surface)
+static int reconfigure_codec_l_checked(JNIEnv *env, IJKFF_Pipenode *node,
+                                       jobject new_surface, bool checked_crop)
 {
     IJKFF_Pipenode_Opaque *opaque   = node->opaque;
     int                    ret      = 0;
@@ -303,10 +338,23 @@ static int reconfigure_codec_l(JNIEnv *env, IJKFF_Pipenode *node, jobject new_su
         if (opaque->acodec) {
             if (SDL_AMediaCodec_isStarted(opaque->acodec)) {
                 SDL_VoutAndroid_invalidateAllBuffers(opaque->weak_vout);
-                SDL_AMediaCodec_stop(opaque->acodec);
+                amc_ret = SDL_AMediaCodec_stop(opaque->acodec);
+                if (checked_crop &&
+                    amc_ret != SDL_AMEDIA_OK) {
+                    ALOGE("H264 crop: checked stop failed: %d\n", amc_ret);
+                    ret = AVERROR_EXTERNAL;
+                    goto fail; // no create/configure after uncertain stop
+                }
             }
             if (opaque->quirk_reconfigure_with_new_codec) {
                 ALOGI("quirk: reconfigure with new codec");
+                if (checked_crop &&
+                    opaque->jsurface &&
+                    SDL_AMediaCodecJava_releaseChecked(env, opaque->acodec) != SDL_AMEDIA_OK) {
+                    ALOGE("H264 crop: checked release failed\n");
+                    ret = AVERROR_EXTERNAL;
+                    goto fail; // checked release is not repeated by the destructor
+                }
                 SDL_AMediaCodec_decreaseReferenceP(&opaque->acodec);
                 SDL_VoutAndroid_setAMediaCodec(opaque->weak_vout, NULL);
 
@@ -338,6 +386,7 @@ static int reconfigure_codec_l(JNIEnv *env, IJKFF_Pipenode *node, jobject new_su
 
     // Old codec indices and EOS state cannot survive start/recreation.
     // Surface lifecycle cancels old codec drain, not staged authoritative CSD.
+    opaque->h264_input_abandoned = false;
     opaque->hevc_boundary_pending = false;
     opaque->hevc_boundary_drained = false;
     opaque->hevc_drain_idle_since_us = 0;
@@ -352,7 +401,19 @@ static int reconfigure_codec_l(JNIEnv *env, IJKFF_Pipenode *node, jobject new_su
 
     ret = 0;
 fail:
+    if (checked_crop && ret < 0) {
+        // Publish before releasing acodec_mutex. Output may already have
+        // passed its first error check while waiting for this transaction.
+        SDL_LockMutex(opaque->any_input_mutex);
+        opaque->enqueue_error = ret;
+        SDL_UnlockMutex(opaque->any_input_mutex);
+    }
     return ret;
+}
+
+static int reconfigure_codec_l(JNIEnv *env, IJKFF_Pipenode *node, jobject new_surface)
+{
+    return reconfigure_codec_l_checked(env, node, new_surface, false);
 }
 
 static int configure_codec_l(JNIEnv *env, IJKFF_Pipenode *node, jobject new_surface)
@@ -657,6 +718,8 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
     ssize_t  copy_size          = 0;
     int64_t  time_stamp         = 0;
     uint32_t queue_flags        = 0;
+    bool crop_guard = h264_crop_enabled(opaque), surface_locked = false, queue_locked = false;
+    int input_codec_serial = 0;
 
     if (enqueue_count)
         *enqueue_count = 0;
@@ -728,8 +791,19 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
         }
     }
 
-    if (codec_input_is_eof(d) && !d->pkt_temp.data && !opaque->bsf_pending)
+    // EOF has no AU needing a baseline configuration. Do not let a staged
+    // private generation swallow completion or require a Surface for EOF.
+    if (codec_input_is_eof(d) && !d->pkt_temp.data && !opaque->bsf_pending) {
+        if (opaque->h264_baseline_restore_pending) {
+            opaque->acodec_reconfigure_request = true;
+            SDL_LockMutex(opaque->acodec_mutex);
+            cancel_hevc_generation_l(opaque); // retain baseline snapshot / committed state
+            opaque->acodec_reconfigure_request = false;
+            SDL_CondSignal(opaque->acodec_cond);
+            SDL_UnlockMutex(opaque->acodec_mutex);
+        }
         return feed_codec_eos(node, timeUs, true, enqueue_count);
+    }
 
     // prepare_input_packet has already processed packet side data. A
     // configuration-only packet has no access-unit bytes to submit.
@@ -761,6 +835,12 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
             goto fail;
         if (ret > 0)
             return 0;
+        if (crop_guard) {
+            ffpipeline_lock_surface(pipeline);
+            surface_locked = true;
+            if (!h264_input_valid_l(opaque)) goto fail;
+            input_codec_serial = SDL_AMediaCodec_getSerial(opaque->acodec);
+        }
         queue_flags = 0;
         input_buffer_index = SDL_AMediaCodec_dequeueInputBuffer(opaque->acodec, timeUs);
         if (input_buffer_index == AMEDIACODEC__UNKNOWN_ERROR) {
@@ -773,6 +853,10 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
                 ret = 0;
                 goto fail;
             } else {
+                if (opaque->h264_crop_replay_pending) {
+                    ret = AVERROR_EXTERNAL; // never substitute a held real AU with a fake frame
+                    goto fail;
+                }
                 // enqueue fake frame
                 queue_flags |= AMEDIACODEC__BUFFER_FLAG_FAKE_FRAME;
                 copy_size    = d->pkt_temp.size;
@@ -781,7 +865,7 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
             SDL_AMediaCodecFake_flushFakeFrames(opaque->acodec);
 
             copy_size = SDL_AMediaCodec_writeInputData(opaque->acodec, input_buffer_index, d->pkt_temp.data, d->pkt_temp.size);
-            if (copy_size <= 0) {
+            if (copy_size <= 0 || (opaque->h264_crop_replay_pending && copy_size != d->pkt_temp.size)) {
                 ALOGE("%s: SDL_AMediaCodec_getInputBuffer failed\n", __func__);
                 ret = -1;
                 goto fail;
@@ -797,11 +881,28 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
             time_stamp = 0;
         }
         // ALOGE("queueInputBuffer, %lld\n", time_stamp);
+        if (crop_guard) {
+            SDL_LockMutex(q->mutex);
+            queue_locked = true;
+            if (!h264_input_valid_l(opaque) ||
+                input_codec_serial != SDL_AMediaCodec_getSerial(opaque->acodec)) {
+                // No empty queue to surrender a borrowed slot. Actual flush or
+                // recreation must reclaim it before this feeder borrows again.
+                opaque->h264_input_abandoned = input_buffer_index >= 0;
+                goto fail;
+            }
+        }
         amc_ret = SDL_AMediaCodec_queueInputBuffer(opaque->acodec, input_buffer_index, 0, copy_size, time_stamp, queue_flags);
         if (amc_ret != SDL_AMEDIA_OK) {
             ALOGE("%s: SDL_AMediaCodec_getInputBuffer failed\n", __func__);
             ret = -1;
             goto fail;
+        }
+        if (opaque->h264_crop_replay_pending) {
+            ALOGI("H264 crop replay: serial=%d codec=%d bytes=%d pts=%lld dts=%lld\n",
+                  d->pkt_serial, input_codec_serial, (int)copy_size,
+                  (long long)d->pkt_temp.pts, (long long)d->pkt_temp.dts);
+            opaque->h264_crop_replay_pending = false;
         }
         // ALOGE("%s: queue %d/%d", __func__, (int)copy_size, (int)input_buffer_size);
         opaque->input_packet_count++;
@@ -826,6 +927,8 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
     }
 
 fail:
+    if (queue_locked) SDL_UnlockMutex(q->mutex);
+    if (surface_locked) ffpipeline_unlock_surface(pipeline);
     return ret;
 }
 
@@ -860,7 +963,8 @@ fail:
     SDL_LockMutex(opaque->any_input_mutex);
     opaque->enqueue_error = ret < 0 ? ret : 0;
     SDL_UnlockMutex(opaque->any_input_mutex);
-    SDL_AMediaCodecFake_abort(opaque->acodec);
+    if (!h264_crop_enabled(opaque) || opaque->acodec)
+        SDL_AMediaCodecFake_abort(opaque->acodec);
     ALOGI("MediaCodec: %s: exit: %d", __func__, ret);
     return ret;
 }
@@ -1237,6 +1341,15 @@ static int drain_output_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs
     if (ret)
         return ret;
     SDL_LockMutex(opaque->acodec_mutex);
+    if (h264_crop_enabled(opaque)) {
+        SDL_LockMutex(opaque->any_input_mutex);
+        ret = opaque->enqueue_error;
+        SDL_UnlockMutex(opaque->any_input_mutex);
+        if (ret) {
+            SDL_UnlockMutex(opaque->acodec_mutex);
+            return ret;
+        }
+    }
 
     if (opaque->acodec_flush_request || opaque->acodec_reconfigure_request) {
         // TODO: invalid picture here?
@@ -1272,6 +1385,8 @@ static void func_destroy(IJKFF_Pipenode *node)
     av_packet_unref(&opaque->filtered_packet);
     av_bsf_free(&opaque->bsfc);
 
+    av_bsf_free(&opaque->h264_next_bsfc);
+    avcodec_parameters_free(&opaque->h264_baseline_codecpar);
     avcodec_parameters_free(&opaque->hevc_next_codecpar);
     avcodec_parameters_free(&opaque->hevc_next_csd);
     avcodec_parameters_free(&opaque->hevc_active_csd);
@@ -1510,7 +1625,9 @@ static int func_run_sync(IJKFF_Pipenode *node)
 
 fail:
     av_frame_free(&frame);
+    if (h264_crop_enabled(opaque)) SDL_LockMutex(d->queue->mutex);
     opaque->abort = true;
+    if (h264_crop_enabled(opaque)) SDL_UnlockMutex(d->queue->mutex);
     SDL_LockMutex(opaque->acodec_first_dequeue_output_mutex);
     SDL_CondSignal(opaque->acodec_first_dequeue_output_cond);
     SDL_UnlockMutex(opaque->acodec_first_dequeue_output_mutex);
@@ -1518,7 +1635,8 @@ fail:
         SDL_WaitThread(opaque->enqueue_thread, NULL);
         opaque->enqueue_thread = NULL;
     }
-    SDL_AMediaCodecFake_abort(opaque->acodec);
+    if (!h264_crop_enabled(opaque) || opaque->acodec)
+        SDL_AMediaCodecFake_abort(opaque->acodec);
     if (opaque->n_buf_out) {
         free(opaque->amc_buf_out);
         opaque->n_buf_out = 0;
@@ -1531,7 +1649,9 @@ fail:
         SDL_LockMutex(opaque->acodec_mutex);
         SDL_UnlockMutex(opaque->acodec_mutex);
     }
-    SDL_AMediaCodec_stop(opaque->acodec);
+    if (!h264_crop_enabled(opaque) ||
+        (opaque->acodec && SDL_AMediaCodec_isStarted(opaque->acodec)))
+        SDL_AMediaCodec_stop(opaque->acodec);
     SDL_AMediaCodec_decreaseReferenceP(&opaque->acodec);
     ALOGI("MediaCodec: %s: exit: %d", __func__, ret);
     if (ret < 0 && ret != AVERROR_EXIT && !is->abort_request &&
@@ -1549,7 +1669,10 @@ static int func_flush(IJKFF_Pipenode *node)
     if (!opaque)
         return -1;
 
+    bool crop = h264_crop_enabled(opaque);
+    if (crop) SDL_LockMutex(opaque->decoder->queue->mutex);
     opaque->acodec_flush_request = true;
+    if (crop) SDL_UnlockMutex(opaque->decoder->queue->mutex);
 
     return 0;
 }

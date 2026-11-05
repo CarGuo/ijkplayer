@@ -27,6 +27,9 @@
 
 #include "ijksdl_codec_android_mediaformat.h"
 
+int SDL_AMediaFormatJava_setBufferChecked(JNIEnv *env, SDL_AMediaFormat *format,
+                                        const char *name, const void *data, size_t size);
+
 SDL_AMediaFormat *SDL_AMediaFormatJava_init(JNIEnv *env, jobject android_format);
 SDL_AMediaFormat *SDL_AMediaFormatJava_createVideoFormat(JNIEnv *env, const char *mime, int width, int height);
 jobject           SDL_AMediaFormatJava_getObject(JNIEnv *env, const SDL_AMediaFormat *thiz);

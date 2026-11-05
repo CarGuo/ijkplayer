@@ -29,6 +29,8 @@
 
 typedef struct ASDK_MediaCodec ASDK_MediaCodec;
 
+sdl_amedia_status_t SDL_AMediaCodecJava_releaseChecked(JNIEnv *env, SDL_AMediaCodec *acodec);
+
 SDL_AMediaCodec  *SDL_AMediaCodecJava_createByCodecName(JNIEnv *env, const char *codec_name);
 jobject           SDL_AMediaCodecJava_getObject(JNIEnv *env, const SDL_AMediaCodec *thiz);
 
