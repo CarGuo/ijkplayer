@@ -235,6 +235,55 @@ static void test_resolution(const char *old_path, const char *new_path, int widt
     printf("PASS single-dimension NEW_EXTRADATA with delayed H264: %dx%d\n", width, height);
 }
 
+static void test_hevc_parameter_helpers(const char *path)
+{
+    int stream;
+    AVFormatContext *ic = open_video(path, &stream);
+    const AVCodecParameters *original_par = ic->streams[stream]->codecpar;
+    AVCodecParameters *par = avcodec_parameters_alloc(), *next = NULL, *csd = NULL;
+    AVBSFContext *bsf = NULL;
+    AVPacket original = {0}, filtered = {0};
+    assert(par && avcodec_parameters_copy(par, original_par) == 0);
+    read_video(ic, stream, &original);
+    uint8_t *copy = av_memdup(original.data, original.size);
+    int size = original.size;
+    assert(copy && original_par->codec_id == AV_CODEC_ID_HEVC);
+    assert(ijk_amc_update_hevc_extradata(par, &original) == 0);
+    uint8_t *side = av_packet_new_side_data(&original, AV_PKT_DATA_NEW_EXTRADATA,
+                                           original_par->extradata_size);
+    assert(side);
+    memcpy(side, original_par->extradata, original_par->extradata_size);
+    assert(ijk_amc_update_hevc_extradata(par, &original) == 0);
+    side[0] = 0;
+    assert(ijk_amc_update_hevc_extradata(par, &original) == AVERROR_INVALIDDATA);
+    side[0] = 1;
+    av_freep(&par->extradata);
+    par->extradata_size = 0;
+    assert(ijk_amc_update_hevc_extradata(par, &original) == 1);
+    assert(par->width == original_par->width && par->height == original_par->height);
+    assert(par->extradata_size == original_par->extradata_size);
+    assert(!memcmp(par->extradata, original_par->extradata, par->extradata_size));
+
+    assert(ijk_amc_create_bsf(&bsf, original_par, ic->streams[stream]->time_base) == 0);
+    submit(bsf, &original);
+    assert(av_bsf_receive_packet(bsf, &filtered) == 0);
+    assert(ijk_amc_hevc_generation_parameters(original_par, &original, &filtered,
+                                              &next, &csd) == 0);
+    assert(next && csd && next->width == original_par->width &&
+           next->height == original_par->height);
+    assert(next->extradata_size == original_par->extradata_size);
+    assert(!memcmp(next->extradata, original_par->extradata, next->extradata_size));
+    assert(annexb(csd->extradata, csd->extradata_size));
+    assert(original.size == size && !memcmp(original.data, copy, size));
+    assert(!memcmp(side, original_par->extradata, original_par->extradata_size));
+    av_free(copy);
+    av_packet_unref(&original); av_packet_unref(&filtered);
+    avcodec_parameters_free(&par); avcodec_parameters_free(&next);
+    avcodec_parameters_free(&csd); av_bsf_free(&bsf);
+    avformat_close_input(&ic);
+    puts("PASS HEVC metadata probe and generation CSD: hvcC retained, Annex B CSD, packet ownership");
+}
+
 int main(int argc, char **argv)
 {
     assert(argc == 5);
@@ -244,5 +293,6 @@ int main(int argc, char **argv)
     test_filter(argv[2]);
     test_resolution(argv[1], argv[3], 96, 48);
     test_resolution(argv[1], argv[4], 64, 96);
+    test_hevc_parameter_helpers(argv[2]);
     return 0;
 }

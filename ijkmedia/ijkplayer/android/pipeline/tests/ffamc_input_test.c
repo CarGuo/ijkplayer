@@ -8,10 +8,14 @@
 typedef struct IJKFF_Pipenode_Opaque {
     FFPlayer *ffp;
     Decoder *decoder;
-    AVCodecParameters *codecpar;
-    AVBSFContext *bsfc;
+    AVCodecParameters *codecpar, *hevc_active_csd, *h264_baseline_codecpar;
+    AVBSFContext *bsfc, *h264_next_bsfc;
     AVPacket filtered_packet;
     bool bsf_pending, acodec_flush_request, aformat_need_recreate;
+    bool hevc_packet_checked;
+    bool h264_baseline_restore_pending, h264_input_abandoned;
+    bool h264_crop_disabled, h264_crop_committed;
+    volatile bool acodec_reconfigure_request;
     volatile bool abort;
     SDL_mutex *acodec_mutex;
     SDL_cond *acodec_cond;
@@ -29,6 +33,22 @@ static bool SDL_AMediaCodec_isStarted(void *codec) { (void)codec; return true; }
 static void SDL_VoutAndroid_invalidateAllBuffers(void *vout) { (void)vout; }
 #define SDL_AMEDIA_OK 0
 static int SDL_AMediaCodec_flush(void *codec) { (void)codec; ++codec_flushes; return codec_flush_result; }
+static int SDL_AMediaCodec_getSerial(void *codec) { (void)codec; return 1; }
+static void SDL_VoutAndroid_resetBufferReleaseError(void *vout, int serial)
+{ (void)vout; assert(serial == 1); }
+/* This feeder fixture owns no staged HEVC generation or Android output buffers. */
+static void cancel_hevc_generation_l(IJKFF_Pipenode_Opaque *opaque)
+{ opaque->hevc_packet_checked = false; }
+/* This fixture exercises ordinary input with the crop option disabled.
+ * The crop-on generation/restore path is covered by tests/ffmpeg5/h264-crop. */
+static bool h264_crop_enabled(IJKFF_Pipenode_Opaque *opaque)
+{ (void)opaque; return false; }
+static int stage_h264_baseline_restore_l(IJKFF_Pipenode_Opaque *opaque)
+{
+    assert(!opaque->h264_crop_committed && !opaque->h264_baseline_restore_pending);
+    assert(!opaque->h264_baseline_codecpar && !opaque->h264_next_bsfc);
+    return 0;
+}
 static void ffpipeline_set_surface_need_reconfigure_l(void *pipeline, bool value)
 { (void)pipeline; assert(value); }
 #include "../ffamc_input.h"
@@ -206,6 +226,9 @@ static void test_eof(const char *path, bool threaded, bool filtered)
 int main(int argc, char **argv)
 {
     assert(argc == 3);
+    // These header helpers are exercised by ffamc_ffmpeg_test, not the feeder fake.
+    (void)ijk_amc_update_hevc_extradata;
+    (void)ijk_amc_hevc_generation_parameters;
     // Also exercise shutdown helpers imported with the shared mock support.
     test_abort(0);
     test_abort(1);

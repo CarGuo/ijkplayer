@@ -560,6 +560,9 @@ int main(int argc, char **argv)
     Fixture old = {0}, next = {0};
     assert(argc == 3 || argc == 4 || (argc == 5 && !strcmp(argv[3], "--muxed")));
     (void)ijk_amc_update_h264_extradata;
+    // Metadata/generation helpers are exercised by ffamc_ffmpeg_test.
+    (void)ijk_amc_update_hevc_extradata;
+    (void)ijk_amc_hevc_generation_parameters;
     av_log_set_level(AV_LOG_ERROR);
     load(&old, argv[1]); load(&next, argv[2]);
     test_decode(&old, &next, argc == 4 ? argv[3] : NULL);
