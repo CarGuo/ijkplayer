@@ -21,14 +21,12 @@ static int feed_codec_eos(IJKFF_Pipenode *node, int64_t timeout_us,
         SDL_UnlockMutex(d->queue->mutex);
         return 0;
     }
-    if (threaded) {
-        // As with surface reconfigure, announce before acquiring this mutex so
-        // a hot dequeue loop yields rather than starving EOS submission.
-        opaque->acodec_reconfigure_request = true;
-        SDL_LockMutex(opaque->acodec_mutex);
-        opaque->acodec_reconfigure_request = false;
-        SDL_CondSignal(opaque->acodec_cond);
-    }
+    /* Like ordinary AU input, EOS input must run concurrently with output:
+     * output progress may be needed before an input slot becomes available.
+     * The feeder owns flush/reconfigure; teardown joins it before codec release.
+     * Do not hold acodec_mutex or advertise a reconfigure request while waiting
+     * for input. The Surface/queue guards below still apply where enabled. */
+    (void)threaded;
     if (opaque->abort || d->queue->abort_request ||
         d->pkt_serial != d->queue->serial || opaque->acodec_flush_request)
         goto done;
@@ -66,8 +64,6 @@ static int feed_codec_eos(IJKFF_Pipenode *node, int64_t timeout_us,
 done:
     if (queue_locked) SDL_UnlockMutex(d->queue->mutex);
     if (surface_locked) ffpipeline_unlock_surface(opaque->pipeline);
-    if (threaded)
-        SDL_UnlockMutex(opaque->acodec_mutex);
     return ret;
 }
 
