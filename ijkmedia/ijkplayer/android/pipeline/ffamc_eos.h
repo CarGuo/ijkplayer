@@ -10,7 +10,8 @@ static int feed_codec_eos(IJKFF_Pipenode *node, int64_t timeout_us,
     IJKFF_Pipenode_Opaque *opaque = node->opaque;
     Decoder *d = opaque->decoder;
     ssize_t index;
-    int ret = 0;
+    int ret = 0, input_codec_serial = 0;
+    bool crop_guard = h264_crop_enabled(opaque), surface_locked = false, queue_locked = false;
     if (opaque->input_eos_queued) {
         // Bound the wait so stop, seek and an output error can interrupt it.
         SDL_LockMutex(d->queue->mutex);
@@ -20,23 +21,36 @@ static int feed_codec_eos(IJKFF_Pipenode *node, int64_t timeout_us,
         SDL_UnlockMutex(d->queue->mutex);
         return 0;
     }
-    if (threaded) {
-        // As with surface reconfigure, announce before acquiring this mutex so
-        // a hot dequeue loop yields rather than starving EOS submission.
-        opaque->acodec_reconfigure_request = true;
-        SDL_LockMutex(opaque->acodec_mutex);
-        opaque->acodec_reconfigure_request = false;
-        SDL_CondSignal(opaque->acodec_cond);
-    }
+    /* Like ordinary AU input, EOS input must run concurrently with output:
+     * output progress may be needed before an input slot becomes available.
+     * The feeder owns flush/reconfigure; teardown joins it before codec release.
+     * Do not hold acodec_mutex or advertise a reconfigure request while waiting
+     * for input. The Surface/queue guards below still apply where enabled. */
+    (void)threaded;
     if (opaque->abort || d->queue->abort_request ||
         d->pkt_serial != d->queue->serial || opaque->acodec_flush_request)
         goto done;
+    if (crop_guard) {
+        ffpipeline_lock_surface(opaque->pipeline);
+        surface_locked = true;
+        if (!h264_input_valid_l(opaque)) goto done;
+        input_codec_serial = SDL_AMediaCodec_getSerial(opaque->acodec);
+    }
     index = SDL_AMediaCodec_dequeueInputBuffer(opaque->acodec, timeout_us);
     if (index == AMEDIACODEC__INFO_TRY_AGAIN_LATER)
         goto done;
     if (index < 0) {
         ret = AVERROR_EXTERNAL;
         goto done;
+    }
+    if (crop_guard) {
+        SDL_LockMutex(d->queue->mutex);
+        queue_locked = true;
+        if (!h264_input_valid_l(opaque) ||
+            input_codec_serial != SDL_AMediaCodec_getSerial(opaque->acodec)) {
+            opaque->h264_input_abandoned = true;
+            goto done;
+        }
     }
     if (SDL_AMediaCodec_queueInputBuffer(opaque->acodec, index, 0, 0, 0,
             AMEDIACODEC__BUFFER_FLAG_END_OF_STREAM) != SDL_AMEDIA_OK) {
@@ -48,8 +62,8 @@ static int feed_codec_eos(IJKFF_Pipenode *node, int64_t timeout_us,
     if (enqueue_count)
         ++*enqueue_count;
 done:
-    if (threaded)
-        SDL_UnlockMutex(opaque->acodec_mutex);
+    if (queue_locked) SDL_UnlockMutex(d->queue->mutex);
+    if (surface_locked) ffpipeline_unlock_surface(opaque->pipeline);
     return ret;
 }
 

@@ -40,6 +40,7 @@ typedef struct SDL_AMediaCodec_Opaque {
     jobject         output_buffer_info;
 
     bool            is_input_buffer_valid;
+    bool            release_attempted; // a checked release must not be repeated
 } SDL_AMediaCodec_Opaque;
 
 jobject SDL_AMediaCodecJava_getObject(JNIEnv *env, const SDL_AMediaCodec *thiz)
@@ -73,6 +74,20 @@ SDL_AMediaFormat *SDL_AMediaCodecJava_getOutputFormat(SDL_AMediaCodec *thiz)
     return aformat;
 }
 
+sdl_amedia_status_t SDL_AMediaCodecJava_releaseChecked(JNIEnv *env, SDL_AMediaCodec *acodec)
+{
+    if (!env || !acodec || acodec->opaque_class != &g_amediacodec_class || !acodec->opaque)
+        return SDL_AMEDIA_ERROR_UNKNOWN;
+    SDL_AMediaCodec_Opaque *opaque = acodec->opaque;
+    if (!opaque->android_media_codec || opaque->release_attempted)
+        return SDL_AMEDIA_ERROR_UNKNOWN;
+    // Set before entering Java: an exception makes the outcome uncertain, not
+    // authorization to issue release again in the normal destructor.
+    opaque->release_attempted = true;
+    J4AC_MediaCodec__release(env, opaque->android_media_codec);
+    return J4A_ExceptionCheck__catchAll(env) ? SDL_AMEDIA_ERROR_UNKNOWN : SDL_AMEDIA_OK;
+}
+
 static sdl_amedia_status_t SDL_AMediaCodecJava_delete(SDL_AMediaCodec* acodec)
 {
     ALOGI("%s\n", __func__);
@@ -87,7 +102,7 @@ static sdl_amedia_status_t SDL_AMediaCodecJava_delete(SDL_AMediaCodec* acodec)
 
     SDL_AMediaCodec_Opaque *opaque = (SDL_AMediaCodec_Opaque *)acodec->opaque;
     if (opaque) {
-        if (opaque->android_media_codec) {
+        if (opaque->android_media_codec && !opaque->release_attempted) {
             J4AC_MediaCodec__release__catchAll(env, opaque->android_media_codec);
         }
 

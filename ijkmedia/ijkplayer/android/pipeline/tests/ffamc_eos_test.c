@@ -11,6 +11,12 @@
 #define AMEDIACODEC__BUFFER_FLAG_END_OF_STREAM 4
 #define SDL_AMEDIA_OK 0
 #define AVERROR_EXTERNAL -100
+#ifndef TEST_THREADED
+#define TEST_THREADED 1
+#endif
+#ifndef TEST_CROP
+#define TEST_CROP 0
+#endif
 
 typedef struct { int flags, size; } SDL_AMediaCodecBufferInfo;
 typedef struct { int serial, abort_request; void *mutex, *cond; } PacketQueue;
@@ -21,39 +27,63 @@ typedef struct { VideoState *is; bool mediacodec_auto_fallback, mediacodec_auto_
 typedef struct { int port, acodec_serial; SDL_AMediaCodecBufferInfo info; } AMC_Buf_Out;
 typedef struct { int value; } AVFrame;
 typedef struct {
-    FFPlayer *ffp; Decoder *decoder; void *acodec, *acodec_mutex, *acodec_cond;
-    bool real_output_seen, input_eos_queued, output_eos_seen, abort, acodec_flush_request;
-    volatile bool acodec_reconfigure_request;
-    bool hevc_boundary_pending, hevc_boundary_drained;
+    FFPlayer *ffp; Decoder *decoder; void *acodec, *acodec_mutex, *acodec_cond, *pipeline;
+    bool acodec_reconfigure_request, h264_input_abandoned, hevc_boundary_pending, hevc_boundary_drained;
     int hevc_boundary_serial;
     int64_t hevc_drain_idle_since_us;
+    bool real_output_seen, input_eos_queued, output_eos_seen, abort, acodec_flush_request;
     int output_eos_serial, input_packet_count, off_buf_out;
     AMC_Buf_Out *amc_buf_out;
 } IJKFF_Pipenode_Opaque;
 typedef struct { IJKFF_Pipenode_Opaque *opaque; } IJKFF_Pipenode;
 static int queued, released, waits, locks, deq_result, queue_result, release_result, fill_result;
-static void SDL_LockMutex(void *p) { (void)p; ++locks; }
-static void SDL_UnlockMutex(void *p) { (void)p; --locks; }
-static void SDL_CondSignal(void *c) { (void)c; }
+static int codec_mutex, queue_mutex, surface_mutex, codec_locks;
+static void SDL_LockMutex(void *p) { ++locks; if (p == &codec_mutex) ++codec_locks; }
+static void SDL_UnlockMutex(void *p) { --locks; if (p == &codec_mutex) --codec_locks; }
 static void SDL_CondWaitTimeout(void *c, void *m, int ms)
 { (void)c; (void)m; assert(ms > 0 && ms <= 100); ++waits; }
 static ssize_t SDL_AMediaCodec_dequeueInputBuffer(void *c, int64_t us)
-{ (void)c; (void)us; return deq_result; }
+{
+    (void)c; (void)us;
+    /* Input may need output to release a slot. The EOS helper must not own
+     * the output mutex while invoking the input API. This checks the locking
+     * contract, not Android driver behavior or progress under every schedule. */
+    assert(codec_locks == 0);
+    return deq_result;
+}
 static int SDL_AMediaCodec_queueInputBuffer(void *c, int i, int off, int size, int64_t pts, int flags)
-{ (void)c; assert(i >= 0 && off == 0 && size == 0 && pts == 0); assert(flags == 4); ++queued; return queue_result; }
+{ (void)c; assert(codec_locks == 0); assert(i >= 0 && off == 0 && size == 0 && pts == 0); assert(flags == 4); ++queued; return queue_result; }
 static int SDL_AMediaCodec_releaseOutputBuffer(void *c, int i, bool render)
 { (void)c; assert(i >= 0 && !render); ++released; return release_result; }
 static int amc_fill_frame(IJKFF_Pipenode *n, AVFrame *f, int *got, int port, int serial, SDL_AMediaCodecBufferInfo *info)
 { (void)n; (void)serial; (void)info; if (fill_result) return fill_result; f->value = port; *got = 1; return 0; }
+/* Only the test stubs/signature are adapted to current production state.
+ * Crop dispatch is a selected test stub; real option gating is tested elsewhere. */
+static bool h264_crop_enabled(IJKFF_Pipenode_Opaque *o) { (void)o; return TEST_CROP && TEST_THREADED; }
+static bool h264_input_valid_l(IJKFF_Pipenode_Opaque *o) {
+    return !o->abort && !o->decoder->queue->abort_request &&
+        !o->acodec_flush_request && !o->h264_input_abandoned &&
+        o->decoder->pkt_serial == o->decoder->queue->serial;
+}
+static void ffpipeline_lock_surface(void *p) { SDL_LockMutex(p); }
+static void ffpipeline_unlock_surface(void *p) { SDL_UnlockMutex(p); }
+static int SDL_AMediaCodec_getSerial(void *p) { (void)p; return 1; }
 #include "../ffamc_eos_policy.h"
 #include "../ffamc_eos.h"
 
+static int drain_checked(IJKFF_Pipenode *n, AVFrame *f, int *got) {
+    if (TEST_THREADED) SDL_LockMutex(n->opaque->acodec_mutex);
+    int ret=drain_codec_eos(n,f,got,TEST_THREADED);
+    if (TEST_THREADED) SDL_UnlockMutex(n->opaque->acodec_mutex);
+    return ret;
+}
 int main(void)
 {
-    PacketQueue q = {.serial = 1};
+    PacketQueue q = {.serial = 1, .mutex = &queue_mutex};
     VideoState is = {.viddec = {.packet_pending=1, .pkt_serial=1, .queue=&q}};
     FFPlayer f = {.is=&is, .mediacodec_auto_fallback=true};
-    IJKFF_Pipenode_Opaque o = {.ffp=&f, .decoder=&is.viddec};
+    IJKFF_Pipenode_Opaque o = {.ffp=&f, .decoder=&is.viddec,
+        .acodec_mutex=&codec_mutex, .pipeline=&surface_mutex};
     IJKFF_Pipenode n = {&o};
     SDL_AMediaCodecBufferInfo info = {0};
     AMC_Buf_Out reorder[2] = {{.port=12}, {.port=11}};
@@ -66,29 +96,29 @@ int main(void)
     assert(should_fallback_to_ffplay(&n));
     is.viddec.pkt.side_data_elems = 0;
     deq_result = -1;
-    assert(feed_codec_eos(&n, 1, true, &count) == 0 && !o.input_eos_queued);
+    assert(feed_codec_eos(&n, 1, TEST_THREADED, &count) == 0 && !o.input_eos_queued);
     deq_result = -99;
-    assert(feed_codec_eos(&n, 1, true, &count) == AVERROR_EXTERNAL);
+    assert(feed_codec_eos(&n, 1, TEST_THREADED, &count) == AVERROR_EXTERNAL);
     deq_result = 0; queue_result = -1;
-    assert(feed_codec_eos(&n, 1, true, &count) == AVERROR_EXTERNAL && !o.input_eos_queued);
+    assert(feed_codec_eos(&n, 1, TEST_THREADED, &count) == AVERROR_EXTERNAL && !o.input_eos_queued);
     queued = 0; queue_result = 0;
-    assert(feed_codec_eos(&n, 1, true, &count) == 0);
+    assert(feed_codec_eos(&n, 1, TEST_THREADED, &count) == 0);
     assert(queued == 1 && count == 1 && o.input_eos_queued && !is.viddec.finished);
-    assert(feed_codec_eos(&n, 1, true, &count) == 0 && queued == 1 && waits == 1);
+    assert(feed_codec_eos(&n, 1, TEST_THREADED, &count) == 0 && queued == 1 && waits == 1);
     info.flags=4; info.size=8;
     assert(receive_codec_eos(&n, 7, &info) == 0 && o.output_eos_seen && !is.viddec.finished);
     record_codec_output(&n, &info); assert(o.real_output_seen);
     o.off_buf_out=2; o.amc_buf_out=reorder;
-    assert(drain_codec_eos(&n,&frame,&got,false)==0 && got && frame.value==11 && !is.viddec.finished);
+    assert(drain_checked(&n,&frame,&got)==0 && got && frame.value==11 && !is.viddec.finished);
     got=0;
-    assert(drain_codec_eos(&n,&frame,&got,false)==0 && got && frame.value==12 && !is.viddec.finished);
+    assert(drain_checked(&n,&frame,&got)==0 && got && frame.value==12 && !is.viddec.finished);
     got=0;
-    assert(drain_codec_eos(&n,&frame,&got,false)==0 && !got && is.viddec.finished==1);
+    assert(drain_checked(&n,&frame,&got)==0 && !got && is.viddec.finished==1);
     q.serial=2; is.viddec.finished=0;
-    assert(drain_codec_eos(&n,&frame,&got,false)==0 && !is.viddec.finished);
+    assert(drain_checked(&n,&frame,&got)==0 && !is.viddec.finished);
     // Emulate production flush reset. Real-output evidence is deliberately kept.
     o.input_eos_queued=false; o.output_eos_seen=false; is.viddec.pkt_serial=2;
-    assert(feed_codec_eos(&n,1,false,&count)==0 && queued==2);
+    assert(feed_codec_eos(&n,1,TEST_THREADED,&count)==0 && queued==2);
     assert(o.real_output_seen);
     info.size=0; info.flags=4;
     assert(receive_codec_eos(&n,8,&info)==1 && released==1);
@@ -102,12 +132,22 @@ int main(void)
     release_result=0; info.flags=4|0x1000;
     assert(receive_codec_eos(&n,11,&info)==1 && released==3);
     o.off_buf_out=1; fill_result=-1;
-    assert(drain_codec_eos(&n,&frame,&got,false)==AVERROR_EXTERNAL);
+    assert(drain_checked(&n,&frame,&got)==AVERROR_EXTERNAL);
     o.input_eos_queued=false; o.abort=true;
-    assert(feed_codec_eos(&n,1,true,&count)==0 && queued==2);
+    assert(feed_codec_eos(&n,1,TEST_THREADED,&count)==0 && queued==2);
     o.abort=false; o.acodec_flush_request=true;
-    assert(feed_codec_eos(&n,1,true,&count)==0 && queued==2);
+    assert(feed_codec_eos(&n,1,TEST_THREADED,&count)==0 && queued==2);
     assert(locks==0);
+    /* Additional private-drain check: never report stream completion. */
+    o.abort=false; o.acodec_flush_request=false; o.off_buf_out=0; fill_result=0;
+    o.output_eos_serial=2; o.hevc_boundary_pending=true; o.hevc_boundary_serial=2;
+    is.viddec.finished=0; got=0;
+    assert(drain_checked(&n,&frame,&got)==0 && !got && o.hevc_boundary_drained);
+    assert(is.viddec.finished==0 && locks==0);
+    o.hevc_boundary_pending=false;
+    assert(drain_checked(&n,&frame,&got)==0 && is.viddec.finished==2);
+    assert(locks==0);
+    printf("mode threaded=%d crop=%d: ",TEST_THREADED,TEST_CROP);
     puts("PASS production EOS helpers: single EOF, retry/errors, final payload, reorder drain, stale serial, seek reset, fake/config/empty EOS, zero-size Surface, fallback guard, abort/flush");
     return 0;
 }

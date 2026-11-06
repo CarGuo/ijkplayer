@@ -8,11 +8,13 @@
 typedef struct IJKFF_Pipenode_Opaque {
     FFPlayer *ffp;
     Decoder *decoder;
-    AVCodecParameters *codecpar;
-    AVBSFContext *bsfc;
+    AVCodecParameters *codecpar, *hevc_active_csd, *h264_baseline_codecpar;
+    AVBSFContext *bsfc, *h264_next_bsfc;
     AVPacket filtered_packet;
     bool bsf_pending, acodec_flush_request, aformat_need_recreate;
     bool hevc_packet_checked;
+    bool h264_baseline_restore_pending, h264_input_abandoned;
+    bool h264_crop_disabled, h264_crop_committed;
     volatile bool acodec_reconfigure_request;
     volatile bool abort;
     SDL_mutex *acodec_mutex;
@@ -37,6 +39,16 @@ static void SDL_VoutAndroid_resetBufferReleaseError(void *vout, int serial)
 /* This feeder fixture owns no staged HEVC generation or Android output buffers. */
 static void cancel_hevc_generation_l(IJKFF_Pipenode_Opaque *opaque)
 { opaque->hevc_packet_checked = false; }
+/* This fixture exercises ordinary input with the crop option disabled.
+ * The crop-on generation/restore path is covered by tests/ffmpeg5/h264-crop. */
+static bool h264_crop_enabled(IJKFF_Pipenode_Opaque *opaque)
+{ (void)opaque; return false; }
+static int stage_h264_baseline_restore_l(IJKFF_Pipenode_Opaque *opaque)
+{
+    assert(!opaque->h264_crop_committed && !opaque->h264_baseline_restore_pending);
+    assert(!opaque->h264_baseline_codecpar && !opaque->h264_next_bsfc);
+    return 0;
+}
 static void ffpipeline_set_surface_need_reconfigure_l(void *pipeline, bool value)
 { (void)pipeline; assert(value); }
 #include "../ffamc_input.h"

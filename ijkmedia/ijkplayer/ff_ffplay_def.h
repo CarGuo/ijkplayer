@@ -728,6 +728,7 @@ typedef struct FFPlayer {
     int mediacodec_mpeg2;
     int mediacodec_mpeg4;
     int mediacodec_handle_resolution_change;
+    int mediacodec_h264_crop_workaround;
     int mediacodec_auto_rotate;
 
     int opensles;
@@ -872,6 +873,7 @@ inline static void ffp_reset_internal(FFPlayer *ffp)
     ffp->mediacodec_hevc                = 0; // option
     ffp->mediacodec_mpeg2               = 0; // option
     ffp->mediacodec_handle_resolution_change = 0; // option
+    ffp->mediacodec_h264_crop_workaround = 0; // option, opt-in vendor workaround
     ffp->mediacodec_auto_rotate         = 0; // option
 
     ffp->opensles                       = 0; // option
