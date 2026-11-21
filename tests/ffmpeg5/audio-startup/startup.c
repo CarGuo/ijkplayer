@@ -40,7 +40,8 @@ typedef struct VideoState { SDL_mutex *play_mutex;FrameQueue sampq;PacketQueue a
  int step,audio_transform_serial,audio_transform_draining,audio_hw_buf_size;
  struct SwrContext *swr_ctx;uint8_t *audio_buf1;unsigned audio_buf1_size;
  short *audio_new_buf;unsigned audio_new_buf_size;void *handle;
- double audio_input_end,audio_output_cursor,audio_resample_end;} VideoState;
+ double audio_input_end,audio_output_cursor,audio_resample_end;
+ double audio_soundtouch_pts_anchor;int64_t audio_soundtouch_input_samples;} VideoState;
 typedef struct {int value;} HarnessOptionDictionary;
 typedef struct {const char *value;} HarnessOptionEntry;
 typedef struct {AVDictionary *player_opts,*swr_opts;double preset_5_1_center_mix_level;int sync_av_start;VideoState *is;SDL_Aout *aout;int pf_playback_rate_changed,pf_playback_volume_changed,first_audio_frame_rendered,render_wait_start,start_on_prepared,soundtouch_enable,av_sync_type;float pf_playback_rate,pf_playback_volume;int64_t audio_callback_time;int loop,autoexit,auto_resume,error,prepared,last_error;int64_t start_time;struct {int64_t latest_seek_load_duration;float vdps,vfps,avdelay,avdiff,drop_frame_rate;} stat;} FFPlayer;

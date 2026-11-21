@@ -2705,6 +2705,7 @@ reload:
         is->audio_transform_draining = 0;
         is->audio_engine_drained = 0;
         is->audio_resample_end = is->audio_input_end = is->audio_output_cursor = NAN;
+        is->audio_soundtouch_pts_anchor = NAN;
         /* Force source format setup even when the new frame matches target. */
         is->audio_src.fmt = AV_SAMPLE_FMT_NONE;
         audio_transform_pending(is, 0);
@@ -2753,6 +2754,7 @@ reload:
         }
 #endif
         is->audio_transform_draining = 0;
+        is->audio_soundtouch_pts_anchor = NAN;
         is->audio_src.fmt = AV_SAMPLE_FMT_NONE;
         audio_transform_pending(is, 0);
         if (reason == 3) {
@@ -2791,10 +2793,23 @@ reload:
     int source_changed = af->frame->format != is->audio_src.fmt ||
         dec_channel_layout != is->audio_src.channel_layout ||
         af->frame->sample_rate != is->audio_src.freq;
+    double expected_pts = is->audio_input_end;
+    double pts_tolerance = 0.0;
+    if (af->frame->sample_rate > 0) {
+        pts_tolerance = 1.0 / af->frame->sample_rate;
+        if (is->handle && !source_changed && isfinite(is->audio_soundtouch_pts_anchor)) {
+            /* Small container timestamp jitter must not flush SoundTouch on
+             * every frame. Use the segment's sample count, not the previous
+             * rounded PTS, so one-sided drift cannot accumulate unnoticed. */
+            expected_pts = is->audio_soundtouch_pts_anchor +
+                (double)is->audio_soundtouch_input_samples / af->frame->sample_rate;
+            pts_tolerance = FFMAX(pts_tolerance, 0.001);
+        }
+    }
     int timestamp_domain_changed = (is->swr_ctx || is->handle) &&
         ((isfinite(af->pts) != isfinite(is->audio_input_end)) ||
-         (isfinite(af->pts) && isfinite(is->audio_input_end) && af->frame->sample_rate > 0 &&
-          fabs(af->pts - is->audio_input_end) > 1.0 / af->frame->sample_rate));
+         (isfinite(af->pts) && isfinite(expected_pts) && af->frame->sample_rate > 0 &&
+          fabs(af->pts - expected_pts) > pts_tolerance));
     if ((source_changed || timestamp_domain_changed) && (is->swr_ctx || is->handle)) {
         is->audio_transform_draining = 1;
         goto reload; /* New queue frame remains owned, unconsumed. */
@@ -2882,6 +2897,13 @@ reload:
         audio_transform_pending(is, 1);
         if (ffp_soundtouch_put(is->handle, (short *)pcm, len2) < 0)
             return audio_processing_failed(is, AVERROR(EIO));
+        if (isfinite(af->pts)) {
+            if (!isfinite(is->audio_soundtouch_pts_anchor)) {
+                is->audio_soundtouch_pts_anchor = af->pts;
+                is->audio_soundtouch_input_samples = 0;
+            }
+            is->audio_soundtouch_input_samples += af->frame->nb_samples;
+        }
         goto reload;
     }
 #endif
@@ -4496,6 +4518,7 @@ static VideoState *stream_open(FFPlayer *ffp, const char *filename, IJK_AVInputF
     is->audio_transform_serial = -1;
     is->audio_buffer_media_rate = is->audio_software_rate = 1.0;
     is->audio_input_end = is->audio_output_cursor = NAN;
+    is->audio_soundtouch_pts_anchor = NAN;
     is->audclk.source_soft = is->software_rate_mode || ffp->av_sync_type != AV_SYNC_AUDIO_MASTER;
     if (ffp->startup_volume < 0)
         av_log(NULL, AV_LOG_WARNING, "-volume=%d < 0, setting to 0\n", ffp->startup_volume);
