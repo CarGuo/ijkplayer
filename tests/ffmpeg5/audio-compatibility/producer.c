@@ -43,6 +43,7 @@ typedef struct VideoState {
  int requested_software_rate_mode,audio_engine_drained;
  int audio_processing_error;double audio_resample_end;
  double audio_input_end,audio_output_cursor,audio_buffer_media_rate,audio_software_rate;
+ double audio_soundtouch_pts_anchor;int64_t audio_soundtouch_input_samples;
  short*audio_new_buf;unsigned audio_new_buf_size;void*handle;
 }VideoState;
 typedef struct{VideoState*is;int sync_av_start;int64_t audio_callback_time;AVDictionary*swr_opts;double preset_5_1_center_mix_level;float pf_playback_rate;}FFPlayer;
@@ -53,13 +54,20 @@ static void frame_queue_next(FrameQueue*q){(void)q;read_index++;}
 static int synchronize_audio(VideoState*s,int n){(void)s;return wanted_override?wanted_override:n;}
 static void ffp_notify_msg1(FFPlayer*f,int n){(void)f;(void)n;decode_started++;}
 static int get_master_sync_type(VideoState*s){(void)s;return master_type;}
+static int soundtouch_instances;
+static void *counted_soundtouch_create(int sample_rate, int channels, double tempo) {
+ ++soundtouch_instances;
+ return ffp_soundtouch_create(sample_rate, channels, tempo);
+}
+#define ffp_soundtouch_create counted_soundtouch_create
 #include "extracted_decode.h"
+#undef ffp_soundtouch_create
 static SDL_mutex pm,em;static VideoState s;static FFPlayer f;
 static void setup(int target,int software,double rate){
  assert(!pm.held&&!em.held);memset(&s,0,sizeof s);memset(&f,0,sizeof f);
  s.audioq.serial=1;s.audclk.source_aout=&s;s.audclk.pts=NAN;s.audio_transform_serial=-1;s.software_rate_mode=s.requested_software_rate_mode=software;s.audio_software_rate=rate;
  s.audio_tgt=(AudioParams){.freq=target,.fmt=AV_SAMPLE_FMT_S16,.channels=2,.channel_layout=AV_CH_LAYOUT_STEREO,.frame_size=4,.bytes_per_sec=target*4};
- s.play_mutex=&pm;s.eof_clock.mutex=&em;f.is=&s;f.pf_playback_rate=rate;read_index=frame_count=wanted_override=decode_started=0;master_type=1;
+ s.play_mutex=&pm;s.eof_clock.mutex=&em;f.is=&s;f.pf_playback_rate=rate;read_index=frame_count=wanted_override=decode_started=soundtouch_instances=0;master_type=1;
 }
 static void enqueue(int source,int count,double pts,int serial){
  assert(frame_count<64);AVFrame*a=av_frame_alloc();assert(a);a->format=AV_SAMPLE_FMT_FLTP;a->sample_rate=source;a->channels=2;a->channel_layout=AV_CH_LAYOUT_STEREO;a->nb_samples=count;assert(av_frame_get_buffer(a,0)==0);assert(av_samples_set_silence(a->extended_data,0,count,2,a->format)==0);frames[frame_count++]=(Frame){a,serial,pts};
@@ -69,11 +77,94 @@ static int drain(const char*name){int n,total=0,call=0;
  while((n=audio_decode_frame(&f))>=0){assert(n>0);assert(++call<1000);total+=n/4;printf("%s call=%d consumed=%d out=%d pts=%.9f rate=%.2f pending=%d\n",name,call,read_index,n/4,s.audio_clock,s.audio_buffer_media_rate,s.eof_clock.audio_transform_pending);}
  assert(!s.audio_clock_unsupported&&!s.audio_processing_error);assert(read_index==frame_count);assert(!s.eof_clock.audio_transform_pending);assert(!s.swr_ctx&&!s.handle);return total;
 }
+/* #4274: exact source PTS cadence 0, -15, -29 samples relative to
+ * an uninterrupted 44.1 kHz stream; its timestamps are not rewritten. */
+static uint64_t soundtouch_pts_jitter(int jitter, double rate){
+ static const int offset[]={0,-15,-29};
+ setup(44100,1,rate);
+ for(int i=0;i<24;i++){
+  enqueue(44100,1024,4+(i*1024+(jitter?offset[i%3]:0))/44100.,1);
+  AVFrame *a=frames[i].frame;
+  for(int j=0;j<a->nb_samples;j++){
+   float tone=(float)(.3*sin(2*3.141592653589793*241*(i*1024+j)/44100.));
+   ((float*)a->extended_data[0])[j]=tone;
+   ((float*)a->extended_data[1])[j]=-tone;
+  }
+ }
+ int n,total=0;uint64_t hash=UINT64_C(14695981039346656037);
+ while((n=audio_decode_frame(&f))>0){
+  for(int i=0;i<n;i++)hash=(hash^s.audio_buf[i])*UINT64_C(1099511628211);
+  total+=n/4;
+ }
+ assert(soundtouch_instances==1&&read_index==frame_count);
+ assert(!s.audio_processing_error&&!s.eof_clock.audio_transform_pending&&!s.handle);
+ assert(total==(int)llround(24*1024/rate));
+ assert(fabs(s.audio_clock-(4+24*1024./44100))<1e-9);
+ cleanup();
+ return hash;
+}
+/* A genuine same-serial gap must finish the old transform, then accept the
+ * first new frame once. Compare actual stereo PCM to independently drained
+ * transforms of the two distinct segments, not just frame totals. */
+static uint64_t soundtouch_real_gap(int first, int second, uint64_t hash){
+ const double rate=1.5;
+ setup(44100,1,rate);
+ if(first){
+  enqueue(44100,4096,4,1);
+  for(int j=0;j<4096;j++){
+   ((float*)frames[0].frame->extended_data[0])[j]=.30f*sin(2*3.141592653589793*241*j/44100.);
+   ((float*)frames[0].frame->extended_data[1])[j]=.20f*cos(2*3.141592653589793*241*j/44100.);
+  }
+ }
+ if(second){
+  enqueue(44100,4096,4.125,1);
+  AVFrame *a=frames[frame_count-1].frame;
+  for(int j=0;j<4096;j++){
+   ((float*)a->extended_data[0])[j]=.25f*sin(2*3.141592653589793*373*j/44100.);
+   ((float*)a->extended_data[1])[j]=.15f*cos(2*3.141592653589793*373*j/44100.);
+  }
+ }
+ int n,total=0,old_frames=0,new_frames=0;
+ double last_old_pts=NAN;
+ while((n=audio_decode_frame(&f))>0){
+  assert(s.audio_clock_serial==1&&s.audio_buffer_media_rate==rate);
+  for(int i=0;i<n;i++)hash=(hash^s.audio_buf[i])*UINT64_C(1099511628211);
+  total+=n/4;
+  if(s.audio_clock<4.125){old_frames+=n/4;last_old_pts=s.audio_clock;}
+  else new_frames+=n/4;
+ }
+ const int expected=(int)llround(4096/rate);
+ assert(soundtouch_instances==first+second&&read_index==frame_count);
+ assert(!s.audio_processing_error&&!s.eof_clock.audio_transform_pending&&!s.handle);
+ assert(old_frames==first*expected&&new_frames==second*expected&&total==(first+second)*expected);
+ if(first)assert(fabs(last_old_pts-(4+expected*rate/44100.))<1e-9);
+ if(second)assert(fabs(s.audio_clock-(4.125+expected*rate/44100.))<1e-9);
+ cleanup();
+ return hash;
+}
+static void soundtouch_pts_bounds(void){
+ assert(soundtouch_pts_jitter(0,1)==soundtouch_pts_jitter(1,1));
+ assert(soundtouch_pts_jitter(0,1.5)==soundtouch_pts_jitter(1,1.5));
+ const uint64_t seed=UINT64_C(14695981039346656037);
+ const uint64_t separate=soundtouch_real_gap(0,1,soundtouch_real_gap(1,0,seed));
+ assert(soundtouch_real_gap(1,1,seed)==separate);
+ /* Each adjacent deviation is <1 ms, but cumulative drift crosses
+  * the bound on the fourth frame. A last-frame-only tolerance fails. */
+ setup(44100,1,1);
+ for(int i=0;i<4;i++)enqueue(44100,1024,4+i*(1024+16)/44100.,1);
+ assert(drain("soundtouchBoundedDrift")==4096&&soundtouch_instances==2);cleanup();
+ setup(44100,1,1);
+ enqueue(44100,1024,4,1);
+ enqueue(48000,1024,4+1024./44100,1);
+ assert(abs(drain("soundtouchFmtChange")-(1024+(int)llround(1024.*44100/48000)))<=1);
+ assert(soundtouch_instances==2);cleanup();
+}
 int main(int argc,char**argv){
  setvbuf(stdout,NULL,_IONBF,0);
  if(argc>1){
   if(!strcmp(argv[1],"swr_endpoint")){setup(48000,0,1);enqueue(96000,1024,4,1);assert(drain("swrEndpoint")==512);assert(fabs(s.audio_clock-(4+1024./96000))<1e-9);cleanup();return 0;}
   if(!strcmp(argv[1],"pts_discontinuity")){setup(48000,1,1);enqueue(48000,1024,4,1);enqueue(48000,1024,10,1);assert(drain("ptsDiscontinuity")==2048);assert(fabs(s.audio_clock-(10+1024./48000))<1e-9);cleanup();return 0;}
+  if(!strcmp(argv[1],"soundtouch_pts_jitter")){soundtouch_pts_bounds();return 0;}
   return 2;
  }
  setup(48000,0,1);enqueue(96000,1024,4,1);assert(drain("96to48")==512);cleanup();
@@ -119,5 +210,6 @@ int main(int argc,char**argv){
  f.pf_playback_rate=3;assert(audio_decode_frame(&f)==-1&&s.audio_engine_drained&&s.eof_clock.audio_transform_pending);
  s.audio_software_rate=3;s.audio_engine_drained=0;s.eof_clock.audio_transform_pending=0;
  assert(audio_decode_frame(&f)==-1&&!s.eof_clock.audio_transform_pending);cleanup();
+ soundtouch_pts_bounds();
  puts("PASS exact producer: resampling/compensation/tails, timestamps, tempo transitions, pause/seek and live control boundaries");
 }

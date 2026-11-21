@@ -359,6 +359,8 @@ typedef struct VideoState {
     int audio_transform_serial, audio_transform_draining;
     double audio_resample_end;
     double audio_input_end, audio_output_cursor, audio_buffer_media_rate;
+    double audio_soundtouch_pts_anchor;
+    int64_t audio_soundtouch_input_samples;
     double audio_software_rate;
     double audio_diff_cum; /* used for AV difference average computation */
     double audio_diff_avg_coef;
